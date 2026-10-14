@@ -7,6 +7,7 @@
 # 개인 연수 메모 (공개 저장소에 올리지 않음)
 연수-이어하기.md
 DoRms-전역지침-초안.md
+CLAUDE.md
 
 # dorms-check 로컬 결과
 .dorms-check/
@@ -15,3 +16,6 @@ DoRms-전역지침-초안.md
 node_modules/
 .DS_Store
 Thumbs.db
+
+.vercel
+.env*
