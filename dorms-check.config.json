@@ -1,0 +1,15 @@
+{
+  "app": {
+    "name": "2026 경기도 교육감배 미래형 이스포츠 스쿨리그",
+    "url": "https://2026-esports-schoolleague.vercel.app",
+    "stack": "정적 HTML"
+  },
+  "tracks": [
+    "security"
+  ],
+  "edzipCase": null,
+  "teacher": {
+    "dormsHandle": ""
+  },
+  "ownershipConfirmed": true
+}
