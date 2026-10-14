@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2026 경기도 교육감배 미래형 이스포츠 스쿨리그</title>
 <style>
+  @font-face {
+    font-family: 'YeogiOttaeJalnan';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_four@1.2/JalnanOTF00.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+  }
   :root {
     --bg: #0a0f24;
     --bg2: #111833;
@@ -46,8 +52,10 @@
   .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
   .logo-mark {
     width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
-    background: linear-gradient(135deg, var(--neon), var(--neon2)); color: #0a0f24; font-weight: 900;
+    background: linear-gradient(135deg, var(--neon), var(--neon2)); font-size: 20px; line-height: 1;
   }
+  /* 큰 제목·탭 제목 글씨체 */
+  .hero h1, h2, .tab { font-family: 'YeogiOttaeJalnan', sans-serif; font-weight: normal; letter-spacing: .01em; }
   .logo small { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
   nav[role="tablist"] { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
   nav[role="tablist"]::-webkit-scrollbar { display: none; }
@@ -96,6 +104,21 @@
   dl.info dt { color: var(--muted); }
   dl.info dd { margin: 0; }
   ul.clean { margin: 0; padding-left: 18px; }
+
+  /* 포스터 */
+  .poster { display: grid; grid-template-columns: minmax(0, 420px) 1fr; gap: 20px; align-items: start; margin-bottom: 16px; }
+  .poster a { display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+  .poster img { display: block; width: 100%; height: auto; }
+
+  /* 대진표 */
+  .div-switch { display: flex; gap: 6px; margin-bottom: 16px; }
+  .groups { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .group h3 { margin: 0 0 8px; font-size: 16px; color: var(--neon); }
+  .group ol { margin: 0; padding-left: 20px; color: var(--muted); }
+  .bracket-flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 16px; }
+  .bracket-flow .stage { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+  .bracket-flow .arrow { color: var(--neon); }
+  .pending { border: 1px dashed var(--wait); color: var(--wait); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
 
   /* 일정 */
   .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
@@ -162,6 +185,7 @@
     .side { position: static; }
     .qlist { max-height: 220px; }
     .chat { height: 560px; }
+    .poster { grid-template-columns: 1fr; }
     dl.info { grid-template-columns: 1fr; gap: 2px; }
     dl.info dd { margin-bottom: 10px; }
   }
@@ -172,7 +196,7 @@
 <header>
   <div class="wrap head">
     <div class="logo">
-      <div class="logo-mark" aria-hidden="true">GG</div>
+      <div class="logo-mark" aria-hidden="true">🏆</div>
       <div>
         <small>2026 경기도 교육감배</small>
         미래형 이스포츠 스쿨리그
@@ -182,6 +206,7 @@
       <button class="tab" role="tab" id="tab-home" aria-controls="home" aria-selected="true">홈</button>
       <button class="tab" role="tab" id="tab-about" aria-controls="about" aria-selected="false" tabindex="-1">대회 소개</button>
       <button class="tab" role="tab" id="tab-schedule" aria-controls="schedule" aria-selected="false" tabindex="-1">일정</button>
+      <button class="tab" role="tab" id="tab-bracket" aria-controls="bracket" aria-selected="false" tabindex="-1">대진표</button>
       <button class="tab" role="tab" id="tab-apply" aria-controls="apply" aria-selected="false" tabindex="-1">참가 신청</button>
       <button class="tab" role="tab" id="tab-faq" aria-controls="faq" aria-selected="false" tabindex="-1">질문/FAQ</button>
     </nav>
@@ -215,6 +240,21 @@
   <section id="about" role="tabpanel" aria-labelledby="tab-about" hidden>
     <h2>대회 소개</h2>
     <p class="lead">대회 개요와 혜택을 한눈에 확인하세요.</p>
+    <div class="card poster">
+      <a href="assets/poster.jpg" target="_blank" rel="noopener" aria-label="대회 포스터 크게 보기 (새 창)">
+        <img src="assets/poster.jpg" width="1200" height="1697" loading="lazy"
+             alt="2026 경기도 교육감배 미래형 이스포츠 스쿨리그 포스터: 모집기간 2026.10.19.(월)까지, 종목 리그 오브 레전드, 경기도 중고등학교 재학생 대상, 학교당 대표 1팀(5~10인), 64팀 모집, 예선 10.24.(토) 온라인, 본선 10.25.~11.4., 결선 11.8.(일) 경기도인재개발원 실내체육관, 참가접수·디스코드 QR코드 포함">
+      </a>
+      <div>
+        <h3 style="margin-top:0">대회 포스터</h3>
+        <p>포스터를 누르면 크게 볼 수 있습니다. 포스터의 <strong>참가접수 QR</strong>로 신청하고, <strong>디스코드 QR</strong>로 대회 서버에 입장하세요.</p>
+        <p class="note">포스터 발행 이후 바뀐 내용</p>
+        <ul class="clean">
+          <li>모집 마감이 10/12에서 <strong>10/19(월)</strong>로 연장되었습니다.</li>
+          <li>지도교사는 <strong>필수가 아닙니다.</strong> 있을 때만 신청서에 작성합니다.</li>
+        </ul>
+      </div>
+    </div>
     <div class="grid">
       <div class="card">
         <dl class="info">
@@ -250,6 +290,24 @@
     <div class="card">
       <ol class="timeline" id="timeline"></ol>
     </div>
+  </section>
+
+  <!-- 대진표 -->
+  <section id="bracket" role="tabpanel" aria-labelledby="tab-bracket" hidden>
+    <h2>대진표</h2>
+    <p class="lead">중등부·고등부 각 32팀이 예선 조별리그를 거쳐 16강부터 더블 엘리미네이션으로 겨룹니다.</p>
+    <div class="pending">대진표는 모집 마감(10/19) 이후 확정되어 공지사항으로 안내됩니다. 확정되면 이 화면에 팀 이름이 채워집니다.</div>
+    <div class="bracket-flow" aria-label="대회 진행 순서">
+      <span class="stage">예선 32강 · 10/24(토)<br><small>4팀 1조 조별리그, bo1</small></span><span class="arrow" aria-hidden="true">→</span>
+      <span class="stage">본선 16강~4강 · 10/25~11/4<br><small>더블 엘리미네이션</small></span><span class="arrow" aria-hidden="true">→</span>
+      <span class="stage">결선 1~4위전 · 11/8(일)<br><small>오프라인</small></span>
+    </div>
+    <div class="div-switch" id="divSwitch" role="group" aria-label="부문 선택">
+      <button type="button" class="chip" data-div="중등부" aria-pressed="true">중등부</button>
+      <button type="button" class="chip" data-div="고등부" aria-pressed="false">고등부</button>
+    </div>
+    <div class="groups" id="groups"></div>
+    <p class="note">조별 1·2위가 16강에 진출합니다. 32팀이 채워지지 않으면 3위 팀도 승급할 수 있으며, 세부 방식은 10/19 이후 확정됩니다.</p>
   </section>
 
   <!-- 참가 신청 -->
@@ -460,6 +518,25 @@ TIMELINE.forEach(t => {
   if (t.desc) li.append(el("div", "desc", t.desc));
   tl.append(li);
 });
+
+/* ---------- 대진표 ---------- */
+// 확정되면 팀 이름을 채운다. 예: BRACKET["중등부"].A = ["OO중", "△△중", "□□중", "◇◇중"]
+const BRACKET = { "중등부": {}, "고등부": {} };
+const GROUPS = "ABCDEFGH".split("");
+const groupsBox = document.getElementById("groups");
+function showDiv(div) {
+  document.querySelectorAll("#divSwitch .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.div === div));
+  groupsBox.replaceChildren(...GROUPS.map(g => {
+    const card = el("div", "card group");
+    const ol = el("ol");
+    const teams = BRACKET[div][g] || [];
+    for (let i = 0; i < 4; i++) ol.append(el("li", "", teams[i] || "추후 공개"));
+    card.append(el("h3", "", div + " " + g + "조"), ol);
+    return card;
+  }));
+}
+document.querySelectorAll("#divSwitch .chip").forEach(b => b.addEventListener("click", () => showDiv(b.dataset.div)));
+showDiv("중등부");
 
 /* ---------- 질문 매칭 (원본 챗봇의 규칙을 오프라인용으로 옮김) ---------- */
 const STOP = ["어떻게", "하나요", "있나요", "되나요", "인가요", "알려주세요", "알려줘", "궁금해요", "언제", "무엇"];
