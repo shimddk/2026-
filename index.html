@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 경기도 교육감배 미래형 이스포츠 스쿨리그</title>
+<style>
+  :root {
+    --bg: #0a0f24;
+    --bg2: #111833;
+    --card: #161f42;
+    --line: #283364;
+    --text: #e9ecff;
+    --muted: #9aa3cc;
+    --neon: #35e0ff;
+    --neon2: #b26bff;
+    --ok: #3ddc97;
+    --wait: #ffb547;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 80% -10%, #2a1a5e 0%, transparent 60%),
+                radial-gradient(900px 500px at -10% 10%, #0d3a5c 0%, transparent 55%),
+                var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  a { color: var(--neon); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+  /* 헤더 */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10, 15, 36, 0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; flex-wrap: wrap; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--neon), var(--neon2)); color: #0a0f24; font-weight: 900;
+  }
+  .logo small { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
+  nav[role="tablist"] { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  nav[role="tablist"]::-webkit-scrollbar { display: none; }
+  .tab {
+    border: 1px solid transparent; background: none; padding: 8px 14px; border-radius: 999px;
+    cursor: pointer; white-space: nowrap; color: var(--muted); font-weight: 600;
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: #0a0f24; background: var(--neon); }
+
+  main { padding: 32px 0 48px; }
+  section[role="tabpanel"][hidden] { display: none; }
+  h2 { font-size: 26px; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+  /* 홈 */
+  .hero { padding: 24px 0 8px; }
+  .badge {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid var(--neon); color: var(--neon);
+  }
+  .hero h1 { font-size: clamp(28px, 5vw, 52px); line-height: 1.2; margin: 14px 0 10px; font-weight: 900; }
+  .hero h1 span {
+    background: linear-gradient(90deg, var(--neon), var(--neon2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { color: var(--muted); max-width: 640px; }
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0 32px; }
+  .btn {
+    border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, var(--neon), var(--neon2)); color: #0a0f24;
+  }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  .dday { text-align: center; }
+  .dday .label { color: var(--muted); font-size: 14px; }
+  .dday .num { font-size: 44px; font-weight: 900; color: var(--neon); line-height: 1.2; }
+  .dday .date { font-size: 14px; }
+  .note { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .stat .k { color: var(--muted); font-size: 13px; }
+  .stat .v { font-size: 20px; font-weight: 800; }
+
+  /* 소개 */
+  dl.info { display: grid; grid-template-columns: 120px 1fr; gap: 10px 16px; margin: 0; }
+  dl.info dt { color: var(--muted); }
+  dl.info dd { margin: 0; }
+  ul.clean { margin: 0; padding-left: 18px; }
+
+  /* 일정 */
+  .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+  .timeline::before { content: ""; position: absolute; left: 11px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .timeline li { position: relative; padding: 0 0 22px 40px; }
+  .timeline li::before {
+    content: ""; position: absolute; left: 4px; top: 6px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--bg); border: 3px solid var(--neon);
+  }
+  .timeline li.done::before { background: var(--neon); }
+  .timeline .when { font-weight: 800; color: var(--neon); }
+  .timeline .what { font-weight: 700; }
+  .timeline .desc { color: var(--muted); font-size: 14px; }
+
+  /* 신청 */
+  ol.steps { margin: 0; padding-left: 20px; }
+  ol.steps li { margin-bottom: 10px; }
+
+  /* FAQ 챗봇 */
+  .faq-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+  .side { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 12px; }
+  .cats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--bg2); border-radius: 999px; padding: 6px 12px;
+    cursor: pointer; font-size: 13px; color: var(--muted);
+  }
+  .chip[aria-pressed="true"] { border-color: var(--neon); color: var(--neon); }
+  .qlist { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; }
+  .qbtn {
+    text-align: left; border: 1px solid var(--line); background: var(--bg2); border-radius: 10px;
+    padding: 9px 12px; cursor: pointer; font-size: 14px;
+  }
+  .qbtn:hover { border-color: var(--neon); }
+  .side-title { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .chat { display: flex; flex-direction: column; height: 640px; padding: 0; overflow: hidden; }
+  .chat-head { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .chat-head strong { display: block; }
+  .chat-head span { color: var(--muted); font-size: 13px; }
+  .log { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 85%; padding: 12px 14px; border-radius: 14px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+  .msg.user { align-self: flex-end; background: linear-gradient(135deg, #1f6f8b, #5b3a9e); border-bottom-right-radius: 4px; }
+  .msg.bot { align-self: flex-start; background: var(--bg2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-bottom: 6px; }
+  .tag.ok { background: rgba(61, 220, 151, .15); color: var(--ok); }
+  .tag.wait { background: rgba(255, 181, 71, .15); color: var(--wait); }
+  .tag.ask { background: rgba(178, 107, 255, .18); color: #d3b0ff; }
+  .msg .q { font-weight: 700; margin-bottom: 4px; }
+  .msg + .msg { margin-top: 0; }
+  .sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: var(--bg2); }
+  .composer input {
+    flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    border-radius: 10px; padding: 12px; font: inherit;
+  }
+  .quick { display: flex; gap: 6px; overflow-x: auto; padding: 10px 12px 0; border-top: 1px solid var(--line); scrollbar-width: none; }
+  .quick::-webkit-scrollbar { display: none; }
+  .quick .chip { white-space: nowrap; }
+
+  footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 24px 0 40px; }
+  footer strong { color: var(--text); }
+
+  @media (max-width: 820px) {
+    .faq-layout { grid-template-columns: 1fr; }
+    .side { position: static; }
+    .qlist { max-height: 220px; }
+    .chat { height: 560px; }
+    dl.info { grid-template-columns: 1fr; gap: 2px; }
+    dl.info dd { margin-bottom: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap head">
+    <div class="logo">
+      <div class="logo-mark" aria-hidden="true">GG</div>
+      <div>
+        <small>2026 경기도 교육감배</small>
+        미래형 이스포츠 스쿨리그
+      </div>
+    </div>
+    <nav role="tablist" aria-label="홈페이지 메뉴">
+      <button class="tab" role="tab" id="tab-home" aria-controls="home" aria-selected="true">홈</button>
+      <button class="tab" role="tab" id="tab-about" aria-controls="about" aria-selected="false" tabindex="-1">대회 소개</button>
+      <button class="tab" role="tab" id="tab-schedule" aria-controls="schedule" aria-selected="false" tabindex="-1">일정</button>
+      <button class="tab" role="tab" id="tab-apply" aria-controls="apply" aria-selected="false" tabindex="-1">참가 신청</button>
+      <button class="tab" role="tab" id="tab-faq" aria-controls="faq" aria-selected="false" tabindex="-1">질문/FAQ</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 홈 -->
+  <section id="home" role="tabpanel" aria-labelledby="tab-home">
+    <div class="hero">
+      <span class="badge">LEAGUE OF LEGENDS · 중등부 / 고등부</span>
+      <h1>2026 경기도 교육감배<br><span>미래형 이스포츠 스쿨리그</span></h1>
+      <p>경기도 중·고등학생이 학교 대표 팀으로 겨루는 온라인 리그입니다. 결승 전까지는 디스코드로 온라인 진행하고, 1~4위전은 오프라인에서 열립니다.</p>
+      <div class="cta">
+        <button class="btn" data-go="apply">참가 신청 안내</button>
+        <button class="btn ghost" data-go="faq">질문 챗봇 열기</button>
+      </div>
+    </div>
+    <div class="grid" id="ddays" aria-label="대회 D-Day"></div>
+    <p class="note">한국 시간 기준으로 오늘 날짜에 맞춰 자동 계산됩니다.</p>
+    <div class="grid" style="margin-top:24px">
+      <div class="card stat"><div class="k">종목</div><div class="v">리그 오브 레전드</div></div>
+      <div class="card stat"><div class="k">팀 구성</div><div class="v">5인 1팀 · 최대 10명</div></div>
+      <div class="card stat"><div class="k">참가 단위</div><div class="v">학교당 1팀</div></div>
+      <div class="card stat"><div class="k">결선</div><div class="v">11/8(일) 오프라인</div></div>
+    </div>
+  </section>
+
+  <!-- 대회 소개 -->
+  <section id="about" role="tabpanel" aria-labelledby="tab-about" hidden>
+    <h2>대회 소개</h2>
+    <p class="lead">대회 개요와 혜택을 한눈에 확인하세요.</p>
+    <div class="grid">
+      <div class="card">
+        <dl class="info">
+          <dt>대회명</dt><dd>2026 경기도 교육감배 미래형 이스포츠 스쿨리그</dd>
+          <dt>종목</dt><dd>리그 오브 레전드 (LEAGUE OF LEGENDS)</dd>
+          <dt>참가 대상</dt><dd>경기도 소속 중·고등학교 재학생 (중등부, 고등부 분리 운영)</dd>
+          <dt>모집 규모</dt><dd>중등부 32팀, 고등부 32팀</dd>
+          <dt>주최</dt><dd>경기도교육청</dd>
+          <dt>주관</dt><dd>OBS, HADO K, GGA</dd>
+          <dt>운영</dt><dd>경기도 교육청 학교 이스포츠 지원단</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">혜택</h3>
+        <ul class="clean">
+          <li>입상팀(1~3위) 경기도 교육감상 수여</li>
+          <li>Gen.G Global Academy 코칭 지원 (코치 배정, 10/16부터 진행 예정)</li>
+          <li>결승전·3/4위전 OBS 방송 중계</li>
+        </ul>
+        <h3>경기 장소</h3>
+        <ul class="clean">
+          <li>결승 전까지: 전용 디스코드 채널(온라인)</li>
+          <li>1~4위전: 경기도인재개발원 실내체육관<br><span class="note">경기 수원시 장안구 경수대로 1150</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 일정 -->
+  <section id="schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
+    <h2>대회 일정</h2>
+    <p class="lead">세부 경기 시간과 대진표는 모집 마감(10/19) 이후 확정되어 공지사항으로 안내됩니다.</p>
+    <div class="card">
+      <ol class="timeline" id="timeline"></ol>
+    </div>
+  </section>
+
+  <!-- 참가 신청 -->
+  <section id="apply" role="tabpanel" aria-labelledby="tab-apply" hidden>
+    <h2>참가 신청</h2>
+    <p class="lead">모집 마감: <strong>2026.10.19.(월)</strong> (처음 안내한 10/12에서 연장)</p>
+    <div class="grid">
+      <div class="card">
+        <h3 style="margin-top:0">신청 절차</h3>
+        <ol class="steps">
+          <li>학교 안에서 대표 팀 1팀을 정합니다. (선발전 또는 최대 10명으로 합치기)</li>
+          <li>포스터 QR 또는 안내된 구글폼 링크로 신청합니다. QR이 안 찍히면 링크를 이용하세요.</li>
+          <li>팀장 정보(생년월일·전화번호·학번)와 선수별 아이디·최고 티어·라인을 적습니다.</li>
+          <li>디스코드에 팀원 전원이 입장한 뒤 "권한 신청방"에서 권한을 요청합니다.</li>
+          <li>내용 확인 후 최종 참가 여부와 세부 일정이 별도로 안내됩니다.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">팀 구성 규칙</h3>
+        <ul class="clean">
+          <li>5인 1팀, 팀장 1명, 후보 포함 최대 10명</li>
+          <li>같은 학교 학생만 (학년은 상관없음), 학교당 1팀</li>
+          <li>지도교사는 필수가 아니며, 있을 때만 신청서에 작성</li>
+          <li>신청서에 낸 라인이 고정 (예비 선수 포함)</li>
+          <li>등록한 계정만 사용 가능 (부계정 사용은 사전 승인 필요)</li>
+        </ul>
+        <h3>디스코드 안내</h3>
+        <ul class="clean">
+          <li>대회 참여와 의사소통은 디스코드로 진행합니다.</li>
+          <li>표시 이름: "[학교] 이름 / 팀장" 형식</li>
+          <li>개별 DM은 자제하고 질문방에 남겨 주세요.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">신청 후 티어·닉네임·라인만 바뀐 경우에는 신청서를 다시 내지 않고 팀장 대화방에 남깁니다.</p>
+  </section>
+
+  <!-- 질문/FAQ 챗봇 -->
+  <section id="faq" role="tabpanel" aria-labelledby="tab-faq" hidden>
+    <h2>질문/FAQ</h2>
+    <p class="lead">공식 FAQ 45개를 바탕으로 바로 답해 드립니다. 자료로 확인되지 않는 내용은 지원단 문의 방법을 안내해 드려요.</p>
+    <div class="faq-layout">
+      <aside class="side card" aria-label="질문 카테고리">
+        <div class="side-title">카테고리</div>
+        <div class="cats" id="cats"></div>
+        <div class="side-title" id="qcount"></div>
+        <div class="qlist" id="qlist"></div>
+      </aside>
+      <div class="chat card">
+        <div class="chat-head">
+          <strong>스쿨리그 질문 챗봇</strong>
+          <span>인터넷 연결 없이 이 페이지 안의 공식 FAQ로 답합니다.</span>
+        </div>
+        <div class="log" id="log" aria-live="polite"></div>
+        <div class="quick" id="quick" aria-label="추천 질문"></div>
+        <form class="composer" id="composer">
+          <label for="ask" class="sr" style="position:absolute;left:-9999px">질문 입력</label>
+          <input id="ask" type="text" placeholder="궁금한 질문을 입력하세요" autocomplete="off">
+          <button class="btn" type="submit">보내기</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <strong>2026 경기도 교육감배 미래형 이스포츠 스쿨리그</strong><br>
+    주최 경기도교육청 · 주관 OBS, HADO K, GGA · 운영 경기도 교육청 학교 이스포츠 지원단<br>
+    문의: FAQ와 공지사항을 먼저 확인하고, 급한 경우 디스코드 질문방을 이용해 주세요.
+  </div>
+</footer>
+
+<script>
+/* ---------- 대회 기본 정보 ---------- */
+const DDAYS = [
+  { label: "모집 마감", date: "2026-10-19" },
+  { label: "예선 시작", date: "2026-10-24" },
+  { label: "결선", date: "2026-11-08" }
+];
+const TIMELINE = [
+  { date: "2026-10-16", when: "10/16(금)~", what: "Gen.G 코칭 시작 예정", desc: "신청 없이 코치가 배정됩니다. 팀을 빨리 구성할수록 일찍 배정받을 수 있습니다." },
+  { date: "2026-10-19", when: "10/19(월)", what: "모집 마감", desc: "마감 후 팀장 교육에서 경기 시간·운영 방식을 안내하고 대진표를 공지합니다." },
+  { date: "2026-10-24", when: "10/24(토)", what: "예선 (32강)", desc: "4개 팀 1조 조별리그, 팀당 1판(bo1), 1·2위 16강 진출 (10/19 이후 확정)" },
+  { date: "2026-10-25", when: "10/25(일)", what: "본선 1라운드", desc: "더블 엘리미네이션" },
+  { date: "2026-10-31", when: "10/31(토)", what: "본선 2라운드", desc: "" },
+  { date: "2026-11-01", when: "11/1(일)", what: "본선 3라운드", desc: "" },
+  { date: "2026-11-04", when: "11/2(월)~11/4(수)", what: "남은 본선 경기", desc: "" },
+  { date: "2026-11-08", when: "11/8(일)", what: "결선 (1~4위전, 오프라인)", desc: "경기도인재개발원 실내체육관 · OBS 방송 중계" }
+];
+
+/* ---------- 공식 FAQ 45개 (출처: 스쿨리그 질문 챗봇) ---------- */
+// st: ok = 확정, wait = 미확정(추후 안내)
+const FAQ = [
+  [1,"A","모집 마감은 언제인가요?","10/19(월)까지입니다. 처음 안내(10/12)에서 연장되었습니다.","ok"],
+  [2,"A","첫 경기는 언제인가요?","예선(32강)은 10/24(토) 하루에 진행합니다.","ok"],
+  [3,"A","본선 일정은요?","10/25(일) 1라운드, 10/31(토) 2라운드, 11/1(일) 3라운드이며, 남은 경기는 11/2~11/4(수)에 진행합니다. 더블 엘리미네이션입니다.","ok"],
+  [4,"A","결선은 언제인가요?","11/8(일)입니다.","ok"],
+  [5,"A","예선은 몇 시에 하나요?","아직 미확정입니다. 모집 완료 후 팀장 교육에서 안내하며, 대부분 오후로 예상됩니다. 중등부와 고등부 시간이 다를 수 있습니다.","wait"],
+  [6,"A","경기 시간 확정은 언제쯤 되나요?","19일 이후 확정됩니다. 모집 마감 후 팀장 교육에서 안내합니다.","wait"],
+  [7,"A","경기 시간을 바꿀 수 있나요?","많은 학교가 동시에 경기하므로 조별리그 때는 조정이 쉽지 않습니다. 불가피한 상황에 대비해 후보 선수를 추가 신청하시기 바랍니다.","ok"],
+  [8,"A","대진표는 언제 나오나요?","모집 마감(10/19) 이후 확정되며, 공지사항으로 안내합니다.","wait"],
+  [9,"A","내년에도 대회가 열리나요?","확정된 안내는 없습니다. 올해 학생들이 대회에 열심히 참여해야 내년에도 열 수 있다고 안내되었습니다.","ok"],
+  [10,"B","한 팀은 몇 명이고, 팀장은요?","5인 1팀이며 팀장은 1명입니다.","ok"],
+  [11,"B","후보 선수도 가능한가요?","후보 포함 최대 10명까지 가능합니다. 반드시 7명일 필요는 없습니다.","ok"],
+  [12,"B","지도교사가 꼭 있어야 하나요?","필수가 아닙니다. 포스터에는 필수로 안내되었으나 이후 수정되었습니다. 지도교사가 있을 때만 구글폼 신청서에 작성합니다.","ok"],
+  [13,"B","한 학교에서 두 팀 이상 나갈 수 있나요?","학교당 1팀만 가능하며, 학년이 달라도 같습니다. 학교 안에서 선발전(내전)으로 한 팀을 정하거나 한 팀으로 합쳐(최대 10명) 10/19 전까지 확정해야 합니다.","ok"],
+  [14,"B","합의하지 못하면 어떻게 되나요?","선발전 없이 진행하면 해당 학교는 대회 참여가 불가할 수 있습니다.","ok"],
+  [15,"B","한 학교에서 먼저 신청한 팀이 우선인가요?","아닙니다. 선착순으로 팀을 받지 않습니다. 학교 안에서 어느 팀이 나갈지는 당사자들끼리 결정할 사안이며, 10/19 전까지 내전으로 대표 팀을 정하거나 후보 선수까지 포함해 총 10명으로 합쳐 신청하는 방법으로 안내하고 있습니다.","ok"],
+  [16,"B","다른 학교 학생과 한 팀을 만들 수 있나요?","안 됩니다. 팀은 같은 학교 학생만 됩니다. 학년은 상관 없습니다.","ok"],
+  [17,"B","선수를 바꿀 수 있나요?","등록된 선수와 후보 선수 안에서는 경기 시작 전까지 교체할 수 있습니다. 결승·3/4위전은 부득이한 경우를 제외하면 변경할 수 없습니다.","ok"],
+  [18,"B","신청서를 낸 뒤 티어·닉네임·라인이 바뀌었어요. 신청서를 다시 내야 하나요?","팀원이 추가되거나 빠지는 경우가 아니라면 신청서를 다시 낼 필요 없이 팀장 대화방에 남깁니다. 티어만 바뀌었다면 변동된 학생 이름, 아이디, 티어만 남기면 됩니다. 닉네임(아이디)이 바뀌었다면 팀장 학생이 팀장 대화방에 남깁니다. 라인을 바꾸려면 최종 팀원 이름-라인-아이디#태그를 팀장 대화방에 남겨 주세요.","ok"],
+  [19,"B","예비 선수도 신청한 라인만 갈 수 있나요?","네. 다른 라인으로 가야 하면 경기 시작 전에 상대 팀에 알려야 하며, 밴픽 과정에서의 스왑은 불공정 행위로 봅니다.","ok"],
+  [20,"C","어떻게 신청하나요?","포스터 QR 또는 안내된 구글폼 링크로 신청합니다. QR이 안 찍히면 링크로 신청하시면 됩니다.","ok"],
+  [21,"C","신청서를 내면 참가가 확정되나요?","아닙니다. 내용 확인 후 최종 참가 여부와 세부 일정을 별도로 안내합니다.","ok"],
+  [22,"C","대회 신청을 잘못했습니다. 다시 신청해도 되나요?","19일 모집 완료 전까지는 수정할 수 있습니다. 링크(구글폼)를 통해 정확히 새로 작성해 제출하면 최근 작성한 내용으로 반영합니다. 다만 신청 후 티어·닉네임·라인만 바뀐 경우에는 신청서를 다시 내지 않고 팀장 대화방에 남깁니다.","ok"],
+  [23,"C","신청서의 티어는 어떻게 적나요?","해당 아이디의 최고 티어입니다. 예를 들어 에메랄드였다가 플래티넘으로 내려갔어도 에메랄드로 적습니다. 현재 티어로 적었다면 학생 이름, 아이디, 티어를 팀장 대화방에 남겨 주세요.","ok"],
+  [24,"C","본계정보다 부계정 티어가 더 높은데 어떤 계정으로 신청하나요?","본계정으로 적고 최고 티어로 적어 주세요.","ok"],
+  [25,"C","팀장 개인정보(생년월일·전화번호·학번)도 적나요?","네. 구글폼 신청서에 작성해 주세요.","ok"],
+  [26,"C","디스코드를 꼭 써야 하나요?","네. 부정행위 예방과 감시, 문제 상황 즉각 대응을 위해 대회 참여와 의사소통은 디스코드로 진행합니다.","ok"],
+  [27,"C","디스코드에 들어온 뒤에는요?","팀원 전원이 입장한 뒤 \"권한 신청방\"의 예시를 보고 권한을 요청합니다. 표시 이름은 \"[학교] 이름 / 팀장\" 형식으로 바꿉니다.","ok"],
+  [28,"C","권한을 받으면 무엇이 되나요?","팀원 전원이 권한을 받으면 스크림이 가능하고 학교 개별 채널이 만들어집니다.","ok"],
+  [29,"C","중등부 통화방은 직접 만드나요?","지원단 선생님들이 준비합니다.","ok"],
+  [30,"C","선생님께 DM을 보내도 되나요?","개별 DM은 자제하고 질문방에 남겨 주세요. 긴급하면 @지원단 선생님을 호출합니다.","ok"],
+  [31,"C","문의처는 어디인가요?","최대한 FAQ와 공지사항을 확인해 주시고, 급한 경우에만 디스코드 질문방을 참고해 주세요.","ok"],
+  [32,"C","대회 안내 챗봇은 어디서 쓰나요?","https://league-guide-bot.lovable.app/ 에서 일정, 팀 구성, 신청, 경기 규칙, 혜택을 바로 물어볼 수 있습니다. 질문방에 남기기 전에 먼저 챗봇에 문의해 주세요.","ok"],
+  [33,"D","예선은 어떤 방식인가요?","현재 안내는 4개 팀이 한 조로 조별리그를 하고, 팀당 1판(bo1)씩 치러 1·2위가 16강에 진출하는 방식입니다. 대진표, 리그전 방식 등 모든 운영 방식은 10/19 이후 확정됩니다.","wait"],
+  [34,"D","32팀이 안 채워지면요?","대회는 그대로 진행하고, 3등 팀도 2등에 준하는 승급 시스템으로 16강에 갈 수 있다는 안내가 있었습니다. 10/19 이후 확정됩니다.","wait"],
+  [35,"D","팀이 너무 많으면요?","내부 예선전을 진행할 예정입니다.","ok"],
+  [36,"D","16강부터는 어떻게 하나요?","더블 엘리미네이션이라는 안내는 있으나, 세트 방식(3판 2선 등)은 협의 중이며 미확정입니다.","wait"],
+  [37,"D","밴이 있나요?","모든 경기는 사용자 설정 토너먼트 드래프트 모드로 진행하며 게임 안에서 밴합니다.","ok"],
+  [38,"D","3판 2선에서 이전 판에 쓴 챔피언을 다시 쓸 수 있나요(피어리스)?","규칙을 정비 중이며, 예선 전에 공지사항과 팀장 교육으로 안내합니다.","wait"],
+  [39,"D","라인은 고정인가요?","신청서에 낸 라인이 고정입니다. 탑으로 신고한 선수가 픽 과정에서 미드로 가는 것은 불가능합니다. 게임이 시작된 뒤의 라인스왑 전략은 가능하며, 밴픽을 위한 챔피언 스왑·교환도 괜찮습니다.","ok"],
+  [40,"D","어디서 경기하나요?","결승 전까지는 전용 디스코드 채널로 온라인 진행하고, 1~4위전만 오프라인(경기도인재개발원 실내체육관, 수원시 장안구 경수대로 1150)입니다.","ok"],
+  [41,"D","경기 당일에 본계정 말고 부계정으로 들어와도 되나요?","등록한 계정 외의 사용은 경고 조치입니다. 반드시 사전 승인이 있어야 하며, 부득이한 사정이 아니라면 반드시 사전 신청 및 등록한 계정만 사용 가능합니다.","ok"],
+  [42,"E","입상하면 무엇을 받나요?","입상팀(1~3위)에 경기도 교육감상을 수여하고, Gen.G Global Academy 코칭을 지원합니다. 결승전(3/4위전)은 OBS가 방송 중계합니다. 상금·상품에 대한 안내는 자료에 없습니다.","ok"],
+  [43,"E","젠지 코칭은 신청해야 하나요?","신청하는 것이 아니라 코치가 배정됩니다. 10/16부터 진행 예정이며, 팀원을 빨리 구성하면 코치를 일찍 배정받을 수 있습니다. 자세한 공지는 곧 나갑니다.","ok"],
+  [44,"E","스크림이 무엇이고 어떻게 하나요?","예선 전에 다른 팀과 하는 연습 경기입니다. \"스크림 모집\" 채널에서 잡고, 가능하면 팀장님들이 연락합니다.","ok"],
+  [45,"E","스크림할 때 같은 학교가 아닌 사람을 대타로 데려와도 괜찮나요?","상대방 학교가 동의하면 괜찮습니다. 같은 학교 선수는 팀에 등록되지 않았어도 대타로 자유롭게 참여할 수 있으며, 자유채널에서 진행합니다.","ok"]
+].map(([id, cat, q, a, st]) => ({ id, cat, q, a, st }));
+
+const CATS = [
+  { key: "top", label: "자주 묻는 질문" },
+  { key: "A", label: "일정·시간" },
+  { key: "B", label: "팀 구성·선수 교체" },
+  { key: "C", label: "신청·디스코드·권한" },
+  { key: "D", label: "경기 방식·규칙" },
+  { key: "E", label: "혜택·코칭·스크림" }
+];
+const TOP = [1, 2, 10, 13, 20, 26, 37, 42];
+const ESCALATE_MSG = "이 내용은 공식 자료로 확인되지 않습니다. 디스코드 4번 질문방으로 문의하세요.\n지원단 선생님께서 직접 확인 후 답변해 드립니다.";
+
+/* ---------- 탭 ---------- */
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+function showTab(id, focus) {
+  tabs.forEach(t => {
+    const on = t.getAttribute("aria-controls") === id;
+    t.setAttribute("aria-selected", on);
+    t.tabIndex = on ? 0 : -1;
+    document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    if (on && focus) t.focus();
+  });
+  history.replaceState(null, "", "#" + id);
+  window.scrollTo({ top: 0 });
+}
+tabs.forEach((t, i) => {
+  t.addEventListener("click", () => showTab(t.getAttribute("aria-controls")));
+  t.addEventListener("keydown", e => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+    showTab(n.getAttribute("aria-controls"), true);
+  });
+});
+document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.go)));
+
+/* ---------- 날짜 (한국 시간 기준) ---------- */
+function todayKST() {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  return Date.parse(p + "T00:00:00Z");
+}
+function daysUntil(iso) { return Math.round((Date.parse(iso + "T00:00:00Z") - todayKST()) / 86400000); }
+function ddayText(n) { return n > 0 ? "D-" + n : n === 0 ? "D-DAY" : "종료"; }
+function fmtDate(iso) {
+  const d = new Date(iso + "T00:00:00Z");
+  const w = "일월화수목금토"[d.getUTCDay()];
+  return iso.replace(/-/g, ".") + ".(" + w + ")";
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+const ddWrap = document.getElementById("ddays");
+DDAYS.forEach(d => {
+  const c = el("div", "card dday");
+  c.append(el("div", "label", d.label), el("div", "num", ddayText(daysUntil(d.date))), el("div", "date", fmtDate(d.date)));
+  ddWrap.append(c);
+});
+
+const tl = document.getElementById("timeline");
+TIMELINE.forEach(t => {
+  const li = el("li", daysUntil(t.date) < 0 ? "done" : "");
+  li.append(el("div", "when", t.when), el("div", "what", t.what));
+  if (t.desc) li.append(el("div", "desc", t.desc));
+  tl.append(li);
+});
+
+/* ---------- 질문 매칭 (원본 챗봇의 규칙을 오프라인용으로 옮김) ---------- */
+const STOP = ["어떻게", "하나요", "있나요", "되나요", "인가요", "알려주세요", "알려줘", "궁금해요", "언제", "무엇"];
+function norm(s) {
+  return s.toLowerCase()
+    .replace(/접수/g, "신청").replace(/디코/g, "디스코드").replace(/멤버|팀원/g, "선수")
+    .replace(/마감일|신청기한/g, "마감")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+}
+function bigrams(s) {
+  let t = norm(s);
+  STOP.forEach(w => { t = t.split(w).join(""); });
+  t = t.replace(/\s/g, "");
+  const set = new Set();
+  for (let i = 0; i < t.length - 1; i++) set.add(t.slice(i, i + 2));
+  return set;
+}
+function similar(s) {
+  const a = bigrams(s);
+  if (a.size < 2) return null;
+  let best = null, score = 0;
+  for (const f of FAQ) {
+    const b = bigrams(f.q);
+    let n = 0;
+    a.forEach(x => b.has(x) && n++);
+    const sc = 2 * n / (a.size + b.size);
+    if (sc > score) { score = sc; best = f; }
+  }
+  return score >= 0.62 ? best : null;
+}
+const RULES = [
+  [15,/선착순|먼저\s*신청.*(?:우선|유리)/],[24,/부계정.*티어|티어.*부계정|어떤\s*계정.*신청/],[9,/내년|다음\s*해|매년/],
+  [32,/챗봇|이\s*사이트|링크.*(?:주소|어디)/],[6,/(?:경기\s*)?시간.*확정|확정.*시간/],
+  [1,/마감|모집.*(?:언제|기간)|신청.*(?:언제까지|기한|기간)/],[5,/(?:예선|첫\s*경기|32강).*(?:몇\s*시|시각|오전|오후)/],
+  [2,/(?:예선|첫\s*경기|32강).*(?:언제|날짜|일정|시작)|첫\s*경기/],[3,/본선.*(?:언제|날짜|일정|기간)|16.?4강.*(?:언제|일정)/],
+  [4,/(?:결선|결승).*(?:언제|날짜|일정)/],[7,/경기\s*시간.*(?:변경|바꾸|조정)/],[8,/대진표/],
+  [12,/지도\s*교사|선생님.*(?:필수|없|꼭)|교사.*(?:필수|없|필요)/],[16,/다른\s*학교|타교|타\s*학교/],
+  [13,/(?:학교|학년).*(?:두\s*팀|2\s*팀|여러\s*팀|몇\s*팀|한\s*팀)/],[11,/후보|예비\s*선수/],
+  [10,/(?:팀|선수|인원).*(?:몇\s*명|몇\s*인|인원|구성|최대|최소)|5.?10/],[22,/신청서.*(?:수정|변경|다시)|신청.*(?:잘못|틀렸)/],
+  [17,/선수.*(?:교체|바꾸|변경)/],[18,/닉네임.*(?:변경|바뀌|바꾸)/],[23,/티어/],[25,/팀장.*(?:개인정보|생년월일|전화번호|학번)/],
+  [21,/신청.*(?:확정|승인|완료)/],[27,/권한.*(?:신청|요청)|디스코드.*(?:입장|들어온|들어가)/],[28,/권한.*(?:받|기능)/],
+  [29,/중등부.*통화방/],[30,/\bdm\b|개별.*메시지/],[31,/문의처|문의.*어디|질문방/],[26,/디스코드.*(?:필수|꼭|사용|써야)/],
+  [20,/(?:신청|참가).*(?:방법|어떻게)|신청하고\s*싶|qr/],[33,/예선.*(?:방식|규칙|진행)/],[34,/32팀.*(?:안|미달)|모집.*미달/],
+  [35,/모집\s*규모|총.*몇\s*팀|전체.*팀|팀.*너무\s*많|각.*32팀/],[36,/16강.*(?:방식|어떻게)|더블\s*엘리미네이션/],
+  [38,/피어리스|이전\s*판.*챔피언/],[37,/밴|드래프트/],[39,/라인.*(?:고정|스왑|바꾸)|챔피언.*(?:스왑|교환)|스왑/],
+  [40,/(?:경기|결승|결선|대회).*(?:장소|어디서)|인재개발원|실내체육관|주소/],[41,/부계정|본계정|등록.*계정/],
+  [43,/(?:코칭|코치).*(?:신청|배정|언제|시작)/],[45,/스크림.*(?:다른\s*학교|타교|대타)/],[44,/스크림/],
+  [42,/혜택|입상|교육감상|상금|상품|코칭|방송|중계/]
+];
+// 공식 자료에 답이 없는 주제 → 지원단 문의 안내
+const UNKNOWN = /참가비|참가\s*비용|유료|무료|지각|불참|몰수패|접속.*끊|재경기|대리\s*플레이|계정\s*공유|마이크|카메라|화면\s*공유|상대\s*전적|이동|인솔|보호자|초상권|개인정보.*동의|생활기록부|초대\s*링크|담당자.*누구|버스|주차|식사|점심|숙박|날씨/;
+// 더 구체적인 답이 함께 걸리면 일반 답은 빼기
+const OVERRIDE = { 5:[2], 6:[5], 16:[13,10], 11:[10], 22:[20], 21:[20], 38:[37], 43:[42], 45:[16,44], 24:[23,41,20], 15:[20,13] };
+
+let lastQ = "";
+function answer(input) {
+  const text = /^(그럼|그러면|그건|그거|몇\s*시|어디서)/.test(input.trim()) && lastQ ? lastQ + " / " + input : input;
+  const n = norm(text);
+  if (UNKNOWN.test(n)) return { kind: "escalate" };
+  const exact = FAQ.find(f => norm(f.q) === n);
+  if (exact) return { kind: "faq", faqs: [exact] };
+  let ids = RULES.filter(([, r]) => r.test(n)).map(([id]) => id);
+  ids = ids.filter(id => !ids.some(o => (OVERRIDE[o] || []).includes(id)));
+  if (ids.length) return { kind: "faq", faqs: FAQ.filter(f => ids.includes(f.id)).slice(0, 3) };
+  const sim = similar(text);
+  if (sim) return { kind: "faq", faqs: [sim] };
+  const words = n.split(/\s+/).filter(w => w.length >= 2 && !STOP.includes(w));
+  const cands = FAQ.map(f => ({ f, s: words.filter(w => norm(f.q).includes(w)).length }))
+    .filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 3).map(x => x.f);
+  return cands.length ? { kind: "suggest", faqs: cands } : { kind: "escalate" };
+}
+
+/* ---------- 챗봇 화면 ---------- */
+const log = document.getElementById("log");
+function scrollLog() { log.scrollTop = log.scrollHeight; }
+function userMsg(text) { log.append(el("div", "msg user", text)); scrollLog(); }
+function botFaq(f) {
+  const m = el("div", "msg bot");
+  m.append(el("span", "tag " + f.st, f.st === "ok" ? "공식 FAQ" : "공식 FAQ · 미확정"), el("div", "q", f.q), el("div", "", f.a));
+  log.append(m);
+}
+function suggButtons(faqs) {
+  const box = el("div", "sugg");
+  faqs.forEach(f => {
+    const b = el("button", "chip", f.q);
+    b.type = "button";
+    b.addEventListener("click", () => ask(f.q));
+    box.append(b);
+  });
+  return box;
+}
+function ask(q) {
+  q = q.trim();
+  if (!q) return;
+  userMsg(q);
+  const r = answer(q);
+  if (r.kind === "faq") {
+    r.faqs.forEach(botFaq);
+  } else if (r.kind === "suggest") {
+    const m = el("div", "msg bot");
+    m.append(el("span", "tag ask", "비슷한 질문"), el("div", "", "정확히 맞는 답을 찾지 못했어요. 혹시 아래 질문을 찾으셨나요?"), suggButtons(r.faqs));
+    log.append(m);
+  } else {
+    const m = el("div", "msg bot");
+    m.append(el("span", "tag ask", "지원단 교사 문의"), el("div", "", ESCALATE_MSG));
+    log.append(m);
+  }
+  lastQ = q;
+  scrollLog();
+}
+
+const catBox = document.getElementById("cats");
+const qlist = document.getElementById("qlist");
+const qcount = document.getElementById("qcount");
+function showCat(key) {
+  [...catBox.children].forEach(b => b.setAttribute("aria-pressed", b.dataset.key === key));
+  const list = key === "top" ? FAQ.filter(f => TOP.includes(f.id)) : FAQ.filter(f => f.cat === key);
+  qcount.textContent = (key === "top" ? "추천 질문 " : "질문 ") + list.length + "개";
+  qlist.replaceChildren(...list.map(f => {
+    const b = el("button", "qbtn", f.q);
+    b.type = "button";
+    b.addEventListener("click", () => ask(f.q));
+    return b;
+  }));
+}
+CATS.forEach(c => {
+  const b = el("button", "chip", c.label);
+  b.type = "button";
+  b.dataset.key = c.key;
+  b.addEventListener("click", () => showCat(c.key));
+  catBox.append(b);
+});
+showCat("top");
+
+const quick = document.getElementById("quick");
+FAQ.filter(f => TOP.includes(f.id)).forEach(f => {
+  const b = el("button", "chip", f.q);
+  b.type = "button";
+  b.addEventListener("click", () => ask(f.q));
+  quick.append(b);
+});
+
+const welcome = el("div", "msg bot");
+welcome.append(el("div", "q", "무엇이든 물어보세요"), el("div", "", "왼쪽 목록이나 아래 추천 질문을 누르면 바로 답을 볼 수 있어요. 직접 입력해도 됩니다."));
+log.append(welcome);
+
+document.getElementById("composer").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = document.getElementById("ask");
+  ask(input.value);
+  input.value = "";
+});
+
+/* 주소의 #탭 이름으로 바로 열기 (예: index.html#faq) */
+const start = location.hash.slice(1);
+if (document.getElementById(start)?.getAttribute("role") === "tabpanel") showTab(start);
+</script>
+</body>
+</html>
