@@ -70,18 +70,27 @@
   async function loadLineups() {
     // 승인된 교사는 원본 명단에서, 그 외는 공개 함수(관리자가 공개를 켰을 때만 결과가 있음)에서
     if (ME.status === "approved") {
-      const { data, error } = await sb.from("sheet_rows").select("sheet,data").in("sheet", ["roster_middle", "roster_high"]);
+      const { data, error } = await sb.from("sheet_rows").select("sheet,row_no,data").in("sheet", ["roster_middle", "roster_high"]);
       if (error) return null;
       const out = [];
+      // 같은 학교의 신청 행마다 1팀, 2팀 … (아이디가 있는 행만)
+      const hasId = r => Object.keys(r.data).some(k => /LOL 아이디/.test(k) && String(r.data[k] || "").trim());
+      const teamNo = new Map(), teamCount = {};
+      data.filter(r => r.data["학교 이름"] && hasId(r)).sort((a, b) => a.row_no - b.row_no).forEach(r => {
+        const k = r.sheet + "|" + normSchool(r.data["학교 이름"]);
+        teamCount[k] = (teamCount[k] || 0) + 1;
+        teamNo.set(r, teamCount[k]);
+      });
       data.forEach(r => {
         const school = r.data["학교 이름"];
-        if (!school) return;
+        if (!school || !teamNo.has(r)) return;
+        const tk = r.sheet + "|" + normSchool(school);
         SLOT_DEFS.forEach(([slot, line, re]) => {
           const key = Object.keys(r.data).find(k => re.test(k));
           const id = key && String(r.data[key] || "").trim();
           const nameKey = Object.keys(r.data).find(k => k.includes(line + "(학생 이름)"));
           const name = nameKey ? String(r.data[nameKey] || "").trim() : "";
-          if (id) out.push({ division: r.sheet === "roster_middle" ? "중등부" : "고등부", school, region: r.data["학교 소재 지역"], slot, line, student_name: name, lol_id: id });
+          if (id) out.push({ division: r.sheet === "roster_middle" ? "중등부" : "고등부", school, region: r.data["학교 소재 지역"], team_no: teamNo.get(r), team_count: teamCount[tk], slot, line, student_name: name, lol_id: id });
         });
       });
       return { rows: out, teacher: true };
@@ -105,11 +114,11 @@
     // 학교별로 묶기
     const bySchool = new Map();
     res.rows.forEach(r => {
-      const k = r.division + "|" + r.school;
-      if (!bySchool.has(k)) bySchool.set(k, { division: r.division, school: r.school, region: r.region, ids: [] });
+      const k = r.division + "|" + r.school + "|" + (r.team_no || 1);
+      if (!bySchool.has(k)) bySchool.set(k, { division: r.division, school: r.school, region: r.region, teamNo: r.team_no || 1, teamCount: r.team_count || 1, ids: [] });
       bySchool.get(k).ids.push(r);
     });
-    const teams = [...bySchool.values()].sort((a, b) => a.school.localeCompare(b.school, "ko"));
+    const teams = [...bySchool.values()].sort((a, b) => a.school.localeCompare(b.school, "ko") || a.teamNo - b.teamNo);
     teams.forEach(t => t.ids.sort((a, b) => a.slot - b.slot));
 
     const bar = el("div", "gbar");
@@ -149,7 +158,8 @@
       shown.forEach(t => {
         const card = el("article", "card rec-card");
         const head = el("div", "rec-head");
-        head.append(el("h3", "", t.school), el("span", "rec-meta", t.division + (t.region ? " · " + t.region : "")));
+        head.append(el("h3", "", t.school + (t.teamCount > 1 ? " · " + t.teamNo + "팀" : "")), el("span", "rec-meta", t.division + (t.region ? " · " + t.region : "")));
+        if (t.teamCount > 1) head.append(el("span", "dupe-badge", "중복 신청 · 확인 필요"));
         const ul = el("ul", "rec-list");
         t.ids.forEach(r => {
           const li = el("li");
@@ -546,6 +556,7 @@
         }
         return col;
       });
+      addDupeColumn(columns, rows, "학교");
       columns.push(
         { key: "_avg", label: "평균(주전5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") },
         { key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? "" : r._rank }
@@ -611,6 +622,20 @@
     load();
   }
 
+  // 학교 이름 비교용 (공백 제거)
+  const normSchool = s => String(s || "").replace(/\s+/g, "");
+  // 같은 학교가 두 번 이상 나오는 행에 "중복 · 확인 필요" 열을 맨 앞에 붙인다
+  function addDupeColumn(columns, rows, schoolKey) {
+    const count = {};
+    rows.forEach(r => { const k = normSchool(r.data[schoolKey]); if (k) count[k] = (count[k] || 0) + 1; });
+    if (!Object.values(count).some(n => n > 1)) return;
+    columns.unshift({
+      key: "_dupe", label: "확인", readonly: true,
+      get: r => (count[normSchool(r.data[schoolKey])] > 1 ? "중복 · 확인 필요" : ""),
+      cellClass: r => (count[normSchool(r.data[schoolKey])] > 1 ? "dupe" : "")
+    });
+  }
+
   // 아이디 명단 열 이름 → 라인 묶음 (이름 칸과 아이디 칸을 같은 묶음으로)
   function lineGroup(key) {
     const m = key.match(/후보\d|탑|정글|미드|원딜|서폿/);
@@ -648,6 +673,7 @@
       const keys = (meta && meta.columns) || [...new Set(rows.flatMap(r => Object.keys(r.data)))];
       if (!rows.length) { inner.replaceChildren(el("p", "note", "아직 자료가 없습니다.")); }
       const columns = keys.map(k => ({ key: k, label: k, get: r => r.data[k] }));
+      addDupeColumn(columns, rows, keys.includes("학교 이름") ? "학교 이름" : "학교");
       const filters = [];
       if (current.startsWith("roster_")) {
         // 학교 이름 가나다순, 지역 필터, 라인별(이름+아이디) 구분선, 태그 없는 아이디 강조
