@@ -40,8 +40,8 @@
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
   /* 화면 폭에 맞춰 넓어지는 틀 (교사용 화면은 거의 전체 폭) */
-  .wrap { max-width: min(1440px, 100%); margin: 0 auto; padding: 0 clamp(16px, 2.5vw, 40px); }
-  body.teacher-mode .wrap { max-width: 100%; }
+  .wrap { max-width: min(1440px, 100%); margin: 0 auto; padding: 0 clamp(20px, 4vw, 72px); }
+  body.teacher-mode .wrap { max-width: min(1920px, 100%); }
 
   /* 헤더 */
   header {
@@ -54,7 +54,7 @@
   /* 첫 줄: 로고 · 방문자 수 · 로그인 / 둘째 줄: 탭 */
   .head {
     display: grid; grid-template-columns: auto 1fr auto auto; align-items: center;
-    grid-template-areas: "logo . visits acct" "nav nav nav nav"; gap: 8px 16px; padding: 12px 0 10px;
+    grid-template-areas: "logo . visits acct" "nav nav nav nav"; gap: 8px 16px; padding-top: 12px; padding-bottom: 10px;
   }
   .logo { grid-area: logo; }
   .head nav { grid-area: nav; }
