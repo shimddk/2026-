@@ -448,6 +448,7 @@
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
       ["t-referee", "심판 일정", "심판 가능한 선생님의 날짜별 참여 여부입니다.", loadReferee]
     ];
+    if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
     views.forEach(([id, label, lead, loader]) => {
       addTab(id, label, true);
@@ -802,6 +803,57 @@
     box.append(scroller, el("p", "note", isEditor() ? "체크하면 바로 저장됩니다. 실제 경기 배정은 '대진·경기 결과' 탭의 심판 칸에 적어 주세요." : "보기 권한입니다. 변경은 관리자 선생님께 요청하세요."));
   }
 
+  // 구글폼 신청 접수함 (고치기 권한자)
+  async function loadInbox(box) {
+    const { data: items, error } = await sb.from("form_inbox").select("id,received_at,kind,school,division,captain,status,note,handled_by,handled_at")
+      .eq("kind", "submission").order("received_at", { ascending: false }).limit(200);
+    box.replaceChildren();
+    if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    const STATUS = { added: "새 학교 추가", overwritten: "재신청 덮어씀", review: "확인 필요", applied: "적용함", ignored: "무시함", error: "오류", received: "접수" };
+    const review = items.filter(i => i.status === "review").length;
+    const top = el("div", "gbar");
+    top.append(el("span", "pending-count", "확인 필요 " + review + "건 · 전체 " + items.length + "건"));
+    const reload = el("button", "btn ghost small", "새로고침");
+    reload.type = "button";
+    reload.addEventListener("click", () => loadInbox(box));
+    top.append(reload);
+    box.append(top);
+    if (!items.length) { box.append(el("p", "note", "아직 구글폼으로 들어온 신청이 없습니다. 시트에 연동 스크립트를 설치하면 이곳에 쌓입니다.")); return; }
+    const scroller = el("div", "gscroll");
+    const table = el("table", "dtable");
+    const hr = el("tr");
+    ["접수 시각", "학교", "부문", "팀장", "처리 결과", "설명", "처리한 사람", ""].forEach(h => hr.append(el("th", "", h)));
+    const thead = el("thead"); thead.append(hr);
+    const tb = el("tbody");
+    items.forEach(i => {
+      const tr = el("tr", "st-" + (i.status === "review" ? "pending" : i.status));
+      tr.append(el("td", "", fmtTime(i.received_at)), el("td", "", i.school || ""), el("td", "", i.division || ""), el("td", "", i.captain || ""),
+        el("td", i.status === "review" ? "dupe" : "", STATUS[i.status] || i.status), el("td", "", i.note || ""), el("td", "", i.handled_by || ""));
+      const td = el("td", "actions");
+      if (i.status === "review") {
+        const apply = el("button", "btn small", "적용");
+        const ignore = el("button", "btn ghost small", "무시");
+        apply.type = ignore.type = "button";
+        const act = async action => {
+          if (action === "apply" && !confirm((i.school || "") + " 신청 내용으로 기존 명단·연락처·티어를 덮어쓸까요? 이전 내용은 접수함에 보관됩니다.")) return;
+          apply.disabled = ignore.disabled = true;
+          const { data, error } = await sb.functions.invoke("form-intake", { body: { action, id: i.id } });
+          if (error || (data && data.error)) { toast("처리 실패: " + ((data && data.error) || error.message), true); apply.disabled = ignore.disabled = false; return; }
+          toast(action === "apply" ? "적용했습니다" : "무시했습니다");
+          loadInbox(box);
+        };
+        apply.addEventListener("click", () => act("apply"));
+        ignore.addEventListener("click", () => act("ignore"));
+        td.append(apply, ignore);
+      }
+      tr.append(td);
+      tb.append(tr);
+    });
+    table.append(thead, tb);
+    scroller.append(table);
+    box.append(scroller);
+  }
+
   // 로그인 승인 (관리자 전용)
   async function loadAdmin(box) {
     const [staff, { data: profiles, error }] = await Promise.all([
@@ -888,7 +940,7 @@
 
     // 최근 수정 기록
     const { data: logs } = await sb.from("audit_log").select("table_name,action,actor_email,at").order("at", { ascending: false }).limit(30);
-    const TBL = { staff: "지원단 명단", sheet_rows: "명단·연락처·티어", matches: "대진·결과", referee_availability: "심판 일정", profiles: "로그인 승인" };
+    const TBL = { form_inbox: "신청 접수", tier_scores: "티어 기준표", app_settings: "사이트 설정", staff: "지원단 명단", sheet_rows: "명단·연락처·티어", matches: "대진·결과", referee_availability: "심판 일정", profiles: "로그인 승인" };
     const ACT = { INSERT: "추가", UPDATE: "수정", DELETE: "삭제" };
     const d = el("details", "audit");
     d.append(el("summary", "", "최근 수정 기록 " + (logs ? logs.length : 0) + "건"));
