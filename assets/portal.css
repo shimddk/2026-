@@ -44,6 +44,34 @@ details.audit li { font-size: 13px; color: var(--muted); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ok); color: #0a0f24; padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 50; }
 .toast.bad { background: #ff8a8a; }
 
+/* 아이디 명단: 라인 묶음 구분 */
+.gfilter { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; }
+table.dtable th, table.dtable td { border-right: 1px solid rgba(40, 51, 100, .6); }
+table.dtable .lg-start { border-left: 2px solid var(--neon); }
+table.dtable td.lg-a { background: rgba(53, 224, 255, .035); }
+table.dtable td.lg-b { background: rgba(178, 107, 255, .045); }
+table.dtable thead th.lg-a { background: #13234a; }
+table.dtable thead th.lg-b { background: #1d1b4d; }
+table.dtable td.notag { background: rgba(255, 181, 71, .16); }
+table.dtable td.notag input { color: #ffd88a; }
+
+/* 전적 검색 */
+.rec-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.rec-card { display: flex; flex-direction: column; gap: 10px; }
+.rec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rec-head h3 { margin: 0; font-size: 20px; }
+.rec-meta { color: var(--muted); font-size: 13px; }
+.rec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rec-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec-line { min-width: 52px; text-align: center; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 8px; background: rgba(53, 224, 255, .12); color: var(--neon); }
+.rec-line.sub { background: rgba(178, 107, 255, .15); color: #d3b0ff; }
+.rec-id { color: var(--text); text-decoration: none; border-bottom: 1px dashed var(--line); overflow-wrap: anywhere; }
+.rec-id:hover { color: var(--neon); border-color: var(--neon); }
+.rec-id.notag { color: #ffd88a; }
+.rec-warn { color: var(--wait); font-size: 11px; }
+.rec-card .btn { align-self: flex-start; text-decoration: none; }
+.pub-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); cursor: pointer; }
+
 /* 티어 현황 */
 .tier-summary { margin-bottom: 12px; }
 .tier-chips { display: flex; flex-wrap: wrap; gap: 6px; }

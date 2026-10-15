@@ -39,12 +39,13 @@
   (function countVisit() {
     const box = document.getElementById("visits");
     if (!box) return;
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname); // 로컬 점검은 세지 않음
     let vid = null;
     try {
       vid = localStorage.getItem("visitorId");
       if (!vid) { vid = crypto.randomUUID(); localStorage.setItem("visitorId", vid); }
     } catch (e) { vid = null; } // 저장소가 막힌 브라우저는 세지 않고 숫자만 보여 줌
-    sb.rpc("record_visit", { vid }).then(({ data, error }) => {
+    sb.rpc("record_visit", { vid: local ? null : vid }).then(({ data, error }) => {
       const row = !error && data && data[0];
       if (!row) return;
       box.replaceChildren(
@@ -54,6 +55,121 @@
       box.hidden = false;
     });
   })();
+
+  /* ---------- 전적 검색 (학교 → 라인별 LOL 아이디, 학생 실명 제외) ---------- */
+  const FOW_URL = "https://www.fow.lol/multi/kr"; // 주소 형식을 알게 되면 아이디를 바로 넣도록 바꿀 예정
+  const SLOT_DEFS = [
+    [1, "탑", /^탑 LOL 아이디$/], [2, "정글", /^정글 LOL 아이디$/], [3, "미드", /^미드 LOL 아이디$/],
+    [4, "원딜", /^원딜 LOL 아이디$/], [5, "서폿", /서폿 LOL 아이디$/],
+    [6, "후보1", /후보1 LOL 아이디$/], [7, "후보2", /후보2 LOL 아이디$/], [8, "후보3", /후보3 LOL 아이디$/],
+    [9, "후보4", /후보4 LOL 아이디$/], [10, "후보5", /후보5 LOL 아이디$/]
+  ];
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; }
+  }
+  async function loadLineups() {
+    // 승인된 교사는 원본 명단에서, 그 외는 공개 함수(관리자가 공개를 켰을 때만 결과가 있음)에서
+    if (ME.status === "approved") {
+      const { data, error } = await sb.from("sheet_rows").select("sheet,data").in("sheet", ["roster_middle", "roster_high"]);
+      if (error) return null;
+      const out = [];
+      data.forEach(r => {
+        const school = r.data["학교 이름"];
+        if (!school) return;
+        SLOT_DEFS.forEach(([slot, line, re]) => {
+          const key = Object.keys(r.data).find(k => re.test(k));
+          const id = key && String(r.data[key] || "").trim();
+          if (id) out.push({ division: r.sheet === "roster_middle" ? "중등부" : "고등부", school, region: r.data["학교 소재 지역"], slot, line, lol_id: id });
+        });
+      });
+      return { rows: out, teacher: true };
+    }
+    const { data, error } = await sb.rpc("public_lineups");
+    return error ? null : { rows: data || [], teacher: false };
+  }
+  async function renderRecord(preset) {
+    const root = document.getElementById("recordRoot");
+    if (!root) return;
+    const res = preset || await loadLineups();
+    root.replaceChildren();
+    if (!res) { root.append(el("p", "note", "불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.")); return; }
+    if (!res.rows.length) {
+      const c = el("div", "pending");
+      c.textContent = "전적 검색은 대진이 확정된 뒤(10/19 이후) 공개됩니다.";
+      root.append(c);
+      return;
+    }
+    if (res.teacher) root.append(el("p", "note", "교사용 화면: 학생용 공개 여부와 관계없이 보입니다."));
+    // 학교별로 묶기
+    const bySchool = new Map();
+    res.rows.forEach(r => {
+      const k = r.division + "|" + r.school;
+      if (!bySchool.has(k)) bySchool.set(k, { division: r.division, school: r.school, region: r.region, ids: [] });
+      bySchool.get(k).ids.push(r);
+    });
+    const teams = [...bySchool.values()].sort((a, b) => a.school.localeCompare(b.school, "ko"));
+    teams.forEach(t => t.ids.sort((a, b) => a.slot - b.slot));
+
+    const bar = el("div", "gbar");
+    const s = el("input", "gsearch");
+    s.type = "search"; s.placeholder = "학교 이름 검색 (예: 상록)"; s.setAttribute("aria-label", "학교 이름 검색");
+    const sw = el("div", "div-switch");
+    let div = "";
+    [["", "전체"], ["중등부", "중등부"], ["고등부", "고등부"]].forEach(([v, l]) => {
+      const b = el("button", "chip", l);
+      b.type = "button";
+      b.setAttribute("aria-pressed", v === div);
+      b.addEventListener("click", () => { div = v; sw.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === b)); draw(); });
+      sw.append(b);
+    });
+    sw.style.margin = "0";
+    bar.append(s, sw);
+    const list = el("div", "rec-grid");
+    root.append(bar, list);
+    s.addEventListener("input", draw);
+
+    function idLink(r) {
+      const a = el("a", "rec-id" + (r.lol_id.includes("#") ? "" : " notag"), r.lol_id);
+      a.href = FOW_URL;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.title = "아이디 복사 후 전적 사이트 열기";
+      a.addEventListener("click", () => {
+        copyText(r.lol_id).then(ok => toast(ok ? "아이디를 복사했어요. 전적 사이트 검색창에 붙여넣기(Ctrl+V) 하세요." : "복사가 안 됐어요. 아이디를 직접 입력해 주세요.", !ok));
+      });
+      return a;
+    }
+    function draw() {
+      const q = s.value.trim();
+      const shown = teams.filter(t => (!div || t.division === div) && (!q || t.school.includes(q)));
+      list.replaceChildren();
+      if (!shown.length) { list.append(el("p", "note", "검색 결과가 없습니다.")); return; }
+      shown.forEach(t => {
+        const card = el("article", "card rec-card");
+        const head = el("div", "rec-head");
+        head.append(el("h3", "", t.school), el("span", "rec-meta", t.division + (t.region ? " · " + t.region : "")));
+        const ul = el("ul", "rec-list");
+        t.ids.forEach(r => {
+          const li = el("li");
+          li.append(el("span", "rec-line" + (r.slot > 5 ? " sub" : ""), r.line), idLink(r));
+          if (!r.lol_id.includes("#")) li.append(el("small", "rec-warn", "태그 없음 · 검색이 정확하지 않을 수 있음"));
+          ul.append(li);
+        });
+        const starters = t.ids.filter(r => r.slot <= 5).map(r => r.lol_id);
+        const multi = el("a", "btn small", "주전 " + starters.length + "명 한 번에 (멀티 검색)");
+        multi.href = FOW_URL; multi.target = "_blank"; multi.rel = "noopener";
+        multi.addEventListener("click", () => {
+          copyText(starters.join("\n")).then(ok => toast(ok ? "주전 아이디를 복사했어요. 멀티 검색창에 붙여넣기(Ctrl+V) 하세요." : "복사가 안 됐어요.", !ok));
+        });
+        card.append(head, ul, multi, el("p", "note", "자세한 건 사이트를 눌러서 확인하세요."));
+        list.append(card);
+      });
+    }
+    draw();
+  }
+
+  // 로컬 미리보기에서만 화면 점검용으로 노출
+  if (location.hostname === "localhost") window.__renderRecord = renderRecord;
 
   /* ---------- 로그인 상태 ---------- */
   const ME = { status: null, role: null, name: null, email: null };
@@ -92,7 +208,7 @@
 
   async function refresh() {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { Object.assign(ME, { status: null, role: null, name: null, email: null }); renderAcct(); removeTeacher(); return; }
+    if (!session) { Object.assign(ME, { status: null, role: null, name: null, email: null }); renderAcct(); removeTeacher(); renderRecord(); return; }
     ME.email = session.user.email;
     const { data, error } = await sb.rpc("touch_login");
     const row = !error && data && data[0];
@@ -100,6 +216,7 @@
     ME.role = row ? row.role : null;
     ME.name = row && row.staff_name ? row.staff_name : (session.user.user_metadata.full_name || session.user.email);
     renderAcct();
+    renderRecord();
     if (ME.status === "approved") buildTeacher();
     else showGate(ME.status);
   }
@@ -174,10 +291,13 @@
   }
 
   /* ---------- 표 그리기 (보기/고치기 공용) ---------- */
-  function grid(box, { columns, rows, onSave, onDelete, onAdd, exportName, filterable = true }) {
+  // columns[i]: { key, label, get, type?, options?, readonly?, cls? (열 구분용), cellClass?(row) }
+  // filters: [{ label, values: [...], get(row) }] → 검색창 옆 드롭다운
+  function grid(box, { columns, rows, onSave, onDelete, onAdd, exportName, filterable = true, filters = [] }) {
     box.replaceChildren();
     const bar = el("div", "gbar");
     let q = "";
+    const picked = filters.map(() => "");
     if (filterable) {
       const s = el("input", "gsearch");
       s.type = "search";
@@ -186,6 +306,14 @@
       s.addEventListener("input", () => { q = s.value.trim(); draw(); });
       bar.append(s);
     }
+    filters.forEach((f, i) => {
+      const sel = el("select", "gfilter");
+      sel.setAttribute("aria-label", f.label + " 필터");
+      const all = el("option", "", f.label + ": 전체"); all.value = ""; sel.append(all);
+      f.values.forEach(v => { const o = el("option", "", v); o.value = v; sel.append(o); });
+      sel.addEventListener("change", () => { picked[i] = sel.value; draw(); });
+      bar.append(sel);
+    });
     bar.append(el("span", "gcount"));
     if (isEditor() && onAdd) {
       const a = el("button", "btn small", "+ 행 추가");
@@ -205,18 +333,19 @@
     box.append(bar, scroller);
 
     function draw() {
-      const shown = q ? rows.filter(r => columns.some(c => String(c.get(r) ?? "").includes(q))) : rows;
+      let shown = q ? rows.filter(r => columns.some(c => String(c.get(r) ?? "").includes(q))) : rows;
+      filters.forEach((f, i) => { if (picked[i]) shown = shown.filter(r => f.get(r) === picked[i]); });
       bar.querySelector(".gcount").textContent = shown.length + "행";
       const thead = el("thead");
       const hr = el("tr");
-      columns.forEach(c => hr.append(el("th", "", c.label)));
+      columns.forEach(c => hr.append(el("th", c.cls || "", c.label)));
       if (isEditor() && onDelete) hr.append(el("th", "", ""));
       thead.append(hr);
       const tb = el("tbody");
       shown.forEach(r => {
         const tr = el("tr");
         columns.forEach(c => {
-          const td = el("td");
+          const td = el("td", [c.cls, c.cellClass && c.cellClass(r)].filter(Boolean).join(" "));
           const v = c.get(r);
           if (isEditor() && onSave && !c.readonly) {
             if (c.type === "bool") {
@@ -480,6 +609,12 @@
     load();
   }
 
+  // 아이디 명단 열 이름 → 라인 묶음 (이름 칸과 아이디 칸을 같은 묶음으로)
+  function lineGroup(key) {
+    const m = key.match(/후보\d|탑|정글|미드|원딜|서폿/);
+    return m ? m[0] : null;
+  }
+
   // 명단·연락처 시트 (행 단위 JSON)
   async function loadSheet(box, def) {
     box.replaceChildren();
@@ -511,9 +646,26 @@
       const keys = (meta && meta.columns) || [...new Set(rows.flatMap(r => Object.keys(r.data)))];
       if (!rows.length) { inner.replaceChildren(el("p", "note", "아직 자료가 없습니다.")); }
       const columns = keys.map(k => ({ key: k, label: k, get: r => r.data[k] }));
+      const filters = [];
+      if (current.startsWith("roster_")) {
+        // 학교 이름 가나다순, 지역 필터, 라인별(이름+아이디) 구분선, 태그 없는 아이디 강조
+        rows.sort((a, b) => String(a.data["학교 이름"] || "").localeCompare(String(b.data["학교 이름"] || ""), "ko"));
+        const regions = [...new Set(rows.map(r => r.data["학교 소재 지역"]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+        filters.push({ label: "지역", values: regions, get: r => r.data["학교 소재 지역"] });
+        let prev = null, group = 0;
+        columns.forEach(c => {
+          const g = lineGroup(c.key);
+          if (g) {
+            if (g !== prev) group++;
+            c.cls = "lg lg-" + (group % 2 ? "a" : "b") + (g !== prev ? " lg-start" : "");
+            if (/아이디/.test(c.key)) c.cellClass = r => (r.data[c.key] && !String(r.data[c.key]).includes("#") ? "notag" : "");
+          }
+          prev = g;
+        });
+      }
       const label = def.subs.find(s => s[0] === current)[1];
       grid(inner, {
-        columns, rows, exportName: def.title + (def.subs.length > 1 ? "(" + label + ")" : ""),
+        columns, rows, filters, exportName: def.title + (def.subs.length > 1 ? "(" + label + ")" : ""),
         onSave: async (r, c, v) => {
           const data = { ...r.data, [c.key]: v };
           if (await save(sb.from("sheet_rows").update({ data }).eq("id", r.id))) r.data = data;
@@ -630,6 +782,23 @@
     ]);
     box.replaceChildren();
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    // 학생용 전적 검색 공개 스위치
+    const { data: setting } = await sb.from("app_settings").select("value").eq("key", "show_public_ids").maybeSingle();
+    const pub = el("label", "pub-toggle");
+    const cb = el("input");
+    cb.type = "checkbox";
+    cb.checked = !!(setting && setting.value === true);
+    const txt = el("span", "", "");
+    const sync = () => { txt.textContent = cb.checked ? "학생용 전적 검색 공개 중 (학교·라인·LOL 아이디, 실명 제외)" : "학생용 전적 검색 비공개 (교사용에서만 보임)"; };
+    sync();
+    cb.addEventListener("change", async () => {
+      if (cb.checked && !confirm("학생용 화면에 참가팀의 학교·라인·LOL 아이디를 공개할까요? 학생 실명은 공개되지 않습니다.")) { cb.checked = false; return; }
+      if (await save(sb.from("app_settings").update({ value: cb.checked }).eq("key", "show_public_ids"), cb.checked ? "공개했습니다" : "비공개로 바꿨습니다")) sync();
+      else cb.checked = !cb.checked;
+    });
+    pub.append(cb, txt);
+    box.append(pub);
+
     const pending = profiles.filter(p => p.status === "pending").length;
     box.append(el("p", "pending-count", "승인 대기 " + pending + "명 · 전체 " + profiles.length + "명"));
     const linked = new Map(profiles.filter(p => p.staff_id).map(p => [p.staff_id, p.user_id]));
