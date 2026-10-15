@@ -39,7 +39,9 @@
   a { color: var(--neon); }
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  /* 화면 폭에 맞춰 넓어지는 틀 (교사용 화면은 거의 전체 폭) */
+  .wrap { max-width: min(1440px, 100%); margin: 0 auto; padding: 0 clamp(16px, 2.5vw, 40px); }
+  body.teacher-mode .wrap { max-width: 100%; }
 
   /* 헤더 */
   header {
@@ -48,7 +50,17 @@
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
   }
-  .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; flex-wrap: wrap; }
+  body.teacher-mode header { position: static; }
+  /* 첫 줄: 로고 · 방문자 수 · 로그인 / 둘째 줄: 탭 */
+  .head {
+    display: grid; grid-template-columns: auto 1fr auto auto; align-items: center;
+    grid-template-areas: "logo . visits acct" "nav nav nav nav"; gap: 8px 16px; padding: 12px 0 10px;
+  }
+  .logo { grid-area: logo; }
+  .head nav { grid-area: nav; }
+  .visits { grid-area: visits; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .visits b { color: var(--neon); font-weight: 700; }
+  .head .acct { grid-area: acct; }
   .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
   .logo-mark {
     width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
@@ -62,13 +74,14 @@
   .tab {
     border: 1px solid transparent; background: none; padding: 8px 14px; border-radius: 999px;
     cursor: pointer; white-space: nowrap; color: var(--muted); font-weight: 600;
+    font-size: clamp(15px, 0.6vw + 8px, 19px);
   }
   .tab:hover { color: var(--text); }
   .tab[aria-selected="true"] { color: #0a0f24; background: var(--neon); }
 
   main { padding: 32px 0 48px; }
   section[role="tabpanel"][hidden] { display: none; }
-  h2 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: clamp(28px, 1.4vw + 16px, 44px); margin: 0 0 8px; }
   .lead { color: var(--muted); margin: 0 0 24px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
@@ -180,6 +193,10 @@
   footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 24px 0 40px; }
   footer strong { color: var(--text); }
 
+  @media (max-width: 600px) {
+    .head { grid-template-columns: 1fr auto; grid-template-areas: "logo acct" "visits visits" "nav nav"; }
+    .visits { font-size: 12px; }
+  }
   @media (max-width: 820px) {
     .faq-layout { grid-template-columns: 1fr; }
     .side { position: static; }
@@ -212,6 +229,7 @@
       <button class="tab" role="tab" id="tab-apply" aria-controls="apply" aria-selected="false" tabindex="-1">참가 신청</button>
       <button class="tab" role="tab" id="tab-faq" aria-controls="faq" aria-selected="false" tabindex="-1">질문/FAQ</button>
     </nav>
+    <div class="visits" id="visits" hidden aria-label="방문자 수"></div>
     <div class="acct" id="acct"></div>
   </div>
 </header>

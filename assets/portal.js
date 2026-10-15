@@ -35,6 +35,26 @@
     if (!error && data && data.length && window.applyBracket) window.applyBracket(data);
   });
 
+  /* ---------- 방문자 수 (브라우저별 무작위 번호로 하루 1회) ---------- */
+  (function countVisit() {
+    const box = document.getElementById("visits");
+    if (!box) return;
+    let vid = null;
+    try {
+      vid = localStorage.getItem("visitorId");
+      if (!vid) { vid = crypto.randomUUID(); localStorage.setItem("visitorId", vid); }
+    } catch (e) { vid = null; } // 저장소가 막힌 브라우저는 세지 않고 숫자만 보여 줌
+    sb.rpc("record_visit", { vid }).then(({ data, error }) => {
+      const row = !error && data && data[0];
+      if (!row) return;
+      box.replaceChildren(
+        document.createTextNode("Today "), el("b", "", Number(row.today).toLocaleString("ko-KR")),
+        document.createTextNode(" / Total "), el("b", "", Number(row.total).toLocaleString("ko-KR"))
+      );
+      box.hidden = false;
+    });
+  })();
+
   /* ---------- 로그인 상태 ---------- */
   const ME = { status: null, role: null, name: null, email: null };
   const isEditor = () => ME.role === "editor" || ME.role === "owner";
@@ -135,6 +155,7 @@
   function removeTeacher() {
     document.querySelectorAll(".tab-teacher, .tab-break").forEach(t => t.remove());
     nav.classList.remove("has-teacher");
+    document.body.classList.remove("teacher-mode");
     document.querySelectorAll("section.teacher, #gate").forEach(s => s.remove());
     document.getElementById("tab-gate")?.remove();
   }
@@ -274,6 +295,7 @@
   async function buildTeacher() {
     document.getElementById("gate")?.remove();
     document.getElementById("tab-gate")?.remove();
+    document.body.classList.add("teacher-mode");
     if (built) return;
     built = true;
     const views = [
