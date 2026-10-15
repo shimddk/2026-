@@ -220,7 +220,7 @@
       acct.append(b);
       return;
     }
-    const who = el("span", "who", (ME.name || ME.email) + (ME.role && ME.status === "approved" ? " · " + ROLE_LABEL[ME.role] : ""));
+    const who = el("span", "who", (ME.name || ME.email) + (ME.role && ME.status === "approved" ? " · " + (ME.external ? "외부인 · " : "") + ROLE_LABEL[ME.role] : ""));
     const out = el("button", "btn ghost small", "로그아웃");
     out.type = "button";
     out.addEventListener("click", async () => { await sb.auth.signOut(); location.hash = ""; location.reload(); });
@@ -261,6 +261,7 @@
     ME.status = row ? row.status : "pending";
     ME.role = row ? row.role : null;
     ME.name = row && row.staff_name ? row.staff_name : (session.user.user_metadata.full_name || session.user.email);
+    ME.external = !!(row && row.external);
     renderAcct();
     renderRecord();
     if (ME.status === "approved") buildTeacher();
@@ -956,7 +957,7 @@
     const scroller = el("div", "gscroll");
     const table = el("table", "dtable");
     const hr = el("tr");
-    ["구글 이름", "구글 계정", "처음 로그인", "마지막 로그인", "상태", "지원단 이름", "권한", ""].forEach(h => hr.append(el("th", "", h)));
+    ["구글 이름", "구글 계정", "처음 로그인", "마지막 로그인", "상태", "지원단 이름 / 외부인", "권한", ""].forEach(h => hr.append(el("th", "", h)));
     const thead = el("thead");
     thead.append(hr);
     const tb = el("tbody");
@@ -975,30 +976,51 @@
         if (linked.has(s.id) && linked.get(s.id) !== p.user_id) o.disabled = true;
         sSel.append(o);
       });
-      sSel.value = p.staff_id || "";
+      // 맨 아래: 지원단이 아닌 외부인 (보기 권한만, DB 규칙으로도 강제)
+      const ext = el("option", "", "외부인 (보기 권한만)");
+      ext.value = "external";
+      sSel.append(ext);
+      sSel.value = p.external ? "external" : (p.staff_id || "");
       sTd.append(sSel);
       const rTd = el("td");
       const rSel = el("select");
       rSel.setAttribute("aria-label", "권한 선택");
       [["viewer", "보기"], ["editor", "보기·고치기"], ["owner", "관리자"]].forEach(([v, l]) => { const o = el("option", "", l); o.value = v; rSel.append(o); });
       rSel.value = p.role;
-      rSel.disabled = self;
       rTd.append(rSel);
+      // 외부인을 고르면 권한은 '보기'로 고정
+      const syncRole = () => {
+        const isExt = sSel.value === "external";
+        if (isExt) rSel.value = "viewer";
+        rSel.disabled = self || isExt;
+      };
+      sSel.addEventListener("change", syncRole);
+      syncRole();
       const aTd = el("td", "actions");
       const approve = el("button", "btn small", p.status === "approved" ? "저장" : "승인");
       const block = el("button", "btn ghost small", p.status === "blocked" ? "대기로" : "차단");
-      approve.type = block.type = "button";
+      const remove = el("button", "btn ghost small danger", "삭제");
+      approve.type = block.type = remove.type = "button";
       approve.addEventListener("click", async () => {
-        if (!sSel.value) { toast("지원단 이름을 먼저 선택하세요", true); return; }
-        if (await save(sb.from("profiles").update({ status: "approved", staff_id: Number(sSel.value), role: rSel.value }).eq("user_id", p.user_id), "승인했습니다")) loadAdmin(box);
+        if (!sSel.value) { toast("지원단 이름 또는 '외부인'을 먼저 선택하세요", true); return; }
+        const isExt = sSel.value === "external";
+        const patch = isExt
+          ? { status: "approved", external: true, staff_id: null, role: "viewer" }
+          : { status: "approved", external: false, staff_id: Number(sSel.value), role: rSel.value };
+        if (await save(sb.from("profiles").update(patch).eq("user_id", p.user_id), isExt ? "외부인(보기 권한)으로 승인했습니다" : "승인했습니다")) loadAdmin(box);
       });
+      remove.addEventListener("click", async () => {
+        if (!confirm((p.google_name || p.email) + " 계정을 목록에서 삭제할까요?\n삭제하면 바로 아무것도 볼 수 없고, 다시 로그인하면 '승인 대기'로 처음부터 시작합니다.")) return;
+        if (await save(sb.from("profiles").delete().eq("user_id", p.user_id), "삭제했습니다")) loadAdmin(box);
+      });
+      if (self) remove.disabled = true;
       block.addEventListener("click", async () => {
         const next = p.status === "blocked" ? "pending" : "blocked";
         if (next === "blocked" && !confirm((p.google_name || p.email) + " 계정을 차단할까요?")) return;
         if (await save(sb.from("profiles").update({ status: next }).eq("user_id", p.user_id), next === "blocked" ? "차단했습니다" : "대기로 돌렸습니다")) loadAdmin(box);
       });
       if (self) { block.disabled = true; }
-      aTd.append(approve, block);
+      aTd.append(approve, block, remove);
       tr.append(sTd, rTd, aTd);
       tb.append(tr);
     });

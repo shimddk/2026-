@@ -47,6 +47,8 @@ table.dtable tr.sum td.short .state { color: var(--wait); }
 tr.st-pending td { background: rgba(255, 181, 71, .07); }
 tr.st-blocked td { opacity: .55; }
 td.actions { display: flex; gap: 6px; }
+.btn.danger { color: #ff9b9b; border-color: rgba(255, 120, 120, .4); }
+.btn.danger:disabled { opacity: .35; cursor: not-allowed; }
 .pending-count { font-weight: 700; color: var(--wait); }
 details.audit { margin-top: 16px; }
 details.audit li { font-size: 13px; color: var(--muted); }
