@@ -171,7 +171,7 @@
       bar.append(x);
     }
     const scroller = el("div", "gscroll");
-    const table = el("table", "grid");
+    const table = el("table", "dtable");
     scroller.append(table);
     box.append(bar, scroller);
 
@@ -207,6 +207,9 @@
             } else {
               const i = el("input", "cell");
               i.value = v ?? "";
+              // 칸 너비를 내용 길이에 맞춤 (한글은 두 칸 폭)
+              const w = [...String(i.value)].reduce((n, ch) => n + (ch.charCodeAt(0) > 255 ? 2 : 1), 0);
+              i.size = Math.max(4, Math.min(40, w + 1));
               i.setAttribute("aria-label", c.label);
               if (c.type === "int") i.inputMode = "numeric";
               i.addEventListener("change", () => onSave(r, c, c.type === "int" ? (i.value === "" ? null : Number(i.value)) : i.value));
@@ -393,7 +396,7 @@
     if (!refs.length) { box.append(el("p", "note", "지원단 명단에서 '심판가능'이 표시된 선생님이 없습니다.")); return; }
     const wd = d => "일월화수목금토"[new Date(d + "T00:00:00+09:00").getDay()];
     const scroller = el("div", "gscroll");
-    const table = el("table", "grid ref");
+    const table = el("table", "dtable ref");
     const thead = el("thead");
     const hr = el("tr");
     hr.append(el("th", "", "선생님"));
@@ -466,7 +469,7 @@
     box.append(el("p", "pending-count", "승인 대기 " + pending + "명 · 전체 " + profiles.length + "명"));
     const linked = new Map(profiles.filter(p => p.staff_id).map(p => [p.staff_id, p.user_id]));
     const scroller = el("div", "gscroll");
-    const table = el("table", "grid");
+    const table = el("table", "dtable");
     const hr = el("tr");
     ["구글 이름", "구글 계정", "처음 로그인", "마지막 로그인", "상태", "지원단 이름", "권한", ""].forEach(h => hr.append(el("th", "", h)));
     const thead = el("thead");
