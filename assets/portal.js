@@ -5,7 +5,7 @@
   const SB_KEY = "sb_publishable_d6bAYnQ0cJJefCw6rnWb4g_FpGMaaCD"; // 공개용 키 (RLS로 보호)
   const XLSX_SRC = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
 
-  const LOGIN_READY = false; // 구글 로그인 설정을 마치면 true
+  const LOGIN_READY = true; // 구글 로그인 설정 완료 (2026-10-15)
   const acct = document.getElementById("acct");
   if (!LOGIN_READY && acct) acct.hidden = true;
   if (!window.supabase) {
@@ -58,10 +58,16 @@
   }
 
   function login() {
+    try { sessionStorage.setItem("openTeacher", "1"); } catch (e) {}
     sb.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: location.origin + location.pathname + "#teacher", queryParams: { prompt: "select_account" } }
+      options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: "select_account" } }
     });
+  }
+  function wantsTeacher() {
+    let flag = false;
+    try { flag = sessionStorage.getItem("openTeacher") === "1"; sessionStorage.removeItem("openTeacher"); } catch (e) {}
+    return flag || location.hash === "#teacher" || location.hash.startsWith("#t-");
   }
 
   async function refresh() {
@@ -275,8 +281,8 @@
       body.append(el("p", "note", "불러오는 중…"));
       document.getElementById("tab-" + id).addEventListener("click", () => { if (!body.dataset.loaded) { body.dataset.loaded = "1"; loader(body); } }, { once: false });
     });
-    if (location.hash === "#teacher" || location.hash.startsWith("#t-")) {
-      const id = location.hash === "#teacher" ? "t-staff" : location.hash.slice(1);
+    if (wantsTeacher()) {
+      const id = location.hash.startsWith("#t-") ? location.hash.slice(1) : "t-staff";
       document.getElementById("tab-" + id)?.click();
       window.showTab(id);
     }
