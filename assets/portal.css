@@ -11,6 +11,15 @@ nav[role="tablist"].has-teacher { flex-wrap: wrap; overflow: visible; row-gap: 6
 }
 .tab-break::after { content: ""; flex: 1; height: 1px; background: rgba(255, 181, 71, .3); }
 
+/* 로그인 전 안내 창, 하단 링크 */
+#loginNotice { max-width: min(440px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--text); padding: 20px; }
+#loginNotice::backdrop { background: rgba(5, 8, 20, .7); }
+#loginNotice h3 { margin: 0 0 8px; }
+#loginNotice p { font-size: 14px; line-height: 1.6; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.footer-link { display: inline-block; margin-top: 6px; color: var(--muted); text-decoration: underline; }
+.footer-link:hover { color: var(--neon); }
+
 /* 승인 대기 */
 .gate-card { max-width: 520px; margin: 24px auto; text-align: center; }
 .gate-icon { font-size: 44px; }

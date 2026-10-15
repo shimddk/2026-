@@ -216,7 +216,7 @@
     if (!ME.email) {
       const b = el("button", "btn small", "교사용");
       b.type = "button";
-      b.addEventListener("click", login);
+      b.addEventListener("click", showLoginNotice);
       acct.append(b);
       return;
     }
@@ -227,6 +227,18 @@
     acct.append(who, out);
   }
 
+  // 로그인 전에 저장 항목과 개인정보 처리방침을 먼저 안내
+  function showLoginNotice() {
+    const d = document.getElementById("loginNotice");
+    if (!d || typeof d.showModal !== "function") { login(); return; }
+    d.showModal();
+  }
+  (function wireLoginNotice() {
+    const d = document.getElementById("loginNotice");
+    if (!d) return;
+    document.getElementById("loginCancel").addEventListener("click", () => d.close());
+    document.getElementById("loginGo").addEventListener("click", () => { d.close(); login(); });
+  })();
   function login() {
     try { sessionStorage.setItem("openTeacher", "1"); } catch (e) {}
     sb.auth.signInWithOAuth({
