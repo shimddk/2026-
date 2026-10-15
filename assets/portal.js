@@ -607,8 +607,8 @@
       grid(inner, {
         columns, rows, exportName: "팀별 티어 현황(" + divOf(current) + ")",
         onSave: async (r, c, v) => {
-          const data = { ...r.data, [c.key]: v };
-          if (await save(sb.from("sheet_rows").update({ data }).eq("id", r.id))) { r.data = data; render(); }
+          // 바뀐 칸만 저장 (행 전체를 덮어쓰지 않음)
+          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) { r.data = { ...r.data, [c.key]: v }; render(); }
         },
         onDelete: r => deleteSheetRow(r, current, load),
         onAdd: async () => {
@@ -718,6 +718,17 @@
       const columns = keys.map(k => ({ key: k, label: k, get: r => r.data[k] }));
       addDupeColumn(columns, rows, keys.includes("학교 이름") ? "학교 이름" : "학교");
       const filters = [];
+      if (current === "captains" || current === "advisors") {
+        // 지역: 아이디 명단의 '학교 소재 지역'을 학교 이름으로 연결해서 보여 줌 (따로 저장하지 않음)
+        const { data: ros } = await sb.from("sheet_rows").select("data").in("sheet", ["roster_middle", "roster_high"]);
+        const regionOf = {};
+        (ros || []).forEach(x => { const s = normSchool(x.data["학교 이름"]); if (s && x.data["학교 소재 지역"] && !regionOf[s]) regionOf[s] = x.data["학교 소재 지역"]; });
+        const region = r => regionOf[normSchool(r.data["학교"])] || "";
+        const at = columns.findIndex(c => c.key === "급");
+        columns.splice(at >= 0 ? at + 1 : 2, 0, { key: "_region", label: "지역", readonly: true, get: region });
+        const regions = [...new Set(rows.map(region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+        filters.push({ label: "지역", values: regions, get: region });
+      }
       if (current.startsWith("roster_")) {
         // 팀장: 팀장 연락처 표에서 학교별 팀장 이름을 가져와 '팀장' 열과 선수 이름 칸 배지로 표시
         const { data: caps } = await sb.from("sheet_rows").select("data").eq("sheet", "captains");
@@ -756,8 +767,8 @@
       grid(inner, {
         columns, rows, filters, exportName: def.title + (def.subs.length > 1 ? "(" + label + ")" : ""),
         onSave: async (r, c, v) => {
-          const data = { ...r.data, [c.key]: v };
-          if (await save(sb.from("sheet_rows").update({ data }).eq("id", r.id))) r.data = data;
+          // 바뀐 칸만 저장 (행 전체를 덮어쓰지 않음)
+          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) r.data = { ...r.data, [c.key]: v };
         },
         onDelete: r => deleteSheetRow(r, current, draw),
         onAdd: async () => {
