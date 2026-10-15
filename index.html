@@ -190,6 +190,7 @@
     dl.info dd { margin-bottom: 10px; }
   }
 </style>
+<link rel="stylesheet" href="assets/portal.css">
 </head>
 <body>
 
@@ -207,9 +208,11 @@
       <button class="tab" role="tab" id="tab-about" aria-controls="about" aria-selected="false" tabindex="-1">대회 소개</button>
       <button class="tab" role="tab" id="tab-schedule" aria-controls="schedule" aria-selected="false" tabindex="-1">일정</button>
       <button class="tab" role="tab" id="tab-bracket" aria-controls="bracket" aria-selected="false" tabindex="-1">대진표</button>
+      <button class="tab" role="tab" id="tab-rules" aria-controls="rules" aria-selected="false" tabindex="-1">경기 규정</button>
       <button class="tab" role="tab" id="tab-apply" aria-controls="apply" aria-selected="false" tabindex="-1">참가 신청</button>
       <button class="tab" role="tab" id="tab-faq" aria-controls="faq" aria-selected="false" tabindex="-1">질문/FAQ</button>
     </nav>
+    <div class="acct" id="acct"></div>
   </div>
 </header>
 
@@ -308,6 +311,51 @@
     </div>
     <div class="groups" id="groups"></div>
     <p class="note">조별 1·2위가 16강에 진출합니다. 32팀이 채워지지 않으면 3위 팀도 승급할 수 있으며, 세부 방식은 10/19 이후 확정됩니다.</p>
+  </section>
+
+  <!-- 경기 규정 -->
+  <section id="rules" role="tabpanel" aria-labelledby="tab-rules" hidden>
+    <h2>경기 규정</h2>
+    <p class="lead">공식 규정집(Ver 1.0)과 팀장 교육 내용을 카드로 정리했습니다. 카드를 좌우로 넘기고, "자세히 보기"로 세부 내용을 확인하세요.</p>
+    <div class="summary-board">
+      <div class="card">
+        <h3>🏆 대회 구성 (규정집)</h3>
+        <table>
+          <thead><tr><th>구분</th><th>방식</th></tr></thead>
+          <tbody>
+            <tr><td>32강~16강</td><td>단판</td></tr>
+            <tr><td>8강</td><td>3판 2선승</td></tr>
+            <tr><td>4강</td><td>3판 2선승</td></tr>
+            <tr><td>결승</td><td>3판 2선승</td></tr>
+          </tbody>
+        </table>
+        <p class="note">모집 인원과 일정에 따라 바뀔 수 있습니다.</p>
+        <span class="badge-wait">지원단 최종 확인 중</span>
+        <p class="note" style="margin:0">규정집은 "싱글 토너먼트", 공식 FAQ·팀장 교육은 "더블 엘리미네이션"으로 안내되어 있습니다.</p>
+      </div>
+      <div class="card">
+        <h3>🟨 경고·벌칙 (규정집 제9조)</h3>
+        <div class="steps-row" aria-label="경고 단계">
+          <span><b>주의 2회</b>= 경고 1회</span>
+          <span><b>경고 1회</b>없음</span>
+          <span><b>경고 2회</b>세트 패배</span>
+          <span><b>경고 3회</b>실격</span>
+        </div>
+        <p class="note">누적 경고는 결승 전에 초기화됩니다.</p>
+        <span class="badge-wait">지원단 최종 확인 중</span>
+        <p class="note" style="margin:0">팀장 교육에는 경고 1~4회 단계(진영 제한 → 밴카드 제한 → 몰수패)가 따로 안내되어 있습니다.</p>
+      </div>
+      <div class="card">
+        <h3>⏰ 지각 벌칙 (규정집 제9조)</h3>
+        <div class="steps-row" aria-label="지각 벌칙">
+          <span><b>10분</b>주의</span>
+          <span><b>15분</b>경고</span>
+          <span><b>20분</b>세트 몰수·실격</span>
+        </div>
+        <p class="note">팀장 교육: 30분 넘게 미입장 시 경고 1회, 1시간 초과 시 경고 2회 몰수패.</p>
+      </div>
+    </div>
+    <div id="rulesRoot"></div>
   </section>
 
   <!-- 참가 신청 -->
@@ -462,25 +510,35 @@ const TOP = [1, 2, 10, 13, 20, 26, 37, 42];
 const ESCALATE_MSG = "이 내용은 공식 자료로 확인되지 않습니다. 디스코드 4번 질문방으로 문의하세요.\n지원단 선생님께서 직접 확인 후 답변해 드립니다.";
 
 /* ---------- 탭 ---------- */
-const tabs = [...document.querySelectorAll('[role="tab"]')];
+// 교사용 탭이 나중에 추가되므로 탭 목록은 매번 새로 읽는다
+const navEl = document.querySelector('nav[role="tablist"]');
+const allTabs = () => [...navEl.querySelectorAll('[role="tab"]')];
 function showTab(id, focus) {
-  tabs.forEach(t => {
+  if (!document.getElementById(id)) return;
+  allTabs().forEach(t => {
     const on = t.getAttribute("aria-controls") === id;
     t.setAttribute("aria-selected", on);
     t.tabIndex = on ? 0 : -1;
-    document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    const panel = document.getElementById(t.getAttribute("aria-controls"));
+    if (panel) panel.hidden = !on;
     if (on && focus) t.focus();
+    if (on) t.scrollIntoView({ block: "nearest", inline: "nearest" });
   });
   history.replaceState(null, "", "#" + id);
   window.scrollTo({ top: 0 });
 }
-tabs.forEach((t, i) => {
-  t.addEventListener("click", () => showTab(t.getAttribute("aria-controls")));
-  t.addEventListener("keydown", e => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    const n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-    showTab(n.getAttribute("aria-controls"), true);
-  });
+window.showTab = showTab;
+navEl.addEventListener("click", e => {
+  const t = e.target.closest('[role="tab"]');
+  if (t) showTab(t.getAttribute("aria-controls"));
+});
+navEl.addEventListener("keydown", e => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const list = allTabs();
+  const i = list.indexOf(document.activeElement);
+  if (i < 0) return;
+  const n = list[(i + (e.key === "ArrowRight" ? 1 : list.length - 1)) % list.length];
+  showTab(n.getAttribute("aria-controls"), true);
 });
 document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.go)));
 
@@ -537,6 +595,30 @@ function showDiv(div) {
 }
 document.querySelectorAll("#divSwitch .chip").forEach(b => b.addEventListener("click", () => showDiv(b.dataset.div)));
 showDiv("중등부");
+
+// 교사용 화면에서 입력한 대진(학교 이름·점수만)을 받아 조별 카드에 채운다
+window.applyBracket = function (rows) {
+  rows.forEach(m => {
+    if (!m.grp || !BRACKET[m.division]) return;
+    const g = String(m.grp).replace(/조$/, "").toUpperCase();
+    const list = BRACKET[m.division][g] || (BRACKET[m.division][g] = []);
+    [m.team1, m.team2].forEach(t => { if (t && !list.includes(t)) list.push(t); });
+  });
+  const extra = Object.keys(BRACKET["중등부"]).concat(Object.keys(BRACKET["고등부"])).filter(g => !GROUPS.includes(g));
+  extra.forEach(g => GROUPS.push(g));
+  const pending = document.querySelector("#bracket .pending");
+  if (pending) pending.textContent = "확정된 대진이 반영되었습니다. 경기 결과는 계속 업데이트됩니다.";
+  const box = document.getElementById("matchList") || document.getElementById("groups").insertAdjacentElement("afterend", el("div", "card"));
+  box.id = "matchList";
+  box.replaceChildren(el("h3", "", "경기 결과"));
+  const ul = el("ul", "clean");
+  rows.forEach(m => {
+    const score = m.score1 != null && m.score2 != null ? " " + m.score1 + " : " + m.score2 + " " : " vs ";
+    ul.append(el("li", "", [m.division, m.stage, m.grp ? m.grp + "조" : "", m.scheduled_at || ""].filter(Boolean).join(" · ") + " — " + (m.team1 || "?") + score + (m.team2 || "?") + (m.winner ? " (승: " + m.winner + ")" : "")));
+  });
+  box.append(ul);
+  showDiv(document.querySelector('#divSwitch [aria-pressed="true"]').dataset.div);
+};
 
 /* ---------- 질문 매칭 (원본 챗봇의 규칙을 오프라인용으로 옮김) ---------- */
 const STOP = ["어떻게", "하나요", "있나요", "되나요", "인가요", "알려주세요", "알려줘", "궁금해요", "언제", "무엇"];
@@ -694,5 +776,8 @@ document.getElementById("composer").addEventListener("submit", e => {
 const start = location.hash.slice(1);
 if (document.getElementById(start)?.getAttribute("role") === "tabpanel") showTab(start);
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/rules.js"></script>
+<script src="assets/portal.js"></script>
 </body>
 </html>

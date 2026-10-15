@@ -1,5 +1,6 @@
 # 사이트에는 아래 허용 목록만 올린다
 /*
 !index.html
+!privacy.html
 !README.md
 !assets
