@@ -29,6 +29,28 @@
     document.body.append(t);
     setTimeout(() => t.remove(), 2600);
   }
+  // 버튼이 달린 알림 (예: 삭제 후 되돌리기), 10초 뒤 사라짐
+  function toastAction(msg, label, fn) {
+    document.querySelectorAll(".toast.action").forEach(t => t.remove());
+    const t = el("div", "toast action", msg + " ");
+    const b = el("button", "toast-btn", label);
+    b.type = "button";
+    b.addEventListener("click", async () => { b.disabled = true; await fn(); t.remove(); });
+    t.append(b);
+    document.body.append(t);
+    setTimeout(() => t.remove(), 10000);
+  }
+  // 명단·연락처·티어 행 삭제 + 되돌리기
+  async function deleteSheetRow(r, sheet, redraw) {
+    const { error } = await sb.from("sheet_rows").delete().eq("id", r.id);
+    if (error) { toast("삭제 실패: " + error.message, true); redraw(); return; }
+    toastAction("삭제했습니다.", "되돌리기", async () => {
+      const { error: e2 } = await sb.from("sheet_rows").insert({ sheet, row_no: r.row_no, data: r.data });
+      toast(e2 ? "되돌리기 실패: " + e2.message : "되돌렸습니다", !!e2);
+      redraw();
+    });
+    redraw();
+  }
 
   /* ---------- 학생용 공개 대진표 ---------- */
   sb.rpc("public_bracket").then(({ data, error }) => {
@@ -394,7 +416,15 @@
           const td = el("td");
           const d = el("button", "del", "삭제");
           d.type = "button";
-          d.addEventListener("click", () => { if (confirm("이 행을 삭제할까요? 수정 기록에는 남습니다.")) onDelete(r); });
+          d.addEventListener("click", async () => {
+            // 어떤 행인지 보여 주고, 지우는 동안 다른 삭제 버튼을 잠가 행이 밀려 올라올 때의 오클릭을 막는다
+            const vals = columns.filter(c => c.key !== "_dupe").map(c => String(c.get(r) ?? "").trim()).filter(Boolean);
+            const label = vals.length ? vals.slice(0, 2).join(" · ") : "빈 행";
+            if (!confirm("'" + label + "' 행을 삭제할까요?" + (vals.length ? "\n(내용이 있는 칸 " + vals.length + "개)" : ""))) return;
+            table.querySelectorAll(".del").forEach(b => { b.disabled = true; });
+            tr.classList.add("deleting");
+            await onDelete(r);
+          });
           td.append(d);
           tr.append(td);
         }
@@ -568,7 +598,7 @@
           const data = { ...r.data, [c.key]: v };
           if (await save(sb.from("sheet_rows").update({ data }).eq("id", r.id))) { r.data = data; render(); }
         },
-        onDelete: async r => { if (await save(sb.from("sheet_rows").delete().eq("id", r.id), "삭제했습니다")) load(); },
+        onDelete: r => deleteSheetRow(r, current, load),
         onAdd: async () => {
           const next = rows.reduce((mx, r) => Math.max(mx, r.row_no), 0) + 1;
           if (await save(sb.from("sheet_rows").insert({ sheet: current, row_no: next, data: {} }), "행을 추가했습니다")) load();
@@ -699,7 +729,7 @@
           const data = { ...r.data, [c.key]: v };
           if (await save(sb.from("sheet_rows").update({ data }).eq("id", r.id))) r.data = data;
         },
-        onDelete: async r => { if (await save(sb.from("sheet_rows").delete().eq("id", r.id), "삭제했습니다")) draw(); },
+        onDelete: r => deleteSheetRow(r, current, draw),
         onAdd: async () => {
           const next = rows.reduce((m, r) => Math.max(m, r.row_no), 0) + 1;
           if (await save(sb.from("sheet_rows").insert({ sheet: current, row_no: next, data: {} }), "행을 추가했습니다")) draw();

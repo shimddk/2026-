@@ -43,6 +43,10 @@ details.audit { margin-top: 16px; }
 details.audit li { font-size: 13px; color: var(--muted); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ok); color: #0a0f24; padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 50; }
 .toast.bad { background: #ff8a8a; }
+.toast.action { display: flex; align-items: center; gap: 10px; }
+.toast-btn { border: 0; border-radius: 8px; padding: 6px 12px; font: inherit; font-weight: 700; cursor: pointer; background: #0a0f24; color: var(--ok); }
+table.dtable tr.deleting td { opacity: .4; text-decoration: line-through; }
+table.dtable .del:disabled { opacity: .35; cursor: not-allowed; }
 
 /* 아이디 명단: 라인 묶음 구분 */
 .gfilter { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; }
