@@ -303,7 +303,7 @@
       ["t-roster", SHEETS.roster.title, "학생 실명과 LOL 아이디가 들어 있습니다. 화면 밖으로 옮기지 마세요.", b => loadSheet(b, SHEETS.roster)],
       ["t-captains", SHEETS.captains.title, "", b => loadSheet(b, SHEETS.captains)],
       ["t-advisors", SHEETS.advisors.title, "", b => loadSheet(b, SHEETS.advisors)],
-      ["t-tier", SHEETS.tier.title, "", b => loadSheet(b, SHEETS.tier)],
+      ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
       ["t-referee", "심판 일정", "심판 가능한 선생님의 날짜별 참여 여부입니다.", loadReferee]
     ];
@@ -345,7 +345,142 @@
     });
   }
 
-  // 명단·연락처·티어 시트 (행 단위 JSON)
+  // 팀별 티어 현황: 주전 5명 평균·순위 자동 계산 (원래 엑셀 수식을 대신함)
+  const STARTERS = ["선수1", "선수2", "선수3", "선수4", "선수5"];
+  async function loadTier(box) {
+    box.replaceChildren();
+    let current = "tier_middle";
+    const divOf = s => (s === "tier_middle" ? "중등부" : "고등부");
+    const sw = el("div", "div-switch");
+    [["tier_middle", "중등부"], ["tier_high", "고등부"]].forEach(([key, label]) => {
+      const b = el("button", "chip", label);
+      b.type = "button";
+      b.setAttribute("aria-pressed", key === current);
+      b.addEventListener("click", () => { current = key; sw.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === b)); load(); });
+      sw.append(b);
+    });
+    const summary = el("div", "tier-summary");
+    const inner = el("div");
+    box.append(sw, summary, inner);
+
+    let rows = [], scores = [], keys = [];
+    async function load() {
+      inner.replaceChildren(el("p", "note", "불러오는 중…"));
+      const [m, r, s] = await Promise.all([
+        sb.from("sheet_columns").select("columns").eq("sheet", current).maybeSingle(),
+        sb.from("sheet_rows").select("id,row_no,data").eq("sheet", current).order("row_no"),
+        sb.from("tier_scores").select("*").eq("division", divOf(current)).order("sort")
+      ]);
+      if (r.error || s.error) { inner.replaceChildren(el("p", "note", "불러오지 못했습니다.")); return; }
+      rows = r.data; scores = s.data;
+      keys = (m.data && m.data.columns) || [...new Set(rows.flatMap(x => Object.keys(x.data)))];
+      render();
+    }
+
+    function compute() {
+      const map = new Map(scores.map(t => [t.tier, Number(t.score)]));
+      rows.forEach(r => {
+        const nums = STARTERS.map(k => map.get(r.data[k])).filter(v => typeof v === "number");
+        r._avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+        r._n = nums.length;
+      });
+      // 순위: 평균이 낮을수록(높은 티어) 1위, 같은 평균은 같은 순위
+      const sorted = rows.filter(r => r._avg != null).map(r => r._avg).sort((a, b) => a - b);
+      rows.forEach(r => { r._rank = r._avg == null ? null : sorted.indexOf(r._avg) + 1; });
+    }
+
+    function render() {
+      compute();
+      // 요약: 주전 티어별 인원
+      const counts = scores.map(t => [t.tier, rows.reduce((n, r) => n + STARTERS.filter(k => r.data[k] === t.tier).length, 0)]);
+      const done = rows.filter(r => r._n === 5).length;
+      summary.replaceChildren(
+        el("div", "tier-chips", null),
+        el("p", "note", "주전 5명 티어가 모두 입력된 팀 " + done + " / " + rows.length + "팀")
+      );
+      counts.forEach(([t, n]) => {
+        const c = el("span", "tier-chip");
+        c.append(el("b", "", t), document.createTextNode(" " + n + "명"));
+        summary.firstChild.append(c);
+      });
+      if (isEditor()) summary.append(scoreEditor());
+
+      const tierOptions = ["", ...scores.map(t => t.tier)];
+      const playerCols = new Set(keys.filter(k => /^(선수|예비)\d/.test(k)));
+      const columns = keys.map(k => {
+        const col = { key: k, label: k, get: r => r.data[k] };
+        if (playerCols.has(k)) {
+          const extra = [...new Set(rows.map(r => r.data[k]).filter(v => v && !tierOptions.includes(v)))];
+          col.options = [...tierOptions, ...extra];
+        }
+        return col;
+      });
+      columns.push(
+        { key: "_avg", label: "평균(주전5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") },
+        { key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? "" : r._rank }
+      );
+      grid(inner, {
+        columns, rows, exportName: "팀별 티어 현황(" + divOf(current) + ")",
+        onSave: async (r, c, v) => {
+          const data = { ...r.data, [c.key]: v };
+          if (await save(sb.from("sheet_rows").update({ data }).eq("id", r.id))) { r.data = data; render(); }
+        },
+        onDelete: async r => { if (await save(sb.from("sheet_rows").delete().eq("id", r.id), "삭제했습니다")) load(); },
+        onAdd: async () => {
+          const next = rows.reduce((mx, r) => Math.max(mx, r.row_no), 0) + 1;
+          if (await save(sb.from("sheet_rows").insert({ sheet: current, row_no: next, data: {} }), "행을 추가했습니다")) load();
+        }
+      });
+    }
+
+    // 티어 점수 기준표 (고치기 권한자만)
+    function scoreEditor() {
+      const d = el("details", "score-editor");
+      d.append(el("summary", "", "티어 점수 기준표 (" + divOf(current) + ") 고치기"));
+      const t = el("table", "dtable");
+      const hr = el("tr");
+      ["티어", "점수", ""].forEach(h => hr.append(el("th", "", h)));
+      const thead = el("thead"); thead.append(hr);
+      const tb = el("tbody");
+      scores.forEach(s => {
+        const tr = el("tr");
+        tr.append(el("td", "", s.tier));
+        const td = el("td");
+        const i = el("input", "cell");
+        i.type = "number"; i.step = "0.5"; i.value = s.score; i.size = 4;
+        i.setAttribute("aria-label", s.tier + " 점수");
+        i.addEventListener("change", async () => {
+          const v = Number(i.value);
+          if (await save(sb.from("tier_scores").update({ score: v }).eq("division", s.division).eq("tier", s.tier))) { s.score = v; render(); }
+        });
+        td.append(i);
+        const del = el("button", "del", "삭제");
+        del.type = "button";
+        del.addEventListener("click", async () => {
+          if (confirm(s.tier + " 티어를 기준표에서 뺄까요? 이 티어를 고른 선수는 평균 계산에서 빠집니다.") &&
+              await save(sb.from("tier_scores").delete().eq("division", s.division).eq("tier", s.tier), "삭제했습니다")) load();
+        });
+        const td2 = el("td"); td2.append(del);
+        tr.append(td, td2);
+        tb.append(tr);
+      });
+      t.append(thead, tb);
+      const add = el("button", "btn small", "+ 티어 추가");
+      add.type = "button";
+      add.addEventListener("click", async () => {
+        const name = prompt("추가할 티어 이름 (선수 칸에 고를 이름)");
+        if (!name) return;
+        const sc = Number(prompt(name + "의 점수 (낮을수록 높은 티어)", "5"));
+        if (Number.isNaN(sc)) return;
+        if (await save(sb.from("tier_scores").insert({ division: divOf(current), tier: name.trim(), score: sc, sort: scores.length + 1 }), "추가했습니다")) load();
+      });
+      d.append(t, add);
+      return d;
+    }
+    load();
+  }
+
+  // 명단·연락처 시트 (행 단위 JSON)
   async function loadSheet(box, def) {
     box.replaceChildren();
     let current = def.subs[0][0];

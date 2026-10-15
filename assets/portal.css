@@ -44,6 +44,15 @@ details.audit li { font-size: 13px; color: var(--muted); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ok); color: #0a0f24; padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 50; }
 .toast.bad { background: #ff8a8a; }
 
+/* 티어 현황 */
+.tier-summary { margin-bottom: 12px; }
+.tier-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tier-chip { background: var(--bg2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.tier-chip b { color: var(--neon); font-weight: 700; }
+.score-editor { margin: 8px 0 4px; }
+.score-editor summary { cursor: pointer; color: var(--muted); }
+.score-editor table { width: auto; min-width: 0; margin: 8px 0; }
+
 /* 경기 규정: 요약판 */
 .summary-board { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 24px; }
 .summary-board h3 { margin: 0 0 8px; font-size: 16px; }
