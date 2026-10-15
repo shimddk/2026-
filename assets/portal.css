@@ -86,6 +86,14 @@ table.dtable td.notag input { color: #ffd88a; }
 .rec-card .btn { align-self: flex-start; text-decoration: none; }
 .pub-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); cursor: pointer; }
 
+/* 팀장 표시 */
+table.dtable td.captain { background: rgba(255, 216, 138, .12) !important; }
+table.dtable td.captain::before {
+  content: "팀장"; display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; background: #ffb547; color: #0a0f24; vertical-align: middle;
+}
+table.dtable td.cap-missing { color: #ffd88a; }
+
 /* 중복 신청 표시 */
 table.dtable td.dupe { color: #ffb4b4; font-weight: 700; background: rgba(255, 120, 120, .1); }
 .dupe-badge { font-size: 11px; font-weight: 700; color: #ffb4b4; background: rgba(255, 120, 120, .14); border-radius: 999px; padding: 2px 8px; }

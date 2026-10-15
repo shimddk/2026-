@@ -719,6 +719,24 @@
       addDupeColumn(columns, rows, keys.includes("학교 이름") ? "학교 이름" : "학교");
       const filters = [];
       if (current.startsWith("roster_")) {
+        // 팀장: 팀장 연락처 표에서 학교별 팀장 이름을 가져와 '팀장' 열과 선수 이름 칸 배지로 표시
+        const { data: caps } = await sb.from("sheet_rows").select("data").eq("sheet", "captains");
+        const capOf = {};
+        (caps || []).forEach(c => { const s = normSchool(c.data["학교"]); if (s && c.data["팀장이름"] && !capOf[s]) capOf[s] = String(c.data["팀장이름"]).trim(); });
+        const nameKey = n => String(n || "").replace(/\(.*?\)/g, "").replace(/\s+/g, "");
+        const capName = r => capOf[normSchool(r.data["학교 이름"])] || "";
+        const nameCols = keys.filter(k => /학생 이름/.test(k));
+        const capFound = r => { const n = nameKey(capName(r)); return !!n && nameCols.some(k => nameKey(r.data[k]) === n); };
+        const schoolIdx = columns.findIndex(c => c.key === "학교 이름");
+        columns.splice(schoolIdx + 1, 0, {
+          key: "_captain", label: "팀장", readonly: true,
+          get: r => { const n = capName(r); return !n ? "" : capFound(r) ? n : n + " (명단에 없음)"; },
+          cellClass: r => (capName(r) && !capFound(r) ? "cap-missing" : "")
+        });
+        nameCols.forEach(k => {
+          const col = columns.find(c => c.key === k);
+          col.cellClass = r => { const n = nameKey(capName(r)); return n && nameKey(r.data[k]) === n ? "captain" : ""; };
+        });
         // 학교 이름 가나다순, 지역 필터, 라인별(이름+아이디) 구분선, 태그 없는 아이디 강조
         rows.sort((a, b) => String(a.data["학교 이름"] || "").localeCompare(String(b.data["학교 이름"] || ""), "ko"));
         const regions = [...new Set(rows.map(r => r.data["학교 소재 지역"]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
