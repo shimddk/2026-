@@ -79,7 +79,9 @@
         SLOT_DEFS.forEach(([slot, line, re]) => {
           const key = Object.keys(r.data).find(k => re.test(k));
           const id = key && String(r.data[key] || "").trim();
-          if (id) out.push({ division: r.sheet === "roster_middle" ? "중등부" : "고등부", school, region: r.data["학교 소재 지역"], slot, line, lol_id: id });
+          const nameKey = Object.keys(r.data).find(k => k.includes(line + "(학생 이름)"));
+          const name = nameKey ? String(r.data[nameKey] || "").trim() : "";
+          if (id) out.push({ division: r.sheet === "roster_middle" ? "중등부" : "고등부", school, region: r.data["학교 소재 지역"], slot, line, student_name: name, lol_id: id });
         });
       });
       return { rows: out, teacher: true };
@@ -151,7 +153,7 @@
         const ul = el("ul", "rec-list");
         t.ids.forEach(r => {
           const li = el("li");
-          li.append(el("span", "rec-line" + (r.slot > 5 ? " sub" : ""), r.line), idLink(r));
+          li.append(el("span", "rec-line" + (r.slot > 5 ? " sub" : ""), r.line), el("span", "rec-name", r.student_name || "-"), idLink(r));
           if (!r.lol_id.includes("#")) li.append(el("small", "rec-warn", "태그 없음 · 검색이 정확하지 않을 수 있음"));
           ul.append(li);
         });
@@ -789,10 +791,10 @@
     cb.type = "checkbox";
     cb.checked = !!(setting && setting.value === true);
     const txt = el("span", "", "");
-    const sync = () => { txt.textContent = cb.checked ? "학생용 전적 검색 공개 중 (학교·라인·LOL 아이디, 실명 제외)" : "학생용 전적 검색 비공개 (교사용에서만 보임)"; };
+    const sync = () => { txt.textContent = cb.checked ? "학생용 전적 검색 공개 중 (학교·라인·학생 이름·LOL 아이디)" : "학생용 전적 검색 비공개 (교사용에서만 보임)"; };
     sync();
     cb.addEventListener("change", async () => {
-      if (cb.checked && !confirm("학생용 화면에 참가팀의 학교·라인·LOL 아이디를 공개할까요? 학생 실명은 공개되지 않습니다.")) { cb.checked = false; return; }
+      if (cb.checked && !confirm("학생용 화면에 참가팀의 학교·라인·학생 이름·LOL 아이디를 누구나 볼 수 있게 공개할까요?")) { cb.checked = false; return; }
       if (await save(sb.from("app_settings").update({ value: cb.checked }).eq("key", "show_public_ids"), cb.checked ? "공개했습니다" : "비공개로 바꿨습니다")) sync();
       else cb.checked = !cb.checked;
     });
