@@ -4,7 +4,12 @@
 .btn.small { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
 .tab-teacher { color: #ffd88a; }
 .tab-teacher[aria-selected="true"] { background: #ffb547; color: #0a0f24; }
-nav[role="tablist"] .tab-teacher:first-of-type { margin-left: 8px; }
+nav[role="tablist"].has-teacher { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
+.tab-break {
+  flex-basis: 100%; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700;
+  color: #ffd88a; letter-spacing: .05em; margin-top: 2px;
+}
+.tab-break::after { content: ""; flex: 1; height: 1px; background: rgba(255, 181, 71, .3); }
 
 /* 승인 대기 */
 .gate-card { max-width: 520px; margin: 24px auto; text-align: center; }

@@ -116,6 +116,13 @@
   const nav = document.querySelector('nav[role="tablist"]');
   function addTab(id, label, teacher) {
     if (document.getElementById("tab-" + id)) return;
+    // 교사용 탭은 줄을 바꿔 두 번째 줄에 모아 보여 준다 (탭이 많아 가로로 숨지 않게)
+    if (teacher && !nav.querySelector(".tab-break")) {
+      const br = el("span", "tab-break", "교사용");
+      br.setAttribute("aria-hidden", "true");
+      nav.append(br);
+      nav.classList.add("has-teacher");
+    }
     const b = el("button", "tab" + (teacher ? " tab-teacher" : ""), label);
     b.type = "button";
     b.id = "tab-" + id;
@@ -126,7 +133,8 @@
     nav.append(b);
   }
   function removeTeacher() {
-    document.querySelectorAll(".tab-teacher").forEach(t => t.remove());
+    document.querySelectorAll(".tab-teacher, .tab-break").forEach(t => t.remove());
+    nav.classList.remove("has-teacher");
     document.querySelectorAll("section.teacher, #gate").forEach(s => s.remove());
     document.getElementById("tab-gate")?.remove();
   }
