@@ -394,7 +394,8 @@
         columns.forEach(c => {
           const td = el("td", [c.cls, c.cellClass && c.cellClass(r)].filter(Boolean).join(" "));
           const v = c.get(r);
-          if (isEditor() && onSave && !c.readonly) {
+          const ro = typeof c.readonly === "function" ? c.readonly(r) : c.readonly;
+          if (isEditor() && onSave && !ro) {
             if (c.type === "bool") {
               const cb = el("input");
               cb.type = "checkbox";
@@ -743,23 +744,53 @@
       }
       if (current.startsWith("roster_")) {
         // 팀장: 팀장 연락처 표에서 학교별 팀장 이름을 가져와 '팀장' 열과 선수 이름 칸 배지로 표시
-        const { data: caps } = await sb.from("sheet_rows").select("data").eq("sheet", "captains");
-        const capOf = {};
-        (caps || []).forEach(c => { const s = normSchool(c.data["학교"]); if (s && c.data["팀장이름"]) (capOf[s] = capOf[s] || []).push(String(c.data["팀장이름"]).trim()); });
+        const { data: caps } = await sb.from("sheet_rows").select("id,row_no,data").eq("sheet", "captains");
+        const capRows = {};
+        (caps || []).forEach(c => { const s = normSchool(c.data["학교"]); if (s) (capRows[s] = capRows[s] || []).push(c); });
+        const capRowsOf = r => capRows[normSchool(r.data["학교 이름"])] || [];
         const nameKey = n => String(n || "").replace(/\(.*?\)/g, "").replace(/\s+/g, "");
         // 여러 팀이 신청한 학교(팀장 2명 이상)는 팀장을 정하지 않고 비워 둔다
-        const capName = r => { const l = capOf[normSchool(r.data["학교 이름"])] || []; return l.length === 1 ? l[0] : ""; };
+        const multiCap = r => capRowsOf(r).filter(c => c.data["팀장이름"]).length > 1;
+        const capName = r => { const l = capRowsOf(r).filter(c => c.data["팀장이름"]); return l.length === 1 ? String(l[0].data["팀장이름"]).trim() : ""; };
         const nameCols = keys.filter(k => /학생 이름/.test(k));
         const capFound = r => { const n = nameKey(capName(r)); return !!n && nameCols.some(k => nameKey(r.data[k]) === n); };
+        // 팀장 이름을 팀장 연락처 표에 저장 (그 학교 팀장 행이 없으면 새로 만듦)
+        async function saveCaptain(r, name) {
+          const list = capRowsOf(r);
+          const school = String(r.data["학교 이름"] || "").trim();
+          if (!school) { toast("학교 이름이 없어 팀장 연락처와 연결할 수 없습니다", true); return false; }
+          if (list.length > 1) { toast("팀장이 여러 명인 학교라 팀장 연락처 표에서 직접 고쳐 주세요", true); return false; }
+          if (list.length === 1) {
+            if (!await save(sb.rpc("set_sheet_cell", { p_id: list[0].id, p_key: "팀장이름", p_value: name }), "팀장 연락처도 고쳤습니다")) return false;
+            list[0].data = { ...list[0].data, "팀장이름": name };
+          } else {
+            const next = Object.values(capRows).flat().reduce((m, c) => Math.max(m, c.row_no), 0) + 1;
+            const data = { "순번": String(next), "학교": school, "급": (r.sheet || current) === "roster_high" ? "고등학교" : "중학교", "팀장이름": name };
+            const { data: added, error } = await sb.from("sheet_rows").insert({ sheet: "captains", row_no: next, data }).select("id,row_no,data").single();
+            if (error) { toast("팀장 연락처에 추가하지 못했습니다: " + error.message, true); return false; }
+            capRows[normSchool(school)] = [added];
+            toast("팀장 연락처에 새로 추가했습니다");
+          }
+          return true;
+        }
         const schoolIdx = columns.findIndex(c => c.key === "학교 이름");
         columns.splice(schoolIdx + 1, 0, {
-          key: "_captain", label: "팀장", readonly: true,
-          get: r => { const n = capName(r); return !n ? "" : capFound(r) ? n : n + " (명단에 없음)"; },
-          cellClass: r => (capName(r) && !capFound(r) ? "cap-missing" : "")
+          key: "_captain", label: "팀장",
+          // 팀장이 여러 명(중복 신청)인 학교만 여기서 못 고침
+          readonly: r => multiCap(r),
+          get: r => { const n = capName(r); return !n ? "" : (capFound(r) || isEditor()) ? n : n + " (명단에 없음)"; },
+          cellClass: r => (capName(r) && !capFound(r) ? "cap-missing" : ""),
+          onSave: async (r, v) => { if (await saveCaptain(r, String(v ?? "").trim())) draw(); }
         });
         nameCols.forEach(k => {
           const col = columns.find(c => c.key === k);
           col.cellClass = r => { const n = nameKey(capName(r)); return n && nameKey(r.data[k]) === n ? "captain" : ""; };
+          // 팀장 배지가 붙은 이름 칸을 고치면 팀장 연락처의 팀장 이름도 같이 고침
+          col.afterSave = async (r, oldVal, v) => {
+            const n = nameKey(capName(r));
+            if (n && nameKey(oldVal) === n && nameKey(v) && nameKey(v) !== n) return saveCaptain(r, String(v).replace(/\(.*?\)/g, "").trim());
+            return false;
+          };
         });
         // 학교 이름 가나다순, 지역 필터, 라인별(이름+아이디) 구분선, 태그 없는 아이디 강조
         rows.sort((a, b) => String(a.data["학교 이름"] || "").localeCompare(String(b.data["학교 이름"] || ""), "ko"));
@@ -782,7 +813,12 @@
         columns, rows, filters, exportName: def.title + (def.subs.length > 1 ? "(" + label + ")" : ""),
         onSave: async (r, c, v) => {
           // 바뀐 칸만 저장 (행 전체를 덮어쓰지 않음)
-          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) r.data = { ...r.data, [c.key]: v };
+          if (c.onSave) return c.onSave(r, v);
+          const oldVal = r.data[c.key];
+          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) {
+            r.data = { ...r.data, [c.key]: v };
+            if (c.afterSave && await c.afterSave(r, oldVal, v)) draw();
+          }
         },
         onDelete: r => deleteSheetRow(r, r.sheet || current, draw),
         // '전체'에서는 어느 부문에 넣을지 모호하므로 행 추가는 중등부·고등부 보기에서만
