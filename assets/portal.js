@@ -94,7 +94,11 @@
   //  여러 명: /multi/kr#이름 #태그,이름 #태그 (fow 멀티서치가 # 뒤를 읽어 바로 검색)
   const fowId = id => { const s = String(id).trim(); const i = s.lastIndexOf("#"); return i > 0 ? s.slice(0, i).trim() + " #" + s.slice(i + 1).trim() : s; };
   const fowOne = id => "https://www.fow.lol/?act=find&region=KR&field=" + encodeURIComponent(fowId(id).replace(" #", "#"));
-  const fowMulti = ids => "https://www.fow.lol/multi/kr#" + encodeURIComponent(ids.map(fowId).join(","));
+  // 멀티서치: fow.lol은 휴대폰에서 멀티서치를 지원하지 않아서 휴대폰·태블릿은 OP.GG로 연결
+  const isMobile = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  const fowMulti = ids => isMobile()
+    ? "https://op.gg/ko/lol/multisearch/kr?summoners=" + encodeURIComponent(ids.map(id => fowId(id).replace(" #", "#")).join(","))
+    : "https://www.fow.lol/multi/kr#" + encodeURIComponent(ids.map(fowId).join(","));
   const SLOT_DEFS = [
     [1, "탑", /^탑 LOL 아이디$/], [2, "정글", /^정글 LOL 아이디$/], [3, "미드", /^미드 LOL 아이디$/],
     [4, "원딜", /^원딜 LOL 아이디$/], [5, "서폿", /서폿 LOL 아이디$/],
@@ -258,7 +262,7 @@
           eb.addEventListener("click", () => openRosterEdit(t, untilText));
           btns.append(eb);
         }
-        card.append(head, ul, ...(nickNote ? [nickNote] : []), btns, el("p", "note", "아이디를 누르면 그 선수의 전적이, 멀티서치를 누르면 팀 전체 전적이 fow.lol 새 창에서 바로 열립니다."));
+        card.append(head, ul, ...(nickNote ? [nickNote] : []), btns, el("p", "note", "아이디를 누르면 그 선수의 전적(fow.lol)이, 멀티서치를 누르면 팀 전체 전적이 새 창에서 바로 열립니다. 휴대폰에서는 멀티서치가 OP.GG로 열립니다."));
         list.append(card);
       });
     }
