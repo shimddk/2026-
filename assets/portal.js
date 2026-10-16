@@ -492,7 +492,7 @@
       ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
       ["t-referee", "심판 일정", "심판 가능한 선생님의 날짜별 참여 여부입니다.", loadReferee],
-      ["t-warn", "경고 조치", "팀별 주의·경고 기록입니다. 주의 2회 = 경고 1회로 환산하고, 누적 경고에 따른 조치를 팀장 교육 기준으로 보여 줍니다. 지원단 선생님은 누구나 기록할 수 있고, 고치기·삭제는 기록한 본인과 편집자만 가능합니다.", loadWarnings]
+      ["t-warn", "경고 조치", "팀별 주의·경고 기록입니다. 규정집 제9조 기준(주의 2회 = 경고 1회, 누적 경고 2회 세트 패배 · 3회 실격)으로 조치를 보여 줍니다. 지원단 선생님은 누구나 기록할 수 있고, 삭제는 기록한 본인과 편집자만 가능합니다. 학생용 '경고 현황' 탭에는 자세한 내용·기록자 없이 공개됩니다.", loadWarnings]
     ];
     // 코칭 일정은 공개 '젠지 코칭' 탭에서 모두 보이고, 여기서는 고치기 권한자가 관리 (신청자·메모 포함)
     if (isEditor()) views.push(["t-coaching", "젠지 코칭 관리", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다. 담당 코치·상태를 바꾸면 공개 '젠지 코칭' 탭에도 바로 반영됩니다(신청자·메모는 공개 안 됨).", loadCoaching]);
@@ -1130,22 +1130,97 @@
     return f;
   }
 
-  // 경고 조치: 팀장 교육 기준 (주의 2회 = 경고 1회, 경고 1~4회 단계별 조치)
+  // 경고 조치: 공식 규정집 제9조 기준
+  // 주의 2회 = 경고 1회, 누적 경고 1회 조치 없음 · 2회 세트 패배 · 3회 실격(그날 모든 경기 패배), 결승 전 일괄 초기화
   const WARN_STEPS = [
-    [1, "다음 경기(3판 2선승 전체) 진영 선택 제한"],
-    [2, "진영 선택 전체 제한 (3라운드까지)"],
-    [3, "밴카드 전체 제한 (3라운드까지)"],
-    [4, "몰수패 및 탈락"]
+    [1, "조치 없음 (다음 경고 시 세트 패배)"],
+    [2, "세트 패배 (해당 라운드를 치르지 않고 패배)"],
+    [3, "실격패 (해당 날짜의 모든 경기 패배)"]
   ];
+  const WARN_KINDS = ["주의", "경고", "세트 패배", "실격"];
+  // [구분, 사유, 횟수] — 규정집 조항 기준. 실제 판정은 운영사무국, 발표는 심판장
   const WARN_REASONS = [
-    ["경고", "지원단 지시 거부"], ["경고", "피어리스·단판 합의 후 미보고"], ["경고", "선생님 참관 없이 무단 경기 진행"],
-    ["경고", "30분 넘게 미입장"], ["경고", "1시간 초과 미입장 (경고 2회·몰수패)", 2], ["경고", "이미 쓴 챔피언 픽"],
-    ["경고", "라인 교환 미보고·닷지·가픽"], ["경고", "욕설·전체 채팅·과한 표현(티배깅 등)"], ["경고", "퍼즈 2회 이상"],
-    ["경고", "기권패 (경고 2회·내년 참가 제한)", 2], ["경고", "관전·음성 채팅 규정 위반"], ["경고", "사설방 스크림"],
-    ["경고", "등록하지 않은 계정 사용"], ["주의", "지각 10분"], ["경고", "지각 15분"], ["주의", "기타 (직접 입력)"]
+    ["주의", "지각 10분 (제9조)"], ["경고", "지각 15분 (제9조)"], ["세트 패배", "지각 20분 (제9조)"],
+    ["경고", "욕설·폭언·비방, 판정 불복 (제3조)"], ["경고", "전체 채팅 (제7조)"],
+    ["경고", "심판 지시 없는 게임 중단·무단 일시정지 (제5·8조)"], ["경고", "고의 접속 종료 (제8조)"],
+    ["경고", "등록하지 않은 계정 사용 (제6조)"], ["경고", "부적절한 닉네임·변경 요청 불응 (제6·10조)"],
+    ["경고", "심판·운영사무국 지시 불이행 (제9조)"], ["경고", "스포츠맨십 위반·과도한 도발 (제3조)"],
+    ["실격", "심판 허가 없는 경기구역 이탈 (제4조)"], ["실격", "담합·버그 악용 (제7조)"], ["실격", "대리 게임 (제10조)"],
+    ["실격", "대회장 흡연 (제4조)"], ["주의", "기타 주의"], ["경고", "기타 경고"]
   ];
   const warnLevel = (warn, caution) => warn + Math.floor(caution / 2);
   const warnAction = n => { if (!n) return ""; const s = WARN_STEPS.filter(([k]) => k <= n).pop(); return s ? s[1] : ""; };
+  const warnCls = k => (k === "실격" || k === "세트 패배" ? "dupe" : k === "경고" ? "warn-lv" : "");
+
+  // 팀별 누적표 + 조치 단계 (교사용·학생용 같이 씀). counted(r): 초기화 이후 기록인지
+  function warnSummary(rows, counted, resetOn) {
+    const per = {};
+    rows.filter(counted).forEach(r => {
+      const p = per[r.school] = per[r.school] || { school: r.school, division: r.division, warn: 0, caution: 0, set: 0, dq: 0 };
+      if (r.kind === "경고") p.warn += r.amount;
+      else if (r.kind === "주의") p.caution += r.amount;
+      else if (r.kind === "세트 패배") p.set += r.amount;
+      else if (r.kind === "실격") p.dq += r.amount;
+    });
+    const list = Object.values(per).map(p => ({ ...p, level: warnLevel(p.warn, p.caution) }))
+      .sort((a, b) => b.dq - a.dq || b.level - a.level || b.set - a.set || b.caution - a.caution || a.school.localeCompare(b.school, "ko"));
+    const sum = el("div", "card warn-sum");
+    sum.append(el("h3", "", "팀별 누적" + (resetOn ? " (" + resetOn + " 초기화 이후)" : "")));
+    if (!list.length) sum.append(el("p", "note", "아직 주의·경고 기록이 없습니다."));
+    else {
+      const sc = el("div", "gscroll"), t = el("table", "dtable"), hr = el("tr");
+      ["학교", "부문", "주의", "경고", "누적 경고(환산)", "누적에 따른 조치", "바로 적용된 조치"].forEach(h => hr.append(el("th", "", h)));
+      const th = el("thead"); th.append(hr);
+      const tb = el("tbody");
+      list.forEach(p => {
+        const tr = el("tr");
+        const direct = [p.set ? "세트 패배 " + p.set + "회" : "", p.dq ? "실격 " + p.dq + "회" : ""].filter(Boolean).join(" · ");
+        tr.append(el("td", "", p.school), el("td", "", p.division), el("td", "", p.caution + "회"), el("td", "", p.warn + "회"),
+          el("td", p.level >= 3 ? "dupe" : p.level ? "warn-lv" : "", p.level + "회"),
+          el("td", p.level >= 2 ? "dupe" : "", warnAction(p.level) || (p.caution ? "다음 주의 시 경고 1회" : "")),
+          el("td", direct ? "dupe" : "", direct));
+        tb.append(tr);
+      });
+      t.append(th, tb); sc.append(t); sum.append(sc);
+    }
+    const steps = el("details", "score-editor");
+    steps.append(el("summary", "", "조치 단계 보기 (규정집 제9조)"));
+    const ul = el("ul", "warn-steps");
+    ul.append(el("li", "", "주의 2회 = 경고 1회"));
+    WARN_STEPS.forEach(([k, v]) => ul.append(el("li", "", "누적 경고 " + k + "회: " + v)));
+    ul.append(el("li", "", "지각: 10분 주의 · 15분 경고 · 20분 세트 몰수/실격"),
+      el("li", "", "경기구역 무단 이탈·담합·버그 악용·대리 게임·대회장 흡연은 바로 실격"),
+      el("li", "", "누적 경고는 결승 전 일괄 초기화 · 판정 권한은 운영사무국, 발표는 심판장"));
+    steps.append(ul);
+    sum.append(steps);
+    return sum;
+  }
+
+  // 학생용 '경고 현황' 탭 (보기 전용, 자세한 내용·기록자 제외)
+  async function renderWarningsPublic() {
+    const root = document.getElementById("warnRoot");
+    if (!root) return;
+    const { data, error } = await sb.rpc("public_warnings");
+    root.replaceChildren();
+    if (error) { root.append(el("p", "note", "불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.")); return; }
+    root.append(warnSummary(data, r => r.counted, null));
+    if (!data.length) return;
+    const sec = el("div", "coach-day");
+    sec.append(el("h3", "", "기록 " + data.length + "건"));
+    const sc = el("div", "gscroll"), t = el("table", "dtable"), hr = el("tr");
+    ["날짜", "학교", "경기", "구분", "횟수", "사유"].forEach(h => hr.append(el("th", "", h)));
+    const th = el("thead"); th.append(hr);
+    const tb = el("tbody");
+    data.forEach(r => {
+      const tr = el("tr", r.counted ? "" : "coach-cancel");
+      tr.append(el("td", "", r.occurred_on + (r.counted ? "" : " (초기화 전)")), el("td", "", r.school), el("td", "", r.match_label || ""),
+        el("td", warnCls(r.kind), r.kind), el("td", "", r.amount + "회"), el("td", "", r.reason));
+      tb.append(tr);
+    });
+    t.append(th, tb); sc.append(t); sec.append(sc);
+    root.append(sec);
+  }
+  renderWarningsPublic();
 
   async function loadWarnings(box) {
     const [{ data: rows, error }, { data: reset }] = await Promise.all([
@@ -1154,41 +1229,13 @@
     ]);
     box.replaceChildren();
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    renderWarningsPublic();
     const resetOn = reset && typeof reset.value === "string" ? reset.value : null;
     const counted = r => !resetOn || r.occurred_on > resetOn;
     const canEdit = r => isEditor() || (!ME.external && r.recorded_by === ME.id);
 
     // 1) 학교별 누적 (초기화 이후 기록만)
-    const per = {};
-    rows.filter(counted).forEach(r => {
-      const p = per[r.school] = per[r.school] || { school: r.school, division: r.division, warn: 0, caution: 0 };
-      if (r.kind === "경고") p.warn += r.amount; else p.caution += r.amount;
-    });
-    const list = Object.values(per).map(p => ({ ...p, level: warnLevel(p.warn, p.caution) })).sort((a, b) => b.level - a.level || b.caution - a.caution || a.school.localeCompare(b.school, "ko"));
-    const sum = el("div", "card warn-sum");
-    sum.append(el("h3", "", "팀별 누적" + (resetOn ? " (" + resetOn + " 초기화 이후)" : "")));
-    if (!list.length) sum.append(el("p", "note", "아직 주의·경고 기록이 없습니다."));
-    else {
-      const sc = el("div", "gscroll"), t = el("table", "dtable"), hr = el("tr");
-      ["학교", "부문", "주의", "경고", "누적 경고(환산)", "조치"].forEach(h => hr.append(el("th", "", h)));
-      const th = el("thead"); th.append(hr);
-      const tb = el("tbody");
-      list.forEach(p => {
-        const tr = el("tr");
-        tr.append(el("td", "", p.school), el("td", "", p.division), el("td", "", p.caution + "회"), el("td", "", p.warn + "회"),
-          el("td", p.level >= 4 ? "dupe" : p.level ? "warn-lv" : "", p.level + "회"), el("td", p.level >= 4 ? "dupe" : "", warnAction(p.level) || (p.caution ? "다음 주의 시 경고 1회" : "")));
-        tb.append(tr);
-      });
-      t.append(th, tb); sc.append(t); sum.append(sc);
-    }
-    const steps = el("details", "score-editor");
-    steps.append(el("summary", "", "조치 단계 보기 (팀장 교육 기준)"));
-    const ul = el("ul", "warn-steps");
-    WARN_STEPS.forEach(([k, v]) => ul.append(el("li", "", "경고 " + k + "회: " + v)));
-    ul.append(el("li", "", "주의 2회 = 경고 1회 · 결승·3/4위전은 2~3회 제한 제외 · 누적 경고는 결승 전 일괄 초기화"),
-      el("li", "", "규정집은 경고 1회 없음 · 2회 세트 패배 · 3회 실격으로 팀장 교육과 다릅니다. 최종 판정은 운영사무국·심판장이 합니다."));
-    steps.append(ul);
-    sum.append(steps);
+    const sum = warnSummary(rows, counted, resetOn);
     if (isOwner()) {
       const rb = el("button", "btn ghost small", resetOn ? "초기화 취소 (전체 기록 다시 누적)" : "결승 전 누적 초기화");
       rb.type = "button";
@@ -1204,17 +1251,17 @@
     // 2) 기록 추가 (지원단, 외부인 제외)
     if (ME.status === "approved" && !ME.external) box.append(warnForm(() => loadWarnings(box)));
 
-    // 3) 기록 목록
+    // 3) 기록 목록 (자세한 내용·기록자는 교사용에만)
     const sec = el("div", "coach-day");
     sec.append(el("h3", "", "전체 기록 " + rows.length + "건"));
     const sc = el("div", "gscroll"), t = el("table", "dtable"), hr = el("tr");
-    ["날짜", "학교", "경기", "구분", "횟수", "사유", "기록한 사람", ""].forEach(h => hr.append(el("th", "", h)));
+    ["날짜", "학교", "경기", "구분", "횟수", "사유", "자세한 내용 (교사용)", "기록한 사람", ""].forEach(h => hr.append(el("th", "", h)));
     const th = el("thead"); th.append(hr);
     const tb = el("tbody");
     rows.forEach(r => {
       const tr = el("tr", counted(r) ? "" : "coach-cancel");
       tr.append(el("td", "", r.occurred_on + (counted(r) ? "" : " (초기화 전)")), el("td", "", r.school), el("td", "", r.match_label || ""),
-        el("td", r.kind === "경고" ? "warn-lv" : "", r.kind), el("td", "", r.amount + "회"), el("td", "", r.reason), el("td", "", r.recorder_name || ""));
+        el("td", warnCls(r.kind), r.kind), el("td", "", r.amount + "회"), el("td", "", r.reason), el("td", "", r.detail || ""), el("td", "", r.recorder_name || ""));
       const act = el("td");
       if (canEdit(r)) {
         const del = el("button", "del", "삭제");
@@ -1249,26 +1296,26 @@
     const reason = field("사유", el("select"));
     WARN_REASONS.forEach(([k, txt], i) => { const o = el("option", "", txt + " → " + k); o.value = String(i); reason.append(o); });
     const kind = field("구분", el("select"));
-    ["주의", "경고"].forEach(v => { const o = el("option", "", v); o.value = v; kind.append(o); });
+    WARN_KINDS.forEach(v => { const o = el("option", "", v); o.value = v; kind.append(o); });
     const amount = field("횟수", el("select"));
     [1, 2, 3, 4].forEach(v => { const o = el("option", "", v + "회"); o.value = String(v); amount.append(o); });
-    const memo = field("자세한 내용", el("input")); memo.placeholder = "예: 2세트 시작 전 25분 지각"; memo.maxLength = 200;
+    const memo = field("자세한 내용 (교사용만 보임)", el("input")); memo.placeholder = "예: 2세트 시작 전 25분 지각"; memo.maxLength = 300;
     // 사유를 고르면 구분·횟수를 기준대로 맞춤 (직접 바꿀 수 있음)
     const sync = () => { const [k, , n] = WARN_REASONS[Number(reason.value)]; kind.value = k; amount.value = String(n || 1); };
     reason.addEventListener("change", sync); sync();
     const btn = el("button", "btn small", "기록");
     btn.type = "submit";
-    f.append(row, dl, btn);
+    f.append(row, dl, el("p", "note", "학교·날짜·경기·구분·사유는 학생용 '경고 현황'에 공개됩니다. 학생 이름 등은 '자세한 내용'에만 적어 주세요."), btn);
     f.addEventListener("submit", async e => {
       e.preventDefault();
       const name = school.value.trim();
-      const base = WARN_REASONS[Number(reason.value)][1].replace(/\s*\(직접 입력\)$/, "");
-      const text = (base + (memo.value.trim() ? " · " + memo.value.trim() : "")).slice(0, 300);
-      if (!confirm(name + " · " + kind.value + " " + amount.value + "회\n사유: " + text + "\n기록할까요?")) return;
+      const text = WARN_REASONS[Number(reason.value)][1];
+      if (!confirm(name + " · " + kind.value + " " + amount.value + "회\n사유: " + text + (memo.value.trim() ? "\n자세한 내용: " + memo.value.trim() : "") + "\n기록할까요? (학생용에 공개됩니다)")) return;
       btn.disabled = true;
       const ok = await save(sb.from("team_warnings").insert({
         school: name, division: /고등학교$|고$/.test(name) ? "고등부" : "중등부", occurred_on: date.value,
-        match_label: match.value.trim() || null, kind: kind.value, amount: Number(amount.value), reason: text, recorder_name: ME.name
+        match_label: match.value.trim() || null, kind: kind.value, amount: Number(amount.value), reason: text,
+        detail: memo.value.trim() || null, recorder_name: ME.name
       }), "기록했습니다");
       btn.disabled = false;
       if (ok) done();
