@@ -230,3 +230,5 @@ table.dtable td.lose { opacity: .6; }
 .rdlg-extras ul { margin: 4px 0 0; padding-left: 18px; }
 table.dtable tr.nick-change td { background: rgba(255, 120, 120, .12); }
 table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
+.rdlg-rowerr .nick-need { color: #ff9a9a; font-weight: 700; margin-top: 2px; }
+.rdlg-rowerr .nick-warn { color: #ffd38a; margin-top: 2px; }

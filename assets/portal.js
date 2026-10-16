@@ -367,13 +367,19 @@
         // 규정 제6조 닉네임 변경 요청이 걸린 아이디: 바뀌기 전까지 안내
         const nickKey = x => String(x || "").replace(/\s/g, "").toLowerCase();
         r.needChange = () => !!p.change && nickKey(ii.value) === nickKey(p.id);
+        r.needCheck = () => !!p.check && nickKey(ii.value) === nickKey(p.id);
         r.check = () => {
           const v = r.value(), n = ni.value.trim();
           let msg = "";
           if (!n && !v.id) msg = isSub ? "" : "주전 칸은 비울 수 없습니다";
           else if (!n || !v.id) msg = "이름과 롤 아이디를 모두 적어 주세요";
           else msg = riotIdError(v.id);
-          err.textContent = msg || (r.needChange() ? "규정 제6조에 따라 이 닉네임은 변경이 필요합니다. 롤에서 닉네임을 바꾼 뒤 새 아이디를 적어 주세요." : "");
+          // 형식 오류와 닉네임 안내를 함께 보여 줌
+          const lines = [];
+          if (msg) lines.push(el("div", "", msg));
+          if (r.needChange()) lines.push(el("div", "nick-need", "규정 제6조에 따라 이 닉네임은 변경이 필요합니다. 롤에서 닉네임을 바꾼 뒤 새 아이디를 적어 주세요."));
+          else if (r.needCheck()) lines.push(el("div", "nick-warn", "선생님 확인이 필요한 닉네임입니다. 비하·욕설·성적 표현으로 읽힐 수 있다면 바꿔 주세요."));
+          err.replaceChildren(...lines);
           tr.classList.toggle("bad", !!msg || r.needChange());
           return !msg;
         };
