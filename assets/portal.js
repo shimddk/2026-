@@ -601,13 +601,13 @@
         }
         return col;
       });
-      addDupeColumn(columns, rows, "학교");
+      const filters = [addDupeColumn(columns, rows, "학교")];
       columns.push(
         { key: "_avg", label: "평균(주전5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") },
         { key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? "" : r._rank }
       );
       grid(inner, {
-        columns, rows, exportName: "팀별 티어 현황(" + divOf(current) + ")",
+        columns, rows, filters, exportName: "팀별 티어 현황(" + divOf(current) + ")",
         onSave: async (r, c, v) => {
           // 바뀐 칸만 저장 (행 전체를 덮어쓰지 않음)
           if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) { r.data = { ...r.data, [c.key]: v }; render(); }
@@ -669,16 +669,22 @@
 
   // 학교 이름 비교용 (공백 제거)
   const normSchool = s => String(s || "").replace(/\s+/g, "");
-  // 같은 학교가 두 번 이상 나오는 행에 "중복 · 확인 필요" 열을 맨 앞에 붙인다
+  // 같은 학교가 두 번 이상 나오거나 '확인 사항'이 적힌 행에 "확인 필요" 열을 맨 앞에 붙이고,
+  // 맨 위에서 고를 수 있는 '확인' 필터를 돌려준다
   function addDupeColumn(columns, rows, schoolKey) {
     const count = {};
     rows.forEach(r => { const k = normSchool(r.data[schoolKey]); if (k) count[k] = (count[k] || 0) + 1; });
-    if (!Object.values(count).some(n => n > 1)) return;
+    const isDupe = r => count[normSchool(r.data[schoolKey])] > 1;
+    const note = r => String(r.data["확인 사항"] || "").trim();
+    const status = r => (isDupe(r) || note(r) ? "확인 필요" : "정상");
     columns.unshift({
       key: "_dupe", label: "확인", readonly: true,
-      get: r => (count[normSchool(r.data[schoolKey])] > 1 ? "중복 · 확인 필요" : ""),
-      cellClass: r => (count[normSchool(r.data[schoolKey])] > 1 ? "dupe" : "")
+      get: r => (isDupe(r) ? "중복 · 확인 필요" : note(r) ? "확인 필요" : ""),
+      cellClass: r => (status(r) === "확인 필요" ? "dupe" : "")
     });
+    const noteCol = columns.find(c => c.key === "확인 사항");
+    if (noteCol) noteCol.cellClass = r => (note(r) ? "dupe" : "");
+    return { label: "확인", values: ["확인 필요", "정상"], get: status };
   }
 
   // 아이디 명단 열 이름 → 라인 묶음 (이름 칸과 아이디 칸을 같은 묶음으로)
@@ -723,8 +729,7 @@
       if (!rows.length) { inner.replaceChildren(el("p", "note", "아직 자료가 없습니다.")); }
       const columns = keys.map(k => ({ key: k, label: k, get: r => r.data[k] }));
       if (isAll) columns.unshift({ key: "_division", label: "부문", readonly: true, get: r => (r.sheet === "roster_high" ? "고등부" : "중등부") });
-      addDupeColumn(columns, rows, keys.includes("학교 이름") ? "학교 이름" : "학교");
-      const filters = [];
+      const filters = [addDupeColumn(columns, rows, keys.includes("학교 이름") ? "학교 이름" : "학교")];
       if (current === "captains" || current === "advisors") {
         // 지역: 아이디 명단의 '학교 소재 지역'을 학교 이름으로 연결해서 보여 줌 (따로 저장하지 않음)
         const { data: ros } = await sb.from("sheet_rows").select("data").in("sheet", ["roster_middle", "roster_high"]);
@@ -740,9 +745,10 @@
         // 팀장: 팀장 연락처 표에서 학교별 팀장 이름을 가져와 '팀장' 열과 선수 이름 칸 배지로 표시
         const { data: caps } = await sb.from("sheet_rows").select("data").eq("sheet", "captains");
         const capOf = {};
-        (caps || []).forEach(c => { const s = normSchool(c.data["학교"]); if (s && c.data["팀장이름"] && !capOf[s]) capOf[s] = String(c.data["팀장이름"]).trim(); });
+        (caps || []).forEach(c => { const s = normSchool(c.data["학교"]); if (s && c.data["팀장이름"]) (capOf[s] = capOf[s] || []).push(String(c.data["팀장이름"]).trim()); });
         const nameKey = n => String(n || "").replace(/\(.*?\)/g, "").replace(/\s+/g, "");
-        const capName = r => capOf[normSchool(r.data["학교 이름"])] || "";
+        // 여러 팀이 신청한 학교(팀장 2명 이상)는 팀장을 정하지 않고 비워 둔다
+        const capName = r => { const l = capOf[normSchool(r.data["학교 이름"])] || []; return l.length === 1 ? l[0] : ""; };
         const nameCols = keys.filter(k => /학생 이름/.test(k));
         const capFound = r => { const n = nameKey(capName(r)); return !!n && nameCols.some(k => nameKey(r.data[k]) === n); };
         const schoolIdx = columns.findIndex(c => c.key === "학교 이름");
