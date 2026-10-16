@@ -898,7 +898,12 @@ const DQ_CAT = [
   ["A", /일정|언제|날짜|시간|몇\s*시|마감|예선|본선|결선|결승|온라인|오프라인|장소|기간|며칠|\d+일|토요일|일요일/g],
   ["C", /신청|접수|구글\s*폼|폼|디스코드|디코|권한|닉네임|계정|qr|제출|등록|문자|서류|증명|연락/g]
 ];
-function dqCategory(q) {
+// 코칭·교육 관련 문의는 모두 '혜택·코칭·스크림'으로
+const DQ_COACH = /코칭|코치|젠지|gga|아카데미|교육|강의/i;
+const DQ_COACH_A = /코칭|젠지|gga|아카데미/i; // 답변은 분명한 말만 (밴픽 답변의 '코치' 등은 제외)
+const dqIsCoach = (q, a) => DQ_COACH.test(q) || DQ_COACH_A.test(a || "");
+function dqCategory(q, a) {
+  if (dqIsCoach(q, a)) return "E"; // 질문이나 답변이 코칭·교육 이야기면
   let best = null, n = 0;
   DQ_CAT.forEach(([k, re]) => { const c = (q.toLowerCase().match(re) || []).length; if (c > n) { n = c; best = k; } });
   return best;
@@ -922,11 +927,12 @@ window.setDiscordQA = rows => {
   DQA.forEach(it => {
     // 공식 FAQ 하나로 바로 답이 되는 질문은 그 FAQ에 합침
     const r = answer(it.question);
-    if (r.kind === "faq" && r.faqs.length === 1) { (FAQ_EXTRA[r.faqs[0].id] = FAQ_EXTRA[r.faqs[0].id] || []).push(it); return; }
+    // (코칭 문의는 코칭 FAQ에만 합침)
+    if (r.kind === "faq" && r.faqs.length === 1 && (!dqIsCoach(it.question, it.answer) || r.faqs[0].cat === "E")) { (FAQ_EXTRA[r.faqs[0].id] = FAQ_EXTRA[r.faqs[0].id] || []).push(it); return; }
     // 이미 남긴 질문방 질문과 거의 같으면 답변을 합침 (최근 것이 앞)
     const same = kept.find(k => dqScore(k, it) >= 0.7);
     if (same) { same.answer += "\n" + it.answer; return; }
-    const g = { ...it, cat: dqCategory(it.question) || (r.kind === "faq" ? r.faqs[0].cat : "C") };
+    const g = { ...it, cat: dqCategory(it.question, it.answer) || (r.kind === "faq" ? r.faqs[0].cat : "C") };
     kept.push(g);
     const list = DQ_BY_CAT[g.cat] = DQ_BY_CAT[g.cat] || [];
     if (list.length < DQ_PER_CAT) list.push(g);
