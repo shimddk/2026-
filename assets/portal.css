@@ -1,3 +1,5 @@
+/* 2026 경기도 교육감배 미래형 이스포츠 스쿨리그 · 제작자: 원곡고등학교 교사 심승보
+   © 2026 심승보. All rights reserved. 허락 없이 복제·수정·배포할 수 없습니다. */
 /* 계정 영역 */
 .acct { display: flex; align-items: center; gap: 8px; }
 .acct .who { font-size: 13px; color: var(--muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
