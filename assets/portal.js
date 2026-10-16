@@ -145,10 +145,20 @@
       return;
     }
     if (res.teacher) root.append(el("p", "note", "교사용 화면: 학생용 공개 여부와 관계없이 보입니다."));
-    // 구글폼 내용 그대로라 틀린 곳이 있을 수 있음 → 팀장 확인 요청
+    // 팀장 확인 상태·수정 기간
+    const { data: rs } = await sb.rpc("public_roster_status");
+    const rsTeams = (rs && rs.teams) || [];
+    const editOpen = !!(rs && rs.open);
+    const untilText = rs && rs.until ? new Date(rs.until).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }) : "";
+    const statusOf = t => rsTeams.find(x => x.division === t.division && normSchool(x.school) === normSchool(t.school));
+    // 구글폼 내용 그대로라 틀린 곳이 있을 수 있음 → 팀장이 직접 확인·수정
     const ask = el("div", "pending rec-ask");
-    ask.append(el("b", "", "우리 팀 정보를 꼭 확인해 주세요. "),
-      document.createTextNode("구글폼 신청서에 적힌 내용으로 만든 목록이라 이름·라인·아이디#태그가 틀린 곳이 있습니다. 팀장은 10/18(일)까지 팀장 대화방에 정확한 '이름 - 라인 - 롤 아이디#태그'를 남겨 주세요. 노란 글씨는 확인이 필요한 아이디입니다."));
+    if (editOpen) {
+      ask.append(el("b", "", "팀장은 우리 팀 명단을 꼭 확인해 주세요. "),
+        document.createTextNode("구글폼 신청서로 만든 목록이라 이름·라인·롤 아이디#태그가 틀린 곳이 있습니다. 학교 이름을 검색한 뒤 카드의 '우리 팀 명단 확인·수정'을 누르고 팀장 휴대폰 뒷자리 4자리를 넣으면 직접 고칠 수 있습니다. 고칠 게 없으면 '이상 없음 확인'을 눌러 주세요. 마감: " + untilText + ". 노란 글씨는 확인이 필요한 아이디입니다."));
+    } else {
+      ask.append(el("b", "", "명단 수정 기간이 끝났습니다. "), document.createTextNode("변경할 내용은 디스코드 팀장 대화방에 남겨 주세요."));
+    }
     root.append(ask);
     // 학교별로 묶기
     const bySchool = new Map();
@@ -173,7 +183,8 @@
       sw.append(b);
     });
     sw.style.margin = "0";
-    bar.append(s, sw);
+    const done = teams.filter(t => statusOf(t)).length;
+    bar.append(s, sw, el("span", "rec-done", "팀장 확인 완료 " + done + " / " + teams.length + "팀"));
     const list = el("div", "rec-grid");
     root.append(bar, list);
     s.addEventListener("input", draw);
@@ -211,6 +222,8 @@
         const head = el("div", "rec-head");
         head.append(el("h3", "", t.school + (t.teamCount > 1 ? " · " + t.teamNo + "팀" : "")), el("span", "rec-meta", t.division + (t.region ? " · " + t.region : "")));
         if (t.teamCount > 1) head.append(el("span", "dupe-badge", "중복 신청 · 확인 필요"));
+        const st = statusOf(t);
+        if (st) head.append(el("span", "ok-badge", "✔ 팀장 " + (st.status === "수정함" ? "수정 완료" : "확인 완료") + " (" + fmtTime(st.at) + ")"));
         const ul = el("ul", "rec-list");
         t.ids.forEach(r => {
           const li = el("li");
@@ -229,11 +242,176 @@
         const btns = el("div", "rec-btns");
         if (starters.length) btns.append(multiLink("주전 " + starters.length + "명 한 번에 (멀티서치)", starters, "btn small"));
         if (t.ids.length > starters.length) btns.append(multiLink("후보까지 " + t.ids.length + "명", t.ids.map(r => r.lol_id), "btn ghost small"));
+        if (editOpen && t.teamCount === 1) {
+          const eb = el("button", "btn small edit-roster", "우리 팀 명단 확인·수정");
+          eb.type = "button";
+          eb.addEventListener("click", () => openRosterEdit(t, untilText));
+          btns.append(eb);
+        }
         card.append(head, ul, btns, el("p", "note", "아이디를 누르면 그 선수의 전적이, 멀티서치를 누르면 팀 전체 전적이 fow.lol 새 창에서 바로 열립니다."));
         list.append(card);
       });
     }
     draw();
+  }
+
+  /* ---------- 팀장 명단 확인·수정 (전적 검색 카드 → 팀장 휴대폰 뒷자리로 본인 확인) ---------- */
+  // 라이엇 아이디 규칙: 이름 3~16자 + #태그 3~5자(글자·숫자만)
+  function riotIdError(id) {
+    const s = String(id || "").trim();
+    if (!/^[^#]+#[^#]+$/.test(s)) return "'이름#태그' 모양으로 적어 주세요 (예: Hide on bush#KR1)";
+    const name = s.split("#")[0].trim(), tag = s.split("#")[1].trim();
+    if (name.length < 3 || name.length > 16) return "아이디 이름 부분은 3~16자입니다";
+    if (!/^[\p{L}\p{N}]{3,5}$/u.test(tag)) return "태그는 띄어쓰기·기호 없이 글자·숫자 3~5자입니다";
+    return "";
+  }
+  const SUB_LINES = ["", "탑", "정글", "미드", "원딜", "서폿", "전체"];
+  function openRosterEdit(team, untilText) {
+    const dlg = el("dialog", "rdlg");
+    dlg.setAttribute("aria-label", team.school + " 명단 확인·수정");
+    const close = () => { dlg.close(); dlg.remove(); };
+    document.body.append(dlg);
+    let last4 = "", mid4 = "";
+
+    // 1단계: 본인 확인 (열 때마다)
+    function stepVerify(needMid, msg) {
+      dlg.replaceChildren();
+      const f = el("form", "rdlg-verify");
+      f.append(el("h3", "", team.school + " 명단 확인·수정"),
+        el("p", "", "팀장 본인 확인을 위해 구글폼에 적은 팀장 휴대폰 번호 뒷자리 4자리를 넣어 주세요."));
+      const mk = (label, val) => {
+        const l = el("label", "rdlg-field", label);
+        const i = el("input"); i.inputMode = "numeric"; i.maxLength = 4; i.autocomplete = "off"; i.pattern = "\\d{4}"; i.required = true; i.value = val;
+        l.append(i); f.append(l); return i;
+      };
+      const i4 = mk("뒷자리 4자리", last4);
+      const im = needMid ? mk("가운데 4자리 (다른 학교 팀장과 뒷자리가 같아서 한 번 더 확인합니다)", mid4) : null;
+      if (msg) f.append(el("p", "rdlg-err", msg));
+      const row = el("div", "rdlg-btns");
+      const ok = el("button", "btn small", "확인"); ok.type = "submit";
+      const cancel = el("button", "btn ghost small", "닫기"); cancel.type = "button"; cancel.addEventListener("click", close);
+      row.append(ok, cancel); f.append(row, el("p", "note", "번호를 3번 틀리면 10분 동안 막힙니다. 번호가 기억나지 않거나 팀장이 바뀌었으면 디스코드 팀장 대화방에 문의해 주세요."));
+      f.addEventListener("submit", async e => {
+        e.preventDefault();
+        last4 = i4.value.trim(); mid4 = im ? im.value.trim() : "";
+        ok.disabled = true;
+        const { data, error } = await sb.rpc("roster_open_edit", { p_division: team.division, p_school: team.school, p_last4: last4, p_mid4: mid4 || null });
+        ok.disabled = false;
+        if (error || !data) return stepVerify(needMid, "확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+        if (data.status === "ok") return stepForm(data);
+        if (data.status === "need_mid") return stepVerify(true, needMid ? "가운데 4자리를 넣어 주세요." : "");
+        if (data.status === "wrong") return stepVerify(needMid, "번호가 맞지 않습니다.");
+        if (data.status === "locked") return stepVerify(needMid, "번호를 여러 번 틀려서 " + fmtTime(data.locked_until) + "까지 막혔습니다. 번호가 기억나지 않으면 팀장 대화방에 문의해 주세요.");
+        if (data.status === "closed") return stepVerify(needMid, "명단 수정 기간이 끝났습니다. 변경할 내용은 팀장 대화방에 남겨 주세요.");
+        return stepVerify(needMid, "이 학교는 최종 팀이 확정된 뒤에 이용할 수 있습니다.");
+      });
+      dlg.append(f);
+      if (!dlg.open) dlg.showModal();
+      (im && !mid4 ? im : i4).focus();
+    }
+
+    // 2단계: 명단 표 (선수 10칸: 이름·롤 아이디#태그·티어, 후보는 희망 라인)
+    function stepForm(data) {
+      dlg.replaceChildren();
+      const players = data.players || [];
+      const tiers = ["", ...(data.tiers || [])];
+      const f = el("form", "rdlg-form");
+      f.append(el("h3", "", team.school + " 명단 확인·수정"),
+        el("p", "note", "이름·롤 아이디#태그·티어를 확인해 주세요. 라인을 바꾸려면 해당 칸에 옮겨 적으면 됩니다. 아이디는 롤 클라이언트에서 '이름#태그' 전체를 복사해 넣는 것이 가장 정확합니다. 티어는 대진 편성에만 쓰이고 공개되지 않습니다. 수정 마감: " + untilText));
+      const table = el("table", "rdlg-table");
+      const hr = el("tr");
+      ["라인", "학생 이름", "롤 아이디#태그", "티어"].forEach(h => hr.append(el("th", "", h)));
+      const thead = el("thead"); thead.append(hr);
+      const tb = el("tbody");
+      const rows = players.map(p => {
+        const tr = el("tr");
+        const isSub = p.slot > 5;
+        let name = p.name || "", subLine = "";
+        const m = isSub && name.match(/^(.*?)\s*\((탑|정글|미드|원딜|서폿|전체)\)\s*$/);
+        if (m) { name = m[1]; subLine = m[2]; }
+        const lineTd = el("td", "rdlg-line");
+        lineTd.append(el("b", "", p.line));
+        let lineSel = null;
+        if (isSub) {
+          lineSel = el("select"); lineSel.setAttribute("aria-label", p.line + " 희망 라인");
+          SUB_LINES.forEach(v => { const o = el("option", "", v || "라인"); o.value = v; lineSel.append(o); });
+          lineSel.value = subLine; lineTd.append(lineSel);
+        }
+        const ni = el("input"); ni.value = name; ni.maxLength = 20; ni.placeholder = isSub ? "(없으면 비움)" : "이름"; ni.setAttribute("aria-label", p.line + " 학생 이름");
+        const ii = el("input"); ii.value = p.id || ""; ii.maxLength = 40; ii.placeholder = "이름#태그"; ii.setAttribute("aria-label", p.line + " 롤 아이디#태그");
+        const ts = el("select"); ts.setAttribute("aria-label", p.line + " 티어");
+        tiers.concat(p.tier && !tiers.includes(p.tier) ? [p.tier] : []).forEach(v => { const o = el("option", "", v || "티어 선택"); o.value = v; ts.append(o); });
+        ts.value = p.tier || "";
+        const err = el("div", "rdlg-rowerr");
+        const tdN = el("td"); tdN.append(ni);
+        const tdI = el("td"); tdI.append(ii, err);
+        const tdT = el("td"); tdT.append(ts);
+        tr.append(lineTd, tdN, tdI, tdT);
+        tb.append(tr);
+        const r = { p, ni, ii, ts, lineSel, err, isSub };
+        r.value = () => {
+          const n = ni.value.trim(), ln = lineSel ? lineSel.value : "";
+          return { slot: p.slot, name: n && ln ? n + " (" + ln + ")" : n, id: ii.value.trim(), tier: ts.value };
+        };
+        r.check = () => {
+          const v = r.value(), n = ni.value.trim();
+          let msg = "";
+          if (!n && !v.id) msg = isSub ? "" : "주전 칸은 비울 수 없습니다";
+          else if (!n || !v.id) msg = "이름과 롤 아이디를 모두 적어 주세요";
+          else msg = riotIdError(v.id);
+          err.textContent = msg;
+          tr.classList.toggle("bad", !!msg);
+          return !msg;
+        };
+        [ni, ii, ts, lineSel].filter(Boolean).forEach(x => x.addEventListener("input", refresh));
+        return r;
+      });
+      table.append(thead, tb);
+      const scroller = el("div", "gscroll"); scroller.append(table);
+      const status = el("p", "rdlg-err");
+      const btnRow = el("div", "rdlg-btns");
+      const saveBtn = el("button", "btn small", "수정 저장"); saveBtn.type = "submit";
+      const okBtn = el("button", "btn small ghost", "이상 없음 확인"); okBtn.type = "button";
+      const cancel = el("button", "btn ghost small", "닫기"); cancel.type = "button"; cancel.addEventListener("click", close);
+      btnRow.append(okBtn, saveBtn, cancel);
+      const orig = JSON.stringify(rows.map(r => r.value()));
+      function refresh() {
+        const allOk = rows.map(r => r.check()).every(Boolean);
+        const ids = rows.map(r => r.value().id.replace(/\s/g, "").toLowerCase()).filter(Boolean);
+        const dup = ids.length !== new Set(ids).size;
+        const changed = JSON.stringify(rows.map(r => r.value())) !== orig;
+        status.textContent = dup ? "같은 롤 아이디가 두 번 들어갔습니다." : !allOk ? "빨간 칸을 고친 뒤 저장해 주세요." : changed ? "바뀐 내용이 있습니다. '수정 저장'을 눌러 주세요." : "";
+        saveBtn.disabled = !allOk || dup || !changed;
+        okBtn.disabled = !allOk || dup || changed;
+        okBtn.title = changed ? "고친 내용이 있으면 '수정 저장'을 눌러 주세요" : !allOk ? "빨간 칸을 먼저 고쳐 주세요" : "";
+        return allOk && !dup;
+      }
+      async function submit(confirmOnly) {
+        if (!refresh()) return;
+        saveBtn.disabled = okBtn.disabled = true;
+        const { data: res, error } = await sb.rpc("roster_save", {
+          p_division: team.division, p_school: team.school, p_last4: last4, p_mid4: mid4 || null,
+          p_players: rows.map(r => r.value()), p_confirm_only: confirmOnly
+        });
+        if (error || !res) { status.textContent = "저장하지 못했습니다. 잠시 뒤 다시 시도해 주세요."; refresh(); return; }
+        if (res.status === "saved") {
+          toast(confirmOnly ? "확인 완료로 표시했습니다. 고맙습니다!" : "명단을 저장했습니다. 전적 검색에 바로 반영됩니다.");
+          close(); renderRecord(); return;
+        }
+        if (res.status === "invalid") { status.textContent = res.message; refresh(); return; }
+        if (res.status === "closed") { status.textContent = "명단 수정 기간이 끝났습니다."; return; }
+        stepVerify(false, "다시 본인 확인을 해 주세요.");
+      }
+      okBtn.addEventListener("click", () => submit(true));
+      f.addEventListener("submit", e => { e.preventDefault(); submit(false); });
+      if (data.confirmed) f.append(el("p", "note", "이전 확인: " + (data.confirmed.status === "수정함" ? "수정 완료" : "확인 완료") + " · " + fmtTime(data.confirmed.at)));
+      f.append(scroller, status, btnRow);
+      dlg.append(f);
+      refresh();
+    }
+
+    dlg.addEventListener("cancel", e => { e.preventDefault(); close(); });
+    stepVerify(false, "");
   }
 
   // 로컬 미리보기에서만 화면 점검용으로 노출
@@ -530,6 +708,7 @@
       ["t-warn", "경고 조치", "팀별 주의·경고 기록입니다. 규정집 제9조 기준(주의 2회 = 경고 1회, 누적 경고 2회 세트 패배 · 3회 실격)으로 조치를 보여 줍니다. 지원단 선생님은 누구나 기록할 수 있고, 삭제는 기록한 본인과 편집자만 가능합니다. 학생용 '경고 현황' 탭에는 자세한 내용·기록자 없이 공개됩니다.", loadWarnings]
     ];
     // 코칭 일정은 공개 '젠지 코칭' 탭에서 모두 보이고, 여기서는 고치기 권한자가 관리 (신청자·메모 포함)
+    if (isEditor()) views.push(["t-rcheck", "명단 확인 현황", "팀장이 전적 검색에서 직접 확인·수정한 현황입니다. 저장하면 아이디 명단·티어 현황에 바로 반영되고, 잘못된 수정은 여기서 되돌릴 수 있습니다.", loadRosterCheck]);
     if (isEditor()) views.push(["t-coaching", "젠지 코칭 관리", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다. 담당 코치·상태를 바꾸면 공개 '젠지 코칭' 탭에도 바로 반영됩니다(신청자·메모는 공개 안 됨).", loadCoaching]);
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
@@ -1464,6 +1643,80 @@
     return f;
   }
 
+  // 명단 확인 현황 (편집자): 학교별 확인 완료 / 수정함 / 미확인, 수정 전→후, 되돌리기
+  async function loadRosterCheck(box) {
+    const [{ data: ros }, { data: stats }, { data: changes }, { data: win }] = await Promise.all([
+      sb.from("sheet_rows").select("sheet,data").in("sheet", ["roster_middle", "roster_high"]),
+      sb.from("roster_status").select("*"),
+      sb.from("roster_changes").select("*").order("created_at", { ascending: false }),
+      sb.from("app_settings").select("value").eq("key", "roster_edit").maybeSingle()
+    ]);
+    box.replaceChildren();
+    const w = (win && win.value) || {};
+    const open = w.open && new Date() <= new Date(w.until);
+    box.append(el("p", "note", "학생용 수정 기간: " + (open ? "열림" : "닫힘") + (w.until ? " · 마감 " + fmtTime(w.until) : "") + " (관리자 탭에서 켜고 끌 수 있음)"));
+    const schools = (ros || []).filter(r => r.data["학교 이름"]).map(r => ({
+      sheet: r.sheet, division: r.sheet === "roster_high" ? "고등부" : "중등부",
+      school: normSchool(r.data["학교 이름"]), label: r.data["학교 이름"], dupe: !!String(r.data["확인 사항"] || "").trim()
+    })).sort((a, b) => a.division.localeCompare(b.division, "ko") || a.label.localeCompare(b.label, "ko"));
+    const stOf = s => (stats || []).find(x => x.sheet === s.sheet && x.school === s.school);
+    const chOf = s => (changes || []).filter(x => x.sheet === s.sheet && x.school === s.school);
+    const stateOf = s => s.dupe ? "중복 확인 중" : stOf(s) ? stOf(s).status : "미확인";
+    const counts = {};
+    schools.forEach(s => { const k = stateOf(s); counts[k] = (counts[k] || 0) + 1; });
+    box.append(el("p", "rec-done", ["확인 완료", "수정함", "미확인", "중복 확인 중"].map(k => k + " " + (counts[k] || 0)).join(" · ")));
+
+    // 칸 이름 → 사람이 읽는 라인 이름
+    const KEY_LABEL = k => k.replace(/^\d+\.\s*/, "").replace(/\(학생 이름\)( 및 라인)?/, " 이름").replace(/LOL 아이디/, "아이디").replace(/^선수(\d)$/, "주전$1 티어").replace(/^예비(\d)$/, "후보$1 티어");
+    function diffList(before, after) {
+      const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])];
+      return keys.filter(k => String((before || {})[k] || "") !== String((after || {})[k] || ""))
+        .map(k => KEY_LABEL(k) + ": " + ((before || {})[k] || "(빈칸)") + " → " + ((after || {})[k] || "(빈칸)"));
+    }
+    const holder = el("div");
+    box.append(holder);
+    grid(holder, {
+      columns: [
+        { key: "division", label: "부문", readonly: true, get: s => s.division },
+        { key: "label", label: "학교", readonly: true, get: s => s.label },
+        { key: "_state", label: "상태", readonly: true, get: stateOf, cellClass: s => stateOf(s) === "미확인" ? "dupe" : stateOf(s) === "중복 확인 중" ? "ph" : "win" },
+        { key: "_at", label: "마지막 확인·수정", readonly: true, get: s => stOf(s) ? fmtTime(stOf(s).updated_at) : "" },
+        { key: "_n", label: "기록", readonly: true, get: s => chOf(s).length ? chOf(s).length + "건" : "" }
+      ],
+      rows: schools, exportName: "명단 확인 현황",
+      filters: [{ label: "상태", values: ["확인 완료", "수정함", "미확인", "중복 확인 중"], get: stateOf }, { label: "부문", values: ["중등부", "고등부"], get: s => s.division }]
+    });
+
+    // 수정 기록 (최근 순): 수정 전 → 후, 되돌리기
+    const logBox = el("div", "card");
+    logBox.append(el("h3", "", "수정 기록 (최근 순)"));
+    const edits = (changes || []).filter(c => c.kind !== "confirm");
+    if (!edits.length) logBox.append(el("p", "note", "아직 팀장이 수정한 기록이 없습니다."));
+    edits.forEach(c => {
+      const d = el("details", "score-editor");
+      const lbl = (schools.find(s => s.sheet === c.sheet && s.school === c.school) || {}).label || c.school;
+      const diffs = diffList(Object.assign({}, c.before_roster, c.before_tier), Object.assign({}, c.after_roster, c.after_tier));
+      d.append(el("summary", "", fmtTime(c.created_at) + " · " + lbl + " · " + (c.kind === "revert" ? "선생님이 되돌림" : "팀장 수정") + " · 바뀐 칸 " + diffs.length + "개" + (c.reverted_at ? " (되돌림)" : "")));
+      const ul = el("ul", "warn-steps");
+      diffs.forEach(t => ul.append(el("li", "", t)));
+      d.append(ul);
+      if (c.kind === "edit" && !c.reverted_at) {
+        const b = el("button", "btn ghost small", "이 수정 되돌리기");
+        b.type = "button";
+        b.addEventListener("click", async () => {
+          if (!confirm(lbl + "의 " + fmtTime(c.created_at) + " 수정을 되돌릴까요? 그 전 명단·티어로 돌아가고, 확인 상태는 '미확인'이 됩니다.")) return;
+          const { data, error } = await sb.rpc("roster_revert", { p_change_id: c.id });
+          if (error || !data || data.status !== "reverted") { toast("되돌리지 못했습니다" + (data && data.status ? " (" + data.status + ")" : ""), true); return; }
+          toast("되돌렸습니다");
+          loadRosterCheck(box);
+        });
+        d.append(b);
+      }
+      logBox.append(d);
+    });
+    box.append(logBox);
+  }
+
   // 구글폼 신청 접수함 (고치기 권한자)
   async function loadInbox(box) {
     const { data: items, error } = await sb.from("form_inbox").select("id,received_at,kind,school,division,captain,status,note,handled_by,handled_at")
@@ -1540,6 +1793,24 @@
     });
     pub.append(cb, txt);
     box.append(pub);
+    // 팀장 명단 수정 받기 (마감 시각이 지나면 자동으로 닫힘)
+    const { data: re } = await sb.from("app_settings").select("value").eq("key", "roster_edit").maybeSingle();
+    const rv = (re && re.value) || { open: false, until: "2026-10-20T23:59:59+09:00" };
+    const rl = el("label", "pub-toggle");
+    const rcb = el("input"); rcb.type = "checkbox"; rcb.checked = !!rv.open;
+    const rtxt = el("span", "");
+    const rsync = () => {
+      const past = new Date() > new Date(rv.until);
+      rtxt.textContent = "팀장 명단 확인·수정 받기: " + (rcb.checked && !past ? "열림" : "닫힘") + " (마감 " + fmtTime(rv.until) + (past ? ", 지남" : "") + ")";
+    };
+    rsync();
+    rcb.addEventListener("change", async () => {
+      const value = { open: rcb.checked, until: rv.until };
+      if (await save(sb.from("app_settings").update({ value }).eq("key", "roster_edit"), rcb.checked ? "명단 수정을 열었습니다" : "명단 수정을 닫았습니다")) { rv.open = rcb.checked; rsync(); renderRecord(); }
+      else rcb.checked = !rcb.checked;
+    });
+    rl.append(rcb, rtxt);
+    box.append(rl);
 
     const pending = profiles.filter(p => p.status === "pending").length;
     box.append(el("p", "pending-count", "승인 대기 " + pending + "명 · 전체 " + profiles.length + "명"));
