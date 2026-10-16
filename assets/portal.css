@@ -88,6 +88,18 @@ table.dtable td.notag input { color: #ffd88a; }
 .rec-card .btn { align-self: flex-start; text-decoration: none; }
 .pub-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); cursor: pointer; }
 
+/* 젠지 코칭 */
+.coach-sum, .coach-form { margin-bottom: 16px; }
+.coach-sum h3, .coach-form h3, .coach-day h3 { margin: 0 0 10px; font-size: 17px; }
+.coach-day { margin-bottom: 20px; }
+.tier-chip.spent { border-color: #ff8a8a; }
+.tier-chip.spent b { color: #ff9b9b; }
+td.spent-cell { color: #ff9b9b; font-weight: 700; }
+tr.coach-cancel td { opacity: .45; text-decoration: line-through; }
+.coach-fields { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.coach-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.coach-fields input, .coach-fields select { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 8px; padding: 7px 9px; font: inherit; min-width: 140px; }
+
 /* 팀장 표시 */
 table.dtable td.captain { background: rgba(255, 216, 138, .12) !important; }
 table.dtable td.captain::before {

@@ -470,7 +470,7 @@
   /* ---------- 교사 전용 탭 ---------- */
   let built = false;
   const SHEETS = {
-    roster: { title: "팀별 아이디 명단", subs: [["roster_middle", "중등부"], ["roster_high", "고등부"]] },
+    roster: { title: "팀별 아이디 명단", subs: [["roster_all", "전체"], ["roster_middle", "중등부"], ["roster_high", "고등부"]] },
     captains: { title: "팀장 연락처", subs: [["captains", "전체"]] },
     advisors: { title: "지도교사 연락처", subs: [["advisors", "전체"]] },
     tier: { title: "팀별 티어 현황", subs: [["tier_middle", "중등부"], ["tier_high", "고등부"]] }
@@ -489,7 +489,8 @@
       ["t-advisors", SHEETS.advisors.title, "", b => loadSheet(b, SHEETS.advisors)],
       ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
-      ["t-referee", "심판 일정", "심판 가능한 선생님의 날짜별 참여 여부입니다.", loadReferee]
+      ["t-referee", "심판 일정", "심판 가능한 선생님의 날짜별 참여 여부입니다.", loadReferee],
+      ["t-coaching", "젠지 코칭", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다.", loadCoaching]
     ];
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
@@ -709,14 +710,19 @@
     box.append(inner);
     async function draw() {
       inner.replaceChildren(el("p", "note", "불러오는 중…"));
-      const [{ data: meta }, { data: rows, error }] = await Promise.all([
-        sb.from("sheet_columns").select("columns").eq("sheet", current).maybeSingle(),
-        sb.from("sheet_rows").select("id,row_no,data").eq("sheet", current).order("row_no")
+      // '전체'는 중등부·고등부 표를 합쳐서 보여 준다 (각 행은 원래 표에 그대로 저장)
+      const isAll = current === "roster_all";
+      const sheets = isAll ? ["roster_middle", "roster_high"] : [current];
+      const [{ data: metas }, { data: rows, error }] = await Promise.all([
+        sb.from("sheet_columns").select("sheet,columns").in("sheet", sheets),
+        sb.from("sheet_rows").select("id,sheet,row_no,data").in("sheet", sheets).order("row_no")
       ]);
       if (error) { inner.replaceChildren(el("p", "note", "불러오지 못했습니다.")); return; }
-      const keys = (meta && meta.columns) || [...new Set(rows.flatMap(r => Object.keys(r.data)))];
+      const keys = [...new Set(sheets.flatMap(s => ((metas || []).find(m => m.sheet === s) || {}).columns || []))];
+      if (!keys.length) rows.flatMap(r => Object.keys(r.data)).forEach(k => { if (!keys.includes(k)) keys.push(k); });
       if (!rows.length) { inner.replaceChildren(el("p", "note", "아직 자료가 없습니다.")); }
       const columns = keys.map(k => ({ key: k, label: k, get: r => r.data[k] }));
+      if (isAll) columns.unshift({ key: "_division", label: "부문", readonly: true, get: r => (r.sheet === "roster_high" ? "고등부" : "중등부") });
       addDupeColumn(columns, rows, keys.includes("학교 이름") ? "학교 이름" : "학교");
       const filters = [];
       if (current === "captains" || current === "advisors") {
@@ -752,6 +758,7 @@
         // 학교 이름 가나다순, 지역 필터, 라인별(이름+아이디) 구분선, 태그 없는 아이디 강조
         rows.sort((a, b) => String(a.data["학교 이름"] || "").localeCompare(String(b.data["학교 이름"] || ""), "ko"));
         const regions = [...new Set(rows.map(r => r.data["학교 소재 지역"]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+        if (isAll) filters.push({ label: "부문", values: ["중등부", "고등부"], get: r => (r.sheet === "roster_high" ? "고등부" : "중등부") });
         filters.push({ label: "지역", values: regions, get: r => r.data["학교 소재 지역"] });
         let prev = null, group = 0;
         columns.forEach(c => {
@@ -771,8 +778,9 @@
           // 바뀐 칸만 저장 (행 전체를 덮어쓰지 않음)
           if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) r.data = { ...r.data, [c.key]: v };
         },
-        onDelete: r => deleteSheetRow(r, current, draw),
-        onAdd: async () => {
+        onDelete: r => deleteSheetRow(r, r.sheet || current, draw),
+        // '전체'에서는 어느 부문에 넣을지 모호하므로 행 추가는 중등부·고등부 보기에서만
+        onAdd: isAll ? null : async () => {
           const next = rows.reduce((m, r) => Math.max(m, r.row_no), 0) + 1;
           if (await save(sb.from("sheet_rows").insert({ sheet: current, row_no: next, data: {} }), "행을 추가했습니다")) draw();
         }
@@ -873,6 +881,139 @@
     table.append(thead, tb);
     scroller.append(table);
     box.append(scroller, el("p", "note", isEditor() ? "체크하면 바로 저장됩니다. 실제 경기 배정은 '대진·경기 결과' 탭의 심판 칸에 적어 주세요." : "보기 권한입니다. 변경은 관리자 선생님께 요청하세요."));
+  }
+
+  // 젠지(GGA) 코칭: 날짜별 신청 현황, 학교별 사용 횟수(최대 3회)
+  const COACH_SLOTS = {
+    weekday: { 1: "19:00~20:20", 2: "20:30~21:50", 3: "22:00~23:20", 4: "23:30~01:00" },
+    weekend: { 1: "13:00~14:20", 2: "14:30~15:50", 3: "19:00~20:20", 4: "20:30~21:50", 5: "22:00~23:20", 6: "23:30~01:00" }
+  };
+  const COACH_TYPES = ["스크림 참관", "라이브 관전", "리플레이 분석"];
+  const COACH_STATUS = ["신청", "확정", "완료", "취소"];
+  const COACH_LIMIT = 3, SLOT_LIMIT = 6;
+  const dayKind = d => { const w = new Date(d + "T00:00:00+09:00").getDay(); return w === 0 || w === 6 ? "weekend" : "weekday"; };
+  const slotTime = (d, s) => COACH_SLOTS[dayKind(d)][s] || "";
+  const dayLabel = d => d.slice(5).replace("-", "/") + "(" + "일월화수목금토"[new Date(d + "T00:00:00+09:00").getDay()] + ")";
+
+  async function loadCoaching(box) {
+    const { data: rows, error } = await sb.from("coaching_sessions").select("*").order("session_date").order("slot").order("requested_at");
+    box.replaceChildren();
+    if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    const active = rows.filter(r => r.status !== "취소");
+
+    // 1) 학교별 사용 횟수
+    const used = {};
+    active.forEach(r => { used[r.school] = (used[r.school] || 0) + 1; });
+    const sum = el("div", "card coach-sum");
+    sum.append(el("h3", "", "학교별 사용 횟수 (취소 제외, 최대 " + COACH_LIMIT + "회)"));
+    const chips = el("div", "tier-chips");
+    Object.entries(used).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko")).forEach(([s, n]) => {
+      const c = el("span", "tier-chip" + (n >= COACH_LIMIT ? " spent" : ""));
+      c.append(el("b", "", s.replace(/등학교$|학교$/, "")), document.createTextNode(" " + n + "/" + COACH_LIMIT + (n > COACH_LIMIT ? " 초과" : n === COACH_LIMIT ? " 소진" : "")));
+      chips.append(c);
+    });
+    sum.append(chips, el("p", "note", "신청 " + active.length + "건 · " + Object.keys(used).length + "개 학교"));
+    box.append(sum);
+
+    // 2) 새 신청 추가 (고치기 권한)
+    if (isEditor()) box.append(coachForm(() => loadCoaching(box)));
+
+    // 3) 날짜별 표
+    const byDate = {};
+    rows.forEach(r => { (byDate[r.session_date] = byDate[r.session_date] || []).push(r); });
+    if (!rows.length) box.append(el("p", "note", "아직 기록이 없습니다."));
+    Object.keys(byDate).sort().forEach(d => {
+      const list = byDate[d];
+      const sec = el("div", "coach-day");
+      sec.append(el("h3", "", dayLabel(d) + " · " + (dayKind(d) === "weekend" ? "주말 6타임" : "평일 4타임") + " · " + list.filter(r => r.status !== "취소").length + "건"));
+      const perSlot = {};
+      list.filter(r => r.status !== "취소").forEach(r => { perSlot[r.slot] = (perSlot[r.slot] || 0) + 1; });
+      const scroller = el("div", "gscroll");
+      const t = el("table", "dtable");
+      const hr = el("tr");
+      ["타임", "시간", "학교", "부문", "코칭 유형", "신청자", "상태", "학교 사용", "메모", ""].forEach(h => hr.append(el("th", "", h)));
+      const thead = el("thead"); thead.append(hr);
+      const tb = el("tbody");
+      list.forEach(r => {
+        const tr = el("tr", r.status === "취소" ? "coach-cancel" : "");
+        const n = used[r.school] || 0;
+        const full = perSlot[r.slot] > SLOT_LIMIT;
+        tr.append(
+          el("td", full ? "dupe" : "", r.slot + "타임" + (full ? " (6팀 초과)" : "")),
+          el("td", "", slotTime(d, r.slot)),
+          el("td", "", r.school), el("td", "", r.division || ""),
+          el("td", "", r.coaching_type), el("td", "", r.applicant || "")
+        );
+        const st = el("td");
+        if (isEditor()) {
+          const s = el("select");
+          s.setAttribute("aria-label", r.school + " 상태");
+          COACH_STATUS.forEach(v => { const o = el("option", "", v); o.value = v; s.append(o); });
+          s.value = r.status;
+          s.addEventListener("change", async () => { if (await save(sb.from("coaching_sessions").update({ status: s.value }).eq("id", r.id))) loadCoaching(box); });
+          st.append(s);
+        } else st.textContent = r.status;
+        tr.append(st, el("td", n >= COACH_LIMIT ? "spent-cell" : "", n + "/" + COACH_LIMIT + (n > COACH_LIMIT ? " 초과" : n === COACH_LIMIT ? " 소진" : "")));
+        const memo = el("td");
+        if (isEditor()) {
+          const i = el("input", "cell");
+          i.value = r.note || ""; i.size = Math.max(8, Math.min(40, (r.note || "").length + 2));
+          i.setAttribute("aria-label", r.school + " 메모");
+          i.addEventListener("change", () => save(sb.from("coaching_sessions").update({ note: i.value }).eq("id", r.id)));
+          memo.append(i);
+        } else memo.textContent = r.note || "";
+        const act = el("td");
+        if (isEditor()) {
+          const del = el("button", "del", "삭제");
+          del.type = "button";
+          del.addEventListener("click", async () => {
+            if (!confirm("'" + r.school + " · " + dayLabel(d) + " " + r.slot + "타임' 코칭 기록을 삭제할까요?\n(취소된 신청은 상태를 '취소'로 바꾸면 기록이 남습니다)")) return;
+            if (await save(sb.from("coaching_sessions").delete().eq("id", r.id), "삭제했습니다")) loadCoaching(box);
+          });
+          act.append(del);
+        }
+        tr.append(memo, act);
+        tb.append(tr);
+      });
+      t.append(thead, tb);
+      scroller.append(t);
+      sec.append(scroller);
+      box.append(sec);
+    });
+  }
+
+  function coachForm(done) {
+    const f = el("form", "card coach-form");
+    f.append(el("h3", "", "코칭 신청 추가"));
+    const row = el("div", "coach-fields");
+    const field = (label, input) => { const l = el("label", "", label); l.append(input); row.append(l); return input; };
+    const school = field("학교", el("input"));
+    school.setAttribute("list", "coachSchools"); school.required = true; school.placeholder = "예: 신기중학교";
+    const dl = el("datalist"); dl.id = "coachSchools";
+    sb.from("sheet_rows").select("sheet,data").in("sheet", ["roster_middle", "roster_high"]).then(({ data }) => {
+      [...new Set((data || []).map(x => x.data["학교 이름"]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko")).forEach(s => { const o = el("option"); o.value = s; dl.append(o); });
+    });
+    const date = field("날짜", el("input")); date.type = "date"; date.required = true; date.min = "2026-10-17"; date.max = "2026-11-08";
+    const slot = field("타임", el("select"));
+    const fillSlots = () => {
+      slot.replaceChildren();
+      const map = date.value ? COACH_SLOTS[dayKind(date.value)] : COACH_SLOTS.weekend;
+      Object.entries(map).forEach(([k, v]) => { const o = el("option", "", k + "타임 " + v); o.value = k; slot.append(o); });
+    };
+    date.addEventListener("change", fillSlots); fillSlots();
+    const type = field("코칭 유형", el("select"));
+    COACH_TYPES.forEach(v => { const o = el("option", "", v); o.value = v; type.append(o); });
+    const applicant = field("신청자", el("input")); applicant.placeholder = "예: 홍길동 (팀장)";
+    const btn = el("button", "btn small", "추가");
+    btn.type = "submit";
+    f.append(row, dl, btn);
+    f.addEventListener("submit", async e => {
+      e.preventDefault();
+      const name = school.value.trim();
+      const division = /고등학교$|고$/.test(name) ? "고등부" : "중등부";
+      if (await save(sb.from("coaching_sessions").insert({ school: name, division, session_date: date.value, slot: Number(slot.value), coaching_type: type.value, applicant: applicant.value.trim() || null, requested_at: new Date().toISOString() }), "추가했습니다")) done();
+    });
+    return f;
   }
 
   // 구글폼 신청 접수함 (고치기 권한자)
@@ -1033,7 +1174,7 @@
 
     // 최근 수정 기록
     const { data: logs } = await sb.from("audit_log").select("table_name,action,actor_email,at").order("at", { ascending: false }).limit(30);
-    const TBL = { form_inbox: "신청 접수", tier_scores: "티어 기준표", app_settings: "사이트 설정", staff: "지원단 명단", sheet_rows: "명단·연락처·티어", matches: "대진·결과", referee_availability: "심판 일정", profiles: "로그인 승인" };
+    const TBL = { coaching_sessions: "젠지 코칭", form_inbox: "신청 접수", tier_scores: "티어 기준표", app_settings: "사이트 설정", staff: "지원단 명단", sheet_rows: "명단·연락처·티어", matches: "대진·결과", referee_availability: "심판 일정", profiles: "로그인 승인" };
     const ACT = { INSERT: "추가", UPDATE: "수정", DELETE: "삭제" };
     const d = el("details", "audit");
     d.append(el("summary", "", "최근 수정 기록 " + (logs ? logs.length : 0) + "건"));
