@@ -88,6 +88,12 @@ table.dtable td.notag input { color: #ffd88a; }
 .rec-id.notag { color: #ffd88a; }
 .rec-warn { color: var(--wait); font-size: 11px; }
 .rec-card .btn { align-self: flex-start; text-decoration: none; }
+/* 부문별 배경 (디스코드 색과 같게): 중등부 보라 / 고등부 파랑 */
+.rec-card.div-mid { background: linear-gradient(180deg, rgba(150, 90, 255, .22), rgba(150, 90, 255, .08)); border-color: rgba(170, 120, 255, .55); }
+.rec-card.div-high { background: linear-gradient(180deg, rgba(60, 130, 255, .22), rgba(60, 130, 255, .08)); border-color: rgba(90, 150, 255, .55); }
+.rec-card.div-mid .rec-meta { color: #d3b0ff; }
+.rec-card.div-high .rec-meta { color: #9cc4ff; }
+.rec-ask { margin-bottom: 12px; line-height: 1.6; }
 .pub-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); cursor: pointer; }
 
 /* 젠지 코칭 */

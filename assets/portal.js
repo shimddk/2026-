@@ -145,6 +145,11 @@
       return;
     }
     if (res.teacher) root.append(el("p", "note", "교사용 화면: 학생용 공개 여부와 관계없이 보입니다."));
+    // 구글폼 내용 그대로라 틀린 곳이 있을 수 있음 → 팀장 확인 요청
+    const ask = el("div", "pending rec-ask");
+    ask.append(el("b", "", "우리 팀 정보를 꼭 확인해 주세요. "),
+      document.createTextNode("구글폼 신청서에 적힌 내용으로 만든 목록이라 이름·라인·아이디#태그가 틀린 곳이 있습니다. 팀장은 10/18(일)까지 팀장 대화방에 정확한 '이름 - 라인 - 롤 아이디#태그'를 남겨 주세요. 노란 글씨는 확인이 필요한 아이디입니다."));
+    root.append(ask);
     // 학교별로 묶기
     const bySchool = new Map();
     res.rows.forEach(r => {
@@ -173,8 +178,22 @@
     root.append(bar, list);
     s.addEventListener("input", draw);
 
+    // 롤 아이디 모양 점검 (이름 3~16자 + #태그 3~5자). 구글폼에 티어·메모를 같이 적은 경우 등을 찾아 줌
+    function idIssue(id, teamIds) {
+      const s = String(id).trim();
+      if (/[⁦-⁩​-‏]/.test(s)) return "보이지 않는 문자가 섞여 있음 · 확인 필요";
+      if (!s.includes("#")) return "태그(#) 없음 · 확인 필요";
+      if ((s.match(/#/g) || []).length > 1) return "#가 두 개 · 확인 필요";
+      const i = s.indexOf("#"), name = s.slice(0, i).trim(), tag = s.slice(i + 1).trim();
+      if (/[\s,/(]/.test(tag) || tag.length > 5) return "태그 뒤에 다른 글자(티어·메모 등)가 붙어 있음 · 확인 필요";
+      if (tag.length < 3) return "태그가 너무 짧음 · 확인 필요";
+      if (name.length < 3 || name.length > 16) return "아이디 길이(3~16자) 확인 필요";
+      const key = x => String(x).replace(/\s/g, "").toLowerCase();
+      if (teamIds.filter(o => key(o.lol_id) === key(s)).length > 1) return "같은 팀의 다른 칸과 아이디가 같음 · 확인 필요";
+      return "";
+    }
     function idLink(r) {
-      const a = el("a", "rec-id" + (r.lol_id.includes("#") ? "" : " notag"), r.lol_id);
+      const a = el("a", "rec-id" + (idIssue(r.lol_id, []) ? " notag" : ""), r.lol_id);
       a.href = fowOne(r.lol_id);
       a.target = "_blank";
       a.rel = "noopener noreferrer";
@@ -187,7 +206,8 @@
       list.replaceChildren();
       if (!shown.length) { list.append(el("p", "note", "검색 결과가 없습니다.")); return; }
       shown.forEach(t => {
-        const card = el("article", "card rec-card");
+        // 부문별 배경색 (디스코드와 같게: 중등부 보라 / 고등부 파랑)
+        const card = el("article", "card rec-card " + (t.division === "고등부" ? "div-high" : "div-mid"));
         const head = el("div", "rec-head");
         head.append(el("h3", "", t.school + (t.teamCount > 1 ? " · " + t.teamNo + "팀" : "")), el("span", "rec-meta", t.division + (t.region ? " · " + t.region : "")));
         if (t.teamCount > 1) head.append(el("span", "dupe-badge", "중복 신청 · 확인 필요"));
@@ -195,7 +215,8 @@
         t.ids.forEach(r => {
           const li = el("li");
           li.append(el("span", "rec-line" + (r.slot > 5 ? " sub" : ""), r.line), el("span", "rec-name", r.student_name || "-"), idLink(r));
-          if (!r.lol_id.includes("#")) li.append(el("small", "rec-warn", "태그 없음 · 검색이 정확하지 않을 수 있음"));
+          const issue = idIssue(r.lol_id, t.ids);
+          if (issue) li.append(el("small", "rec-warn", issue));
           ul.append(li);
         });
         // 멀티서치: 주전 5명 / 후보까지 모두 (누르면 fow.lol에서 바로 검색)
