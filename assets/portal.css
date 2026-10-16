@@ -111,6 +111,7 @@ table.dtable td.cap-missing { color: #ffd88a; }
 /* 중복 신청 표시 */
 table.dtable td.dupe { color: #ffb4b4; font-weight: 700; background: rgba(255, 120, 120, .1); }
 .dupe-badge { font-size: 11px; font-weight: 700; color: #ffb4b4; background: rgba(255, 120, 120, .14); border-radius: 999px; padding: 2px 8px; }
+.note.sync-bad { color: #ffb4b4; font-weight: 700; }
 
 /* 티어 현황 */
 .tier-summary { margin-bottom: 12px; }

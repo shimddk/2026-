@@ -942,9 +942,10 @@
   async function renderCoachingPublic() {
     const root = document.getElementById("coachRoot");
     if (!root) return;
-    const { data, error } = await sb.rpc("public_coaching");
+    const [{ data, error }, { data: syncedAt }] = await Promise.all([sb.rpc("public_coaching"), sb.rpc("public_coaching_synced_at")]);
     root.replaceChildren();
     if (error) { root.append(el("p", "note", "불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.")); return; }
+    root.append(el("p", "note", "GGA 공식 배정표 기준으로 10분마다 갱신됩니다." + (syncedAt ? " (마지막 갱신 " + fmtTime(syncedAt) + ")" : "")));
     if (!data.length) { root.append(el("p", "note", "아직 배정된 코칭이 없습니다.")); return; }
     const used = {};
     data.forEach(r => { used[r.school] = (used[r.school] || 0) + 1; });
@@ -988,6 +989,15 @@
     box.replaceChildren();
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
     renderCoachingPublic();
+    // GGA 시트 자동 동기화 상태
+    const { data: sync } = await sb.from("app_settings").select("value").eq("key", "gga_sync").maybeSingle();
+    const sv = (sync && sync.value) || {};
+    const sbar = el("p", "note" + (sv.ok === false ? " sync-bad" : ""));
+    sbar.textContent = "GGA 시트 자동 동기화(10분마다): " + (sv.at ? fmtTime(sv.at) + " · " : "") +
+      (sv.ok === true ? "정상 · 시트 " + sv.rows + "건, 바뀜 " + sv.updated + ", 추가 " + sv.added + (sv.problems && sv.problems.length ? " · 읽지 못한 줄: " + sv.problems.join(", ") : "")
+        : sv.ok === false ? "멈춤 — " + (sv.message || "오류") : "아직 실행 전") +
+      ". 담당 코치·상태·유형은 시트 값으로 맞춰지고, 시트에 없는 신청은 메모에 [시트에 없음 · 확인 필요]가 붙습니다(공개 탭에는 안 보임). 취소면 상태를 '취소'로 바꿔 주세요.";
+    box.append(sbar);
     const active = rows.filter(r => r.status !== "취소");
 
     // 1) 학교별 사용 횟수
