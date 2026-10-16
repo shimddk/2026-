@@ -490,9 +490,10 @@
       ["t-advisors", SHEETS.advisors.title, "", b => loadSheet(b, SHEETS.advisors)],
       ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
-      ["t-referee", "심판 일정", "심판 가능한 선생님의 날짜별 참여 여부입니다.", loadReferee],
-      ["t-coaching", "젠지 코칭", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다.", loadCoaching]
+      ["t-referee", "심판 일정", "심판 가능한 선생님의 날짜별 참여 여부입니다.", loadReferee]
     ];
+    // 코칭 일정은 공개 '젠지 코칭' 탭에서 모두 보이고, 여기서는 고치기 권한자가 관리 (신청자·메모 포함)
+    if (isEditor()) views.push(["t-coaching", "젠지 코칭 관리", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다. 담당 코치·상태를 바꾸면 공개 '젠지 코칭' 탭에도 바로 반영됩니다(신청자·메모는 공개 안 됨).", loadCoaching]);
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
     views.forEach(([id, label, lead, loader]) => {
@@ -937,10 +938,56 @@
   const slotTime = (d, s) => COACH_SLOTS[dayKind(d)][s] || "";
   const dayLabel = d => d.slice(5).replace("-", "/") + "(" + "일월화수목금토"[new Date(d + "T00:00:00+09:00").getDay()] + ")";
 
+  // 학생용 공개 코칭 일정 (신청자 이름·메모 없이, 취소 제외)
+  async function renderCoachingPublic() {
+    const root = document.getElementById("coachRoot");
+    if (!root) return;
+    const { data, error } = await sb.rpc("public_coaching");
+    root.replaceChildren();
+    if (error) { root.append(el("p", "note", "불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.")); return; }
+    if (!data.length) { root.append(el("p", "note", "아직 배정된 코칭이 없습니다.")); return; }
+    const used = {};
+    data.forEach(r => { used[r.school] = (used[r.school] || 0) + 1; });
+    const sum = el("div", "card coach-sum");
+    sum.append(el("h3", "", "학교별 사용 횟수 (최대 " + COACH_LIMIT + "회)"));
+    const chips = el("div", "tier-chips");
+    Object.entries(used).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko")).forEach(([s, n]) => {
+      const c = el("span", "tier-chip" + (n >= COACH_LIMIT ? " spent" : ""));
+      c.append(el("b", "", s.replace(/등학교$|학교$/, "")), document.createTextNode(" " + n + "/" + COACH_LIMIT));
+      chips.append(c);
+    });
+    sum.append(chips);
+    root.append(sum);
+    const byDate = {};
+    data.forEach(r => { (byDate[r.session_date] = byDate[r.session_date] || []).push(r); });
+    Object.keys(byDate).sort().forEach(d => {
+      const sec = el("div", "coach-day");
+      sec.append(el("h3", "", dayLabel(d) + " · " + byDate[d].length + "건"));
+      const scroller = el("div", "gscroll");
+      const t = el("table", "dtable");
+      const hr = el("tr");
+      ["시간", "학교", "부문", "코칭 유형", "담당 코치", "상태"].forEach(h => hr.append(el("th", "", h)));
+      const thead = el("thead"); thead.append(hr);
+      const tb = el("tbody");
+      byDate[d].forEach(r => {
+        const tr = el("tr");
+        tr.append(el("td", "", r.slot + "타임 " + slotTime(d, r.slot)), el("td", "", r.school), el("td", "", r.division || ""),
+          el("td", "", r.coaching_type), el("td", "", r.coach ? r.coach + " 코치님" : "배정 중"), el("td", "", r.status === "신청" ? "대기" : r.status));
+        tb.append(tr);
+      });
+      t.append(thead, tb);
+      scroller.append(t);
+      sec.append(scroller);
+      root.append(sec);
+    });
+  }
+  renderCoachingPublic();
+
   async function loadCoaching(box) {
     const { data: rows, error } = await sb.from("coaching_sessions").select("*").order("session_date").order("slot").order("requested_at");
     box.replaceChildren();
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    renderCoachingPublic();
     const active = rows.filter(r => r.status !== "취소");
 
     // 1) 학교별 사용 횟수
@@ -973,7 +1020,7 @@
       const scroller = el("div", "gscroll");
       const t = el("table", "dtable");
       const hr = el("tr");
-      ["타임", "시간", "학교", "부문", "코칭 유형", "신청자", "상태", "학교 사용", "메모", ""].forEach(h => hr.append(el("th", "", h)));
+      ["타임", "시간", "학교", "부문", "코칭 유형", "담당 코치", "신청자", "상태", "학교 사용", "메모", ""].forEach(h => hr.append(el("th", "", h)));
       const thead = el("thead"); thead.append(hr);
       const tb = el("tbody");
       list.forEach(r => {
@@ -984,8 +1031,17 @@
           el("td", full ? "dupe" : "", r.slot + "타임" + (full ? " (6팀 초과)" : "")),
           el("td", "", slotTime(d, r.slot)),
           el("td", "", r.school), el("td", "", r.division || ""),
-          el("td", "", r.coaching_type), el("td", "", r.applicant || "")
+          el("td", "", r.coaching_type)
         );
+        const coach = el("td");
+        if (isEditor()) {
+          const i = el("input", "cell");
+          i.value = r.coach || ""; i.size = 6; i.placeholder = "코치 이름";
+          i.setAttribute("aria-label", r.school + " 담당 코치");
+          i.addEventListener("change", () => save(sb.from("coaching_sessions").update({ coach: i.value.trim() || null }).eq("id", r.id)));
+          coach.append(i);
+        } else coach.textContent = r.coach || "";
+        tr.append(coach, el("td", "", r.applicant || ""));
         const st = el("td");
         if (isEditor()) {
           const s = el("select");
