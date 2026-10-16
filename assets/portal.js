@@ -1077,7 +1077,8 @@
     const scroller = el("div", "gscroll");
     const table = el("table", "dtable");
     const hr = el("tr");
-    ["접수 시각", "학교", "부문", "팀장", "처리 결과", "설명", "처리한 사람", ""].forEach(h => hr.append(el("th", "", h)));
+    // 적용·무시 버튼 칸은 확인 필요 건이 있을 때만 (없으면 빈 칸만 남음)
+    ["접수 시각", "학교", "부문", "팀장", "처리 결과", "설명", "처리한 사람", ...(review ? ["처리"] : [])].forEach(h => hr.append(el("th", "", h)));
     const thead = el("thead"); thead.append(hr);
     const tb = el("tbody");
     items.forEach(i => {
@@ -1101,7 +1102,7 @@
         ignore.addEventListener("click", () => act("ignore"));
         td.append(apply, ignore);
       }
-      tr.append(td);
+      if (review) tr.append(td);
       tb.append(tr);
     });
     table.append(thead, tb);
