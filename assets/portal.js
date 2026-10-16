@@ -60,6 +60,11 @@
   }
   loadPublicBracket();
 
+  /* ---------- 챗봇: 디스코드 질문방 답변 (구글 시트 → 10분마다 DB 갱신) ---------- */
+  sb.rpc("public_discord_qa").then(({ data, error }) => {
+    if (!error && data && window.setDiscordQA) window.setDiscordQA(data);
+  });
+
   /* ---------- 방문자 수 (브라우저별 무작위 번호로 하루 1회) ---------- */
   (function countVisit() {
     const box = document.getElementById("visits");

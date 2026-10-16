@@ -206,6 +206,9 @@
   .tag.wait { background: rgba(255, 181, 71, .15); color: var(--wait); }
   .tag.ask { background: rgba(178, 107, 255, .18); color: #d3b0ff; }
   .msg .q { font-weight: 700; margin-bottom: 4px; }
+  .tag.dq { background: rgba(53, 224, 255, .14); color: var(--neon); }
+  .dq-a { white-space: pre-line; }
+  .dq-meta { margin-top: 6px; font-size: 12px; color: var(--muted); }
   .msg + .msg { margin-top: 0; }
   .sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: var(--bg2); }
@@ -465,7 +468,7 @@
   <!-- 질문/FAQ 챗봇 -->
   <section id="faq" role="tabpanel" aria-labelledby="tab-faq" hidden>
     <h2>질문/FAQ</h2>
-    <p class="lead">공식 FAQ를 바탕으로 바로 답해 드립니다. 자료로 확인되지 않는 내용은 지원단 문의 방법을 안내해 드려요.</p>
+    <p class="lead">공식 FAQ와 디스코드 질문방의 선생님 답변(10분마다 갱신)을 바탕으로 답해 드립니다. 찾는 답이 없으면 지원단 문의 방법을 안내해 드려요.</p>
     <div class="faq-layout">
       <aside class="side card" aria-label="질문 카테고리">
         <div class="side-title">카테고리</div>
@@ -476,7 +479,7 @@
       <div class="chat card">
         <div class="chat-head">
           <strong>스쿨리그 질문 챗봇</strong>
-          <span>인터넷 연결 없이 이 페이지 안의 공식 FAQ로 답합니다.</span>
+          <span>공식 FAQ와 디스코드 질문방 답변으로 답합니다.</span>
         </div>
         <div class="log" id="log" aria-live="polite"></div>
         <div class="quick" id="quick" aria-label="추천 질문"></div>
@@ -589,7 +592,8 @@ const CATS = [
   { key: "B", label: "팀 구성·선수 교체" },
   { key: "C", label: "신청·디스코드·권한" },
   { key: "D", label: "경기 방식·규칙" },
-  { key: "E", label: "혜택·코칭·스크림" }
+  { key: "E", label: "혜택·코칭·스크림" },
+  { key: "discord", label: "질문방 최근 답변" }
 ];
 const TOP = [1, 2, 10, 13, 20, 26, 37, 42];
 const ESCALATE_MSG = "이 내용은 공식 자료로 확인되지 않습니다. 디스코드 4번 질문방으로 문의하세요.\n지원단 선생님께서 직접 확인 후 답변해 드립니다.";
@@ -859,6 +863,34 @@ function answer(input) {
   return cands.length ? { kind: "suggest", faqs: cands } : { kind: "escalate" };
 }
 
+/* ---------- 디스코드 질문방 답변 (구글 시트 → 10분마다 갱신, portal.js가 넣어 줌) ---------- */
+let DQA = [];
+const DQ_STOP = new Set(["어떻게", "하나요", "있나요", "되나요", "인가요", "알려주세요", "알려줘", "궁금해요", "무엇", "혹시", "선생님", "안녕하세요", "질문", "있을까요", "그럼", "근데", "저희", "우리", "제가", "그리고", "아니면", "괜찮나요", "해도", "있어요", "뭐예요", "뭔가요", "그러면", "친구가", "팀원이"]);
+const DQ_SUF = /(에서는|에서|으로|부터|까지|이나|인데|은|는|이|가|을|를|에|로|도|만|요|나요|가요|인가|할|하는|하면|해야|해도|되는|된|한)$/;
+// 뜻이 같은 말 묶기 (앞부분 기준)
+const DQ_SYN = [[/^(바꾸|바꿀|바꿔|바꿨|바뀌|바뀐|변경|교체|수정)/, "변경"], [/^(날짜|일정|언제|며칠)/, "일정"], [/^(신청|접수|등록)/, "신청"], [/^(가능|되나|될까|돼)/, "가능"], [/^(롤|lol)$/, "롤"]];
+function dqWords(s) {
+  return norm(s).split(" ").filter(w => !DQ_STOP.has(w)).map(w => {
+    let x = w;
+    for (let i = 0; i < 2; i++) { const y = x.replace(DQ_SUF, ""); if (y.length >= 2 && y !== x) x = y; }
+    for (const [re, to] of DQ_SYN) if (re.test(x)) return to;
+    return x;
+  }).filter(w => w.length >= 2 && !DQ_STOP.has(w));
+}
+function dqBigrams(s) { const t = norm(s).replace(/\s/g, ""); const z = new Set(); for (let i = 0; i < t.length - 1; i++) z.add(t.slice(i, i + 2)); return z; }
+window.setDiscordQA = rows => { DQA = (rows || []).map(x => ({ ...x, w: dqWords(x.question), b: dqBigrams(x.question) })); };
+// 낱말이 얼마나 겹치는지(앞부분 일치) + 글자 두 개씩 겹침
+function discordMatch(q, min, max) {
+  const w = dqWords(q), b = dqBigrams(q);
+  if (!w.length || !DQA.length) return [];
+  return DQA.map(it => {
+    const hits = w.filter(x => it.w.some(y => y.startsWith(x) || x.startsWith(y))).length;
+    let n = 0; b.forEach(x => it.b.has(x) && n++);
+    const s = 0.65 * hits / w.length + 0.35 * (2 * n / (b.size + it.b.size || 1)) + (it.pinned ? 0.05 : 0);
+    return { it, s };
+  }).filter(x => x.s >= min).sort((a, b) => b.s - a.s).slice(0, max).map(x => x.it);
+}
+
 /* ---------- 챗봇 화면 ---------- */
 const log = document.getElementById("log");
 function scrollLog() { log.scrollTop = log.scrollHeight; }
@@ -882,6 +914,15 @@ function withDiscordLink(text) {
   });
   return d;
 }
+function botDiscord(it) {
+  const m = el("div", "msg bot");
+  const meta = el("div", "dq-meta");
+  const when = it.asked_at ? new Date(it.asked_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" }) : "";
+  meta.append(document.createTextNode([it.answerer ? "답변: " + it.answerer : "", when].filter(Boolean).join(" · ") + " · 답변 당시 기준이에요 "));
+  if (it.link) { const a = el("a", "", "원문 보기"); a.href = it.link; a.target = "_blank"; a.rel = "noopener noreferrer"; meta.append(a); }
+  m.append(el("span", "tag dq", "디스코드 질문방 답변"), el("div", "q", it.question), el("div", "dq-a", it.answer), meta);
+  log.append(m);
+}
 function suggButtons(faqs) {
   const box = el("div", "sugg");
   faqs.forEach(f => {
@@ -897,8 +938,16 @@ function ask(q) {
   if (!q) return;
   userMsg(q);
   const r = answer(q);
+  // 공식 FAQ로 답하면 아주 비슷한 질문방 답변만 1개, 못 찾으면 비슷한 답변을 최대 2개 함께 보여 줌
+  const dq = discordMatch(q, r.kind === "faq" ? 0.5 : 0.4, r.kind === "faq" ? 1 : 2);
   if (r.kind === "faq") {
     r.faqs.forEach(botFaq);
+    dq.forEach(botDiscord);
+  } else if (dq.length) {
+    dq.forEach(botDiscord);
+    const m = el("div", "msg bot");
+    m.append(el("span", "tag ask", "더 궁금하면"), withDiscordLink("찾는 답이 아니면 디스코드 질문방에 물어보세요. 지원단 선생님이 직접 답변해 드립니다."));
+    log.append(m);
   } else if (r.kind === "suggest") {
     const m = el("div", "msg bot");
     m.append(el("span", "tag ask", "비슷한 질문"), el("div", "", "정확히 맞는 답을 찾지 못했어요. 혹시 아래 질문을 찾으셨나요?"), suggButtons(r.faqs));
@@ -917,6 +966,18 @@ const qlist = document.getElementById("qlist");
 const qcount = document.getElementById("qcount");
 function showCat(key) {
   [...catBox.children].forEach(b => b.setAttribute("aria-pressed", b.dataset.key === key));
+  if (key === "discord") {
+    // 디스코드 질문방에 최근 올라온 질문 (누르면 선생님 답변을 보여 줌)
+    const recent = DQA.slice(0, 20);
+    qcount.textContent = recent.length ? "질문방 최근 질문 " + recent.length + "개" : "질문방 답변을 불러오는 중이거나 아직 없습니다";
+    qlist.replaceChildren(...recent.map(it => {
+      const b = el("button", "qbtn", it.question);
+      b.type = "button";
+      b.addEventListener("click", () => { userMsg(it.question); botDiscord(it); scrollLog(); });
+      return b;
+    }));
+    return;
+  }
   const list = key === "top" ? FAQ.filter(f => TOP.includes(f.id)) : FAQ.filter(f => f.cat === key);
   qcount.textContent = (key === "top" ? "추천 질문 " : "질문 ") + list.length + "개";
   qlist.replaceChildren(...list.map(f => {
