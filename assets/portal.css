@@ -184,3 +184,4 @@ input.cell.dupe { border-color: #ff7878; }
 table.dtable td.ph { color: var(--muted); font-size: 13px; }
 table.dtable td.win { color: var(--neon); font-weight: 700; }
 table.dtable td.lose { opacity: .6; }
+.rec-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

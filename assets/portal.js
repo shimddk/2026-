@@ -89,16 +89,18 @@
   })();
 
   /* ---------- 전적 검색 (학교 → 라인별 LOL 아이디, 학생 실명 제외) ---------- */
-  const FOW_URL = "https://www.fow.lol/multi/kr"; // 주소 형식을 알게 되면 아이디를 바로 넣도록 바꿀 예정
+  // fow.lol 바로 열기 (복사·붙여넣기 없이)
+  //  한 명: /?act=find&region=KR&field=이름#태그 → /find/kr/이름-태그 로 넘어감
+  //  여러 명: /multi/kr#이름 #태그,이름 #태그 (fow 멀티서치가 # 뒤를 읽어 바로 검색)
+  const fowId = id => { const s = String(id).trim(); const i = s.lastIndexOf("#"); return i > 0 ? s.slice(0, i).trim() + " #" + s.slice(i + 1).trim() : s; };
+  const fowOne = id => "https://www.fow.lol/?act=find&region=KR&field=" + encodeURIComponent(fowId(id).replace(" #", "#"));
+  const fowMulti = ids => "https://www.fow.lol/multi/kr#" + encodeURIComponent(ids.map(fowId).join(","));
   const SLOT_DEFS = [
     [1, "탑", /^탑 LOL 아이디$/], [2, "정글", /^정글 LOL 아이디$/], [3, "미드", /^미드 LOL 아이디$/],
     [4, "원딜", /^원딜 LOL 아이디$/], [5, "서폿", /서폿 LOL 아이디$/],
     [6, "후보1", /후보1 LOL 아이디$/], [7, "후보2", /후보2 LOL 아이디$/], [8, "후보3", /후보3 LOL 아이디$/],
     [9, "후보4", /후보4 LOL 아이디$/], [10, "후보5", /후보5 LOL 아이디$/]
   ];
-  async function copyText(t) {
-    try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; }
-  }
   async function loadLineups() {
     // 승인된 교사는 원본 명단에서, 그 외는 공개 함수(관리자가 공개를 켰을 때만 결과가 있음)에서
     if (ME.status === "approved") {
@@ -173,13 +175,10 @@
 
     function idLink(r) {
       const a = el("a", "rec-id" + (r.lol_id.includes("#") ? "" : " notag"), r.lol_id);
-      a.href = FOW_URL;
+      a.href = fowOne(r.lol_id);
       a.target = "_blank";
-      a.rel = "noopener";
-      a.title = "아이디 복사 후 전적 사이트 열기";
-      a.addEventListener("click", () => {
-        copyText(r.lol_id).then(ok => toast(ok ? "아이디를 복사했어요. 전적 사이트 검색창에 붙여넣기(Ctrl+V) 하세요." : "복사가 안 됐어요. 아이디를 직접 입력해 주세요.", !ok));
-      });
+      a.rel = "noopener noreferrer";
+      a.title = r.lol_id + " 전적 보기 (fow.lol 새 창)";
       return a;
     }
     function draw() {
@@ -199,13 +198,17 @@
           if (!r.lol_id.includes("#")) li.append(el("small", "rec-warn", "태그 없음 · 검색이 정확하지 않을 수 있음"));
           ul.append(li);
         });
+        // 멀티서치: 주전 5명 / 후보까지 모두 (누르면 fow.lol에서 바로 검색)
+        const multiLink = (label, list, cls) => {
+          const a = el("a", cls, label);
+          a.href = fowMulti(list); a.target = "_blank"; a.rel = "noopener noreferrer";
+          return a;
+        };
         const starters = t.ids.filter(r => r.slot <= 5).map(r => r.lol_id);
-        const multi = el("a", "btn small", "주전 " + starters.length + "명 한 번에 (멀티 검색)");
-        multi.href = FOW_URL; multi.target = "_blank"; multi.rel = "noopener";
-        multi.addEventListener("click", () => {
-          copyText(starters.join("\n")).then(ok => toast(ok ? "주전 아이디를 복사했어요. 멀티 검색창에 붙여넣기(Ctrl+V) 하세요." : "복사가 안 됐어요.", !ok));
-        });
-        card.append(head, ul, multi, el("p", "note", "자세한 건 사이트를 눌러서 확인하세요."));
+        const btns = el("div", "rec-btns");
+        if (starters.length) btns.append(multiLink("주전 " + starters.length + "명 한 번에 (멀티서치)", starters, "btn small"));
+        if (t.ids.length > starters.length) btns.append(multiLink("후보까지 " + t.ids.length + "명", t.ids.map(r => r.lol_id), "btn ghost small"));
+        card.append(head, ul, btns, el("p", "note", "아이디를 누르면 그 선수의 전적이, 멀티서치를 누르면 팀 전체 전적이 fow.lol 새 창에서 바로 열립니다."));
         list.append(card);
       });
     }
