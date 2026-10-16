@@ -67,17 +67,27 @@
     if (!error && data && window.setDiscordQA) window.setDiscordQA(data);
   });
 
-  /* ---------- 방문자 수 (브라우저별 무작위 번호로 하루 1회) ---------- */
-  (function countVisit() {
+  /* ---------- 방문자 수 (하루 1회) ----------
+     - 로그인한 선생님: 계정 기준 하루 1번 (여러 기기로 들어와도 1번)
+     - 그 외: 브라우저별 무작위 번호로 하루 1번
+     - 세지 않음: 로컬 점검, 자동 브라우저·검색 로봇, Claude 앱 점검 브라우저 */
+  (async function countVisit() {
     const box = document.getElementById("visits");
     if (!box) return;
-    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname); // 로컬 점검은 세지 않음
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    const robot = navigator.webdriver || /Headless|bot|crawl|spider|slurp|Lighthouse|Claude\//i.test(navigator.userAgent);
     let vid = null;
     try {
-      vid = localStorage.getItem("visitorId");
-      if (!vid) { vid = crypto.randomUUID(); localStorage.setItem("visitorId", vid); }
-    } catch (e) { vid = null; } // 저장소가 막힌 브라우저는 세지 않고 숫자만 보여 줌
-    sb.rpc("record_visit", { vid: local ? null : vid }).then(({ data, error }) => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session && session.user) vid = session.user.id;
+    } catch (e) { /* 로그인 확인 실패 → 브라우저 번호로 */ }
+    if (!vid) {
+      try {
+        vid = localStorage.getItem("visitorId");
+        if (!vid) { vid = crypto.randomUUID(); localStorage.setItem("visitorId", vid); }
+      } catch (e) { vid = null; } // 저장소가 막힌 브라우저는 세지 않고 숫자만 보여 줌
+    }
+    sb.rpc("record_visit", { vid: local || robot ? null : vid }).then(({ data, error }) => {
       const row = !error && data && data[0];
       if (!row) return;
       box.replaceChildren(
