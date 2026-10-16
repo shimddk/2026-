@@ -128,6 +128,33 @@
   .groups { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .group h3 { margin: 0 0 8px; font-size: 16px; color: var(--neon); }
   .group ol { margin: 0; padding-left: 20px; color: var(--muted); }
+  /* 예선 순위표·본선 브래킷 */
+  .bk-title { font-family: 'YeogiOttaeJalnan', sans-serif; font-weight: normal; font-size: 22px; margin: 28px 0 10px; }
+  .bk-title small { font-family: inherit; font-size: 14px; color: var(--muted); margin-left: 8px; }
+  .stand { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .stand th, .stand td { padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .stand td.sch { white-space: normal; word-break: keep-all; }
+  .stand th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .stand td.sch { text-align: left; }
+  .stand tr.up td { color: var(--neon); font-weight: 700; }
+  .group details { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .group details summary { cursor: pointer; }
+  .group .gm { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; }
+  .bk-scroll { overflow-x: auto; padding-bottom: 8px; }
+  .bk { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr); gap: 18px; min-width: max-content; }
+  .bk-col { display: flex; flex-direction: column; gap: 8px; }
+  .bk-body { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 12px; }
+  .bk-col > h4 { margin: 0; font-size: 13px; color: var(--neon2); font-weight: 700; }
+  .bk-row-label { font-size: 13px; color: var(--muted); margin: 14px 0 6px; font-weight: 700; }
+  .mbox { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .mbox .mh { font-size: 11px; color: var(--muted); padding: 5px 10px; background: var(--bg2); }
+  .mbox .mt { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px; font-size: 14px; border-top: 1px solid var(--line); }
+  .mbox .mt.ph { color: var(--muted); font-size: 13px; }
+  .mbox .mt.win { color: var(--neon); font-weight: 700; }
+  .mbox .mt.lose { opacity: .55; }
+  .mbox .mt b { min-width: 1.2em; text-align: right; }
+  .adv { border: 1px dashed var(--neon); color: var(--neon); border-radius: 10px; padding: 10px; font-size: 14px; text-align: center; }
+  .adv b { display: block; color: var(--text, #fff); margin-top: 4px; }
   .bracket-flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 16px; }
   .bracket-flow .stage { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
   .bracket-flow .arrow { color: var(--neon); }
@@ -319,7 +346,7 @@
   <!-- 대진표 -->
   <section id="bracket" role="tabpanel" aria-labelledby="tab-bracket" hidden>
     <h2>대진표</h2>
-    <p class="lead">중등부·고등부 각 32팀이 예선 조별리그를 거쳐 16강부터 더블 엘리미네이션으로 겨룹니다.</p>
+    <p class="lead">중등부·고등부 각 32팀이 예선 조별리그(8개 조)를 거쳐, 조 1·2위 16팀이 장로·바론 두 그룹으로 나뉘어 더블 엘리미네이션으로 겨룹니다. 그룹마다 1·2위 4팀이 11/8 결선에 오릅니다.</p>
     <div class="pending">대진표는 모집 마감(10/19) 이후 확정되어 공지사항으로 안내됩니다. 확정되면 이 화면에 팀 이름이 채워집니다.</div>
     <div class="bracket-flow" aria-label="대회 진행 순서">
       <span class="stage">예선 32강 · 10/24(토)<br><small>4팀 1조 조별리그, bo1</small></span><span class="arrow" aria-hidden="true">→</span>
@@ -330,8 +357,8 @@
       <button type="button" class="chip" data-div="중등부" aria-pressed="true">중등부</button>
       <button type="button" class="chip" data-div="고등부" aria-pressed="false">고등부</button>
     </div>
-    <div class="groups" id="groups"></div>
-    <p class="note">조별 1·2위가 16강에 진출합니다. 32팀이 채워지지 않으면 3위 팀도 승급할 수 있으며, 세부 방식은 10/19 이후 확정됩니다.</p>
+    <div id="groups"></div>
+    <p class="note">예선 순위는 승 → 득실(세트) → 맞대결 순으로 정합니다. 32팀이 채워지지 않으면 3위 팀도 승급할 수 있으며, 조 편성·그룹 배치·세트 방식 등 세부 방식은 10/19 이후 확정됩니다.</p>
   </section>
 
   <!-- 경기 규정 -->
@@ -636,46 +663,127 @@ TIMELINE.forEach(t => {
 });
 
 /* ---------- 대진표 ---------- */
-// 확정되면 팀 이름을 채운다. 예: BRACKET["중등부"].A = ["OO중", "△△중", "□□중", "◇◇중"]
-const BRACKET = { "중등부": {}, "고등부": {} };
+// 교사용 화면에서 입력한 대진·결과(공개 함수)를 받아 예선 순위표와 본선 브래킷을 그린다
 const GROUPS = "ABCDEFGH".split("");
-const groupsBox = document.getElementById("groups");
-function showDiv(div) {
-  document.querySelectorAll("#divSwitch .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.div === div));
-  groupsBox.replaceChildren(...GROUPS.map(g => {
-    const card = el("div", "card group");
-    const ol = el("ol");
-    const teams = BRACKET[div][g] || [];
-    for (let i = 0; i < 4; i++) ol.append(el("li", "", teams[i] || "추후 공개"));
-    card.append(el("h3", "", div + " " + g + "조"), ol);
-    return card;
-  }));
+const BK = { matches: [], standings: [], div: "중등부" };
+const BK_NAME = { E: "장로", B: "바론" };
+// 출처를 사람이 읽는 말로: G:A:1 → A조 1번, R:A:1 → A조 1위, W:E-U1-1 → 승자조 1R 1경기 승자
+function bkShort(code) {
+  const m = BK.matches.find(x => x.code === code && x.division === BK.div);
+  if (!m) return code;
+  return m.round_label.replace("라운드", "R").replace(/ (\d)경기$/, "-$1");
 }
-document.querySelectorAll("#divSwitch .chip").forEach(b => b.addEventListener("click", () => showDiv(b.dataset.div)));
-showDiv("중등부");
+function bkSrc(src, here) {
+  if (!src) return "추후 공개";
+  const p = src.split(":");
+  if (p[0] === "G") return p[1] + "조 " + p[2] + "번";
+  if (p[0] === "R") return p[1] + "조 " + p[2] + "위";
+  const g = p[1].split("-")[0];
+  return (BK_NAME[g] && g !== here ? BK_NAME[g] + " " : "") + bkShort(p[1]) + (p[0] === "W" ? " 승자" : " 패자");
+}
+const bkBo = n => (n === 1 ? "단판" : n + "판 " + Math.ceil(n / 2) + "선승");
+function bkBox(m) {
+  const box = el("div", "mbox");
+  box.append(el("div", "mh", [m.round_label, m.scheduled_at, bkBo(m.best_of)].filter(Boolean).join(" · ")));
+  [[m.team1, m.score1, m.src1], [m.team2, m.score2, m.src2]].forEach(([t, s, src]) => {
+    const cls = !t ? " ph" : m.winner ? (m.winner === t ? " win" : " lose") : "";
+    const row = el("div", "mt" + cls);
+    row.append(el("span", "", t || bkSrc(src, m.code.split("-")[0])), el("b", "", s == null ? "" : String(s)));
+    box.append(row);
+  });
+  return box;
+}
+function bkCol(title, list) {
+  const c = el("div", "bk-col"), body = el("div", "bk-body");
+  list.forEach(m => m && body.append(m.nodeType ? m : bkBox(m)));
+  c.append(el("h4", "", title), body);
+  return c;
+}
+function bkAdv(label, m) {
+  const a = el("div", "adv", label);
+  a.append(el("b", "", (m && m.winner) || "미정"));
+  return a;
+}
+function renderBracket() {
+  document.querySelectorAll("#divSwitch .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.div === BK.div));
+  const root = document.getElementById("groups");
+  const ms = BK.matches.filter(m => m.division === BK.div);
+  const by = code => ms.find(m => m.code === code);
+  root.replaceChildren();
 
-// 교사용 화면에서 입력한 대진(학교 이름·점수만)을 받아 조별 카드에 채운다
-window.applyBracket = function (rows) {
-  rows.forEach(m => {
-    if (!m.grp || !BRACKET[m.division]) return;
-    const g = String(m.grp).replace(/조$/, "").toUpperCase();
-    const list = BRACKET[m.division][g] || (BRACKET[m.division][g] = []);
-    [m.team1, m.team2].forEach(t => { if (t && !list.includes(t)) list.push(t); });
+  // 1) 예선 조별 순위
+  root.append(el("h3", "bk-title", "예선 조별리그"));
+  const gwrap = el("div", "groups");
+  GROUPS.forEach(g => {
+    const card = el("div", "card group");
+    card.append(el("h3", "", BK.div + " " + g + "조"));
+    const rows = BK.standings.filter(s => s.division === BK.div && s.grp === g);
+    const t = el("table", "stand");
+    const hr = el("tr");
+    ["순위", "학교", "승", "패", "득실"].forEach(h => hr.append(el("th", "", h)));
+    const th = el("thead"); th.append(hr);
+    const tb = el("tbody");
+    if (!rows.length) for (let i = 1; i <= 4; i++) { const tr = el("tr"); tr.append(el("td", "", "-"), el("td", "sch", "추후 공개"), el("td", "", ""), el("td", "", ""), el("td", "", "")); tb.append(tr); }
+    rows.forEach(s => {
+      const tr = el("tr", s.rank && s.rank <= 2 ? "up" : "");
+      tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), el("td", "sch", s.school), el("td", "", s.wins), el("td", "", s.losses), el("td", "", (s.diff > 0 ? "+" : "") + s.diff));
+      tb.append(tr);
+    });
+    t.append(th, tb);
+    card.append(t);
+    const games = ms.filter(m => m.stage === "예선" && m.grp === g);
+    if (games.length) {
+      const d = el("details");
+      d.append(el("summary", "", "경기 " + games.length + "개 · " + (games[0].scheduled_at || "")));
+      games.forEach(m => {
+        const line = el("div", "gm");
+        line.append(el("span", "", (m.team1 || bkSrc(m.src1)) + " vs " + (m.team2 || bkSrc(m.src2))), el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
+        d.append(line);
+      });
+      card.append(d);
+    }
+    gwrap.append(card);
   });
-  const extra = Object.keys(BRACKET["중등부"]).concat(Object.keys(BRACKET["고등부"])).filter(g => !GROUPS.includes(g));
-  extra.forEach(g => GROUPS.push(g));
+  root.append(gwrap);
+  if (!ms.length) return;
+
+  // 2) 본선: 장로·바론 그룹 더블 엘리미네이션
+  ["E", "B"].forEach(g => {
+    const k = s => by(g + "-" + s);
+    root.append(el("h3", "bk-title", "본선 " + BK_NAME[g] + " 그룹"));
+    const t = el("small", "", "더블 엘리미네이션 · 승자조 우승 = 그룹 1위, 패자조 우승 = 그룹 2위");
+    root.lastChild.append(t);
+    root.append(el("div", "bk-row-label", "승자조"));
+    const up = el("div", "bk-scroll"), ub = el("div", "bk");
+    ub.append(bkCol("1라운드 (16강)", [k("U1-1"), k("U1-2"), k("U1-3"), k("U1-4")]), bkCol("2라운드", [k("U2-1"), k("U2-2")]),
+      bkCol("승자조 결승", [k("U3")]), bkCol("결선 진출", [bkAdv(BK_NAME[g] + " 1위", k("U3"))]));
+    up.append(ub); root.append(up);
+    root.append(el("div", "bk-row-label", "패자조"));
+    const lo = el("div", "bk-scroll"), lb = el("div", "bk");
+    lb.append(bkCol("1라운드", [k("L1-1"), k("L1-2")]), bkCol("2라운드", [k("L2-1"), k("L2-2")]), bkCol("3라운드", [k("L3")]),
+      bkCol("패자조 결승", [k("L4")]), bkCol("결선 진출", [bkAdv(BK_NAME[g] + " 2위", k("L4"))]));
+    lo.append(lb); root.append(lo);
+  });
+
+  // 3) 결선 (11/8 오프라인)
+  root.append(el("h3", "bk-title", "결선 · 1~4위전"));
+  const fs = el("div", "bk-scroll"), fb = el("div", "bk");
+  const champ = el("div", "adv", "🏆 우승");
+  champ.append(el("b", "", (by("F-FINAL") && by("F-FINAL").winner) || "미정"));
+  fb.append(bkCol("4강", [by("F-SF1"), by("F-SF2")]), bkCol("결승 · 3·4위전", [by("F-FINAL"), by("F-3RD")]), bkCol("최종", [champ]));
+  fs.append(fb); root.append(fs);
+}
+document.querySelectorAll("#divSwitch .chip").forEach(b => b.addEventListener("click", () => { BK.div = b.dataset.div; renderBracket(); }));
+renderBracket();
+
+// portal.js가 공개 함수 결과를 넘겨줌
+window.applyBracket = function (matches, standings) {
+  BK.matches = matches || [];
+  BK.standings = standings || [];
   const pending = document.querySelector("#bracket .pending");
-  if (pending) pending.textContent = "확정된 대진이 반영되었습니다. 경기 결과는 계속 업데이트됩니다.";
-  const box = document.getElementById("matchList") || document.getElementById("groups").insertAdjacentElement("afterend", el("div", "card"));
-  box.id = "matchList";
-  box.replaceChildren(el("h3", "", "경기 결과"));
-  const ul = el("ul", "clean");
-  rows.forEach(m => {
-    const score = m.score1 != null && m.score2 != null ? " " + m.score1 + " : " + m.score2 + " " : " vs ";
-    ul.append(el("li", "", [m.division, m.stage, m.grp ? m.grp + "조" : "", m.scheduled_at || ""].filter(Boolean).join(" · ") + " — " + (m.team1 || "?") + score + (m.team2 || "?") + (m.winner ? " (승: " + m.winner + ")" : "")));
-  });
-  box.append(ul);
-  showDiv(document.querySelector('#divSwitch [aria-pressed="true"]').dataset.div);
+  const named = BK.matches.some(m => m.team1 || m.team2);
+  if (pending) pending.textContent = named ? "확정된 대진과 경기 결과가 반영되고 있습니다. 결과는 경기 후 지원단이 입력합니다." : "대진표 틀입니다. 모집 마감(10/19) 이후 조 편성이 확정되면 학교 이름이 채워집니다.";
+  renderBracket();
 };
 
 /* ---------- 질문 매칭 (원본 챗봇의 규칙을 오프라인용으로 옮김) ---------- */

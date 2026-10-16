@@ -53,9 +53,12 @@
   }
 
   /* ---------- 학생용 공개 대진표 ---------- */
-  sb.rpc("public_bracket").then(({ data, error }) => {
-    if (!error && data && data.length && window.applyBracket) window.applyBracket(data);
-  });
+  function loadPublicBracket() {
+    Promise.all([sb.rpc("public_bracket"), sb.rpc("public_standings")]).then(([m, s]) => {
+      if (!m.error && m.data && m.data.length && window.applyBracket) window.applyBracket(m.data, s.error ? [] : s.data);
+    });
+  }
+  loadPublicBracket();
 
   /* ---------- 방문자 수 (브라우저별 무작위 번호로 하루 1회) ---------- */
   (function countVisit() {
@@ -345,7 +348,7 @@
     box.replaceChildren();
     const bar = el("div", "gbar");
     let q = "";
-    const picked = filters.map(() => "");
+    const picked = filters.map(f => f.initial || "");
     if (filterable) {
       const s = el("input", "gsearch");
       s.type = "search";
@@ -359,7 +362,8 @@
       sel.setAttribute("aria-label", f.label + " 필터");
       const all = el("option", "", f.label + ": 전체"); all.value = ""; sel.append(all);
       f.values.forEach(v => { const o = el("option", "", v); o.value = v; sel.append(o); });
-      sel.addEventListener("change", () => { picked[i] = sel.value; draw(); });
+      sel.value = picked[i];
+      sel.addEventListener("change", () => { picked[i] = sel.value; if (f.onPick) f.onPick(sel.value); draw(); });
       bar.append(sel);
     });
     bar.append(el("span", "gcount"));
@@ -838,23 +842,129 @@
     draw();
   }
 
-  // 대진·경기 결과
-  const MATCH_COLS = [
-    ["division", "부문", null, ["중등부", "고등부"]], ["stage", "단계"], ["grp", "조"], ["match_no", "경기", "int"],
-    ["team1", "학교1"], ["score1", "점수1", "int"], ["team2", "학교2"], ["score2", "점수2", "int"],
-    ["winner", "승자"], ["scheduled_at", "일시"], ["referee", "심판"], ["note", "비고"]
-  ].map(([k, label, type, options]) => ({ key: k, label, type, options, get: r => r[k] }));
+  // 대진·경기 결과: 조 편성 → 예선 순위(자동) → 본선 장로·바론 더블 엘리미네이션 → 결선
+  // 출처(src)가 있는 학교 칸은 DB가 자동으로 채움 (G:조:번호 / R:조:순위 / W:코드 승자 / L:코드 패자)
+  const GRP_NAME = { E: "장로", B: "바론" };
+  function srcText(src, matches) {
+    if (!src) return "";
+    const p = src.split(":");
+    if (p[0] === "G") return p[1] + "조 " + p[2] + "번";
+    if (p[0] === "R") return p[1] + "조 " + p[2] + "위";
+    const m = matches.find(x => x.code === p[1]);
+    const g = GRP_NAME[p[1].split("-")[0]];
+    return (g ? g + " " : "") + (m ? m.round_label.replace("라운드", "R") : p[1]) + (p[0] === "W" ? " 승자" : " 패자");
+  }
+  let matchDiv = "중등부";
+  const matchPick = ["", ""]; // 다시 불러와도 단계·조 필터 유지
   async function loadMatches(box) {
-    const { data: rows, error } = await sb.from("matches").select("*").order("division").order("stage").order("grp").order("match_no");
-    if (error) { box.replaceChildren(el("p", "note", "불러오지 못했습니다.")); return; }
-    if (!rows.length) box.replaceChildren(el("p", "note", "2026 대진은 모집 마감(10/19) 이후 입력합니다."));
+    const [{ data: rows, error }, { data: slots }, { data: stand }, { data: ros }] = await Promise.all([
+      sb.from("matches").select("*").eq("division", matchDiv).order("sort").order("match_no"),
+      sb.from("league_slots").select("*").eq("division", matchDiv).order("grp").order("seed"),
+      sb.rpc("public_standings"),
+      sb.from("sheet_rows").select("data").eq("sheet", matchDiv === "중등부" ? "roster_middle" : "roster_high")
+    ]);
+    box.replaceChildren();
+    if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    loadPublicBracket();
+    const reload = () => loadMatches(box);
+
+    const sw = el("div", "div-switch");
+    ["중등부", "고등부"].forEach(d => {
+      const b = el("button", "chip", d);
+      b.type = "button";
+      b.setAttribute("aria-pressed", d === matchDiv);
+      b.addEventListener("click", () => { matchDiv = d; reload(); });
+      sw.append(b);
+    });
+    box.append(sw, el("p", "note", "① 조 편성에 학교를 넣으면 예선 경기 칸이 채워집니다. ② 점수를 넣으면 승자가 정해지고, 조의 6경기가 끝나면 1·2위가 본선 칸에 자동으로 들어갑니다. ③ 본선·결선도 점수를 넣으면 승자·패자가 다음 경기 칸으로 이동합니다. 앞 경기 결과를 고치면 뒤 칸도 같이 바뀝니다."));
+
+    // 1) 조 편성 + 예선 순위
+    const schools = [...new Set((ros || []).map(x => x.data["학교 이름"]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+    const dl = el("datalist"); dl.id = "slotSchools";
+    schools.forEach(s => { const o = el("option"); o.value = s; dl.append(o); });
+    const used = {};
+    (slots || []).forEach(s => { if (s.school) used[normSchool(s.school)] = (used[normSchool(s.school)] || 0) + 1; });
+    const sec = el("div", "card");
+    sec.append(el("h3", "", "조 편성 · 예선 순위 (" + matchDiv + ")"), dl);
+    const gwrap = el("div", "slot-grid");
+    "ABCDEFGH".split("").forEach(g => {
+      const card = el("div", "slot-card");
+      card.append(el("h4", "", g + "조"));
+      const st = (stand || []).filter(x => x.division === matchDiv && x.grp === g);
+      const rankOf = s => { const x = st.find(y => y.seed === s.seed); return x; };
+      (slots || []).filter(s => s.grp === g).forEach(s => {
+        const row = el("div", "slot-row");
+        const x = rankOf(s);
+        row.append(el("span", "slot-no", s.seed + "번"));
+        if (isEditor()) {
+          const i = el("input", "cell" + (s.school && used[normSchool(s.school)] > 1 ? " dupe" : ""));
+          i.value = s.school || ""; i.setAttribute("list", "slotSchools"); i.placeholder = "학교 이름"; i.size = 12;
+          i.setAttribute("aria-label", g + "조 " + s.seed + "번 학교");
+          i.addEventListener("change", async () => { if (await save(sb.from("league_slots").update({ school: i.value.trim() || null }).eq("id", s.id))) reload(); });
+          row.append(i);
+        } else row.append(el("span", "", s.school || "-"));
+        row.append(el("span", "slot-st" + (x && x.rank && x.rank <= 2 ? " up" : ""), x ? (x.rank ? x.rank + "위 · " : "") + x.wins + "승 " + x.losses + "패 " + (x.diff > 0 ? "+" : "") + x.diff : ""));
+        if (s.school && used[normSchool(s.school)] > 1) row.append(el("small", "rec-warn", "다른 조와 중복"));
+        card.append(row);
+      });
+      // 동률이면 순위를 직접 지정 (4팀 모두 지정해야 적용)
+      const complete = st.length && st[0].complete;
+      const tie = complete && st.some(x => !x.rank);
+      const manual = (slots || []).some(s => s.grp === g && s.final_rank);
+      if (isEditor() && st.length) {
+        const d = el("details", "score-editor");
+        d.open = tie;
+        d.append(el("summary", tie ? "dupe" : "", tie ? "동률 · 순위 직접 지정 필요" : manual ? "순위 직접 지정 중" : "순위 직접 지정"));
+        (slots || []).filter(s => s.grp === g && s.school).forEach(s => {
+          const l = el("label", "slot-row");
+          const sel = el("select");
+          ["", "1", "2", "3", "4"].forEach(v => { const o = el("option", "", v ? v + "위" : "자동"); o.value = v; sel.append(o); });
+          sel.value = s.final_rank ? String(s.final_rank) : "";
+          sel.addEventListener("change", async () => { if (await save(sb.from("league_slots").update({ final_rank: sel.value ? Number(sel.value) : null }).eq("id", s.id))) reload(); });
+          l.append(el("span", "", s.school), sel);
+          d.append(l);
+        });
+        card.append(d);
+      }
+      gwrap.append(card);
+    });
+    sec.append(gwrap);
+    box.append(sec);
+
+    // 2) 경기 결과 (표)
+    const label = r => (r.grp && r.stage !== "예선" ? r.grp + " · " : r.grp ? r.grp + "조 · " : "") + r.round_label;
+    const teamCol = n => ({
+      key: "team" + n, label: "학교" + n,
+      readonly: r => !!r["src" + n],
+      get: r => r["team" + n] || (r["src" + n] ? "(" + srcText(r["src" + n], rows) + ")" : ""),
+      cellClass: r => (!r["team" + n] ? "ph" : r.winner ? (r.winner === r["team" + n] ? "win" : "lose") : "")
+    });
+    const columns = [
+      { key: "_stage", label: "단계", readonly: true, get: r => r.stage },
+      { key: "_round", label: "경기", readonly: true, get: label },
+      { key: "scheduled_at", label: "일시", get: r => r.scheduled_at },
+      { key: "best_of", label: "세트", options: ["1", "3", "5"], get: r => String(r.best_of) },
+      teamCol(1), { key: "score1", label: "점수1", type: "int", get: r => r.score1 },
+      { key: "score2", label: "점수2", type: "int", get: r => r.score2 }, teamCol(2),
+      { key: "winner", label: "승자", readonly: true, get: r => r.winner, cellClass: r => (r.winner ? "win" : "") },
+      { key: "referee", label: "심판", get: r => r.referee },
+      { key: "note", label: "비고", get: r => r.note }
+    ];
     const holder = el("div");
-    box.append(holder);
+    box.append(el("h3", "bk-sub", "경기 결과 입력"), holder);
     grid(holder, {
-      columns: MATCH_COLS, rows, exportName: "대진·경기 결과",
-      onSave: async (r, c, v) => { if (await save(sb.from("matches").update({ [c.key]: v }).eq("id", r.id))) r[c.key] = v; },
-      onDelete: async r => { if (await save(sb.from("matches").delete().eq("id", r.id), "삭제했습니다")) { box.replaceChildren(); loadMatches(box); } },
-      onAdd: async () => { if (await save(sb.from("matches").insert({ division: "중등부", stage: "조별예선" }), "행을 추가했습니다")) { box.replaceChildren(); loadMatches(box); } }
+      columns, rows, exportName: "대진·경기 결과(" + matchDiv + ")",
+      filters: [
+        { label: "단계", values: ["예선", "본선", "결선"], get: r => r.stage, initial: matchPick[0], onPick: v => { matchPick[0] = v; } },
+        { label: "조·그룹", values: ["A", "B", "C", "D", "E", "F", "G", "H", "장로", "바론"], get: r => r.grp || "", initial: matchPick[1], onPick: v => { matchPick[1] = v; } }
+      ],
+      onSave: async (r, c, v) => {
+        const val = c.key === "best_of" ? Number(v) : typeof v === "string" ? (v.trim() || null) : v;
+        if (await save(sb.from("matches").update({ [c.key]: val }).eq("id", r.id))) {
+          // 점수·학교가 바뀌면 다음 칸이 자동으로 바뀌므로 다시 불러옴
+          if (["score1", "score2", "team1", "team2"].includes(c.key)) reload(); else r[c.key] = val;
+        }
+      }
     });
   }
 

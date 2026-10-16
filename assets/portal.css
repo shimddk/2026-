@@ -168,3 +168,17 @@ section.teacher > .lead { font-size: 14px; margin: 0 0 12px; }
 .warn-sum { margin-bottom: 16px; }
 table.dtable td.warn-lv { color: #ffd38a; font-weight: 700; }
 .warn-steps { margin: 8px 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+/* 대진·경기 결과 (교사용) */
+.slot-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); margin-top: 8px; }
+.slot-card { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.slot-card h4 { margin: 0 0 6px; color: var(--neon); }
+.slot-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 3px 0; font-size: 14px; }
+.slot-no { color: var(--muted); min-width: 2.2em; }
+.slot-st { color: var(--muted); font-size: 12px; }
+.slot-st.up { color: var(--neon); font-weight: 700; }
+input.cell.dupe { border-color: #ff7878; }
+.score-editor summary.dupe { color: #ffb4b4; font-weight: 700; }
+.bk-sub { margin: 20px 0 8px; }
+table.dtable td.ph { color: var(--muted); font-size: 13px; }
+table.dtable td.win { color: var(--neon); font-weight: 700; }
+table.dtable td.lose { opacity: .6; }
