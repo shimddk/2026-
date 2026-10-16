@@ -225,11 +225,19 @@
         const st = statusOf(t);
         if (st) head.append(el("span", "ok-badge", "✔ 팀장 " + (st.status === "수정함" ? "수정 완료" : "확인 완료") + " (" + fmtTime(st.at) + ")"));
         const ul = el("ul", "rec-list");
+        const hiddenNames = [];
         t.ids.forEach(r => {
           const li = el("li");
-          li.append(el("span", "rec-line" + (r.slot > 5 ? " sub" : ""), r.line), el("span", "rec-name", r.student_name || "-"), idLink(r));
-          const issue = idIssue(r.lol_id, t.ids);
-          if (issue) li.append(el("small", "rec-warn", issue));
+          li.append(el("span", "rec-line" + (r.slot > 5 ? " sub" : ""), r.line), el("span", "rec-name", r.student_name || "-"));
+          if (r.id_hidden) {
+            // 부적절한 닉네임: 바뀔 때까지 학생용에서 가림
+            li.append(el("span", "rec-hidden", "닉네임 변경 중"));
+            hiddenNames.push(r.student_name || r.line);
+          } else {
+            li.append(idLink(r));
+            const issue = idIssue(r.lol_id, t.ids);
+            if (issue) li.append(el("small", "rec-warn", issue));
+          }
           ul.append(li);
         });
         // 멀티서치: 주전 5명 / 후보까지 모두 (누르면 fow.lol에서 바로 검색)
@@ -238,17 +246,19 @@
           a.href = fowMulti(list); a.target = "_blank"; a.rel = "noopener noreferrer";
           return a;
         };
-        const starters = t.ids.filter(r => r.slot <= 5).map(r => r.lol_id);
+        const shownIds = t.ids.filter(r => !r.id_hidden);
+        const starters = shownIds.filter(r => r.slot <= 5).map(r => r.lol_id);
         const btns = el("div", "rec-btns");
         if (starters.length) btns.append(multiLink("주전 " + starters.length + "명 한 번에 (멀티서치)", starters, "btn small"));
-        if (t.ids.length > starters.length) btns.append(multiLink("후보까지 " + t.ids.length + "명", t.ids.map(r => r.lol_id), "btn ghost small"));
+        if (shownIds.length > starters.length) btns.append(multiLink("후보까지 " + shownIds.length + "명", shownIds.map(r => r.lol_id), "btn ghost small"));
+        const nickNote = !hiddenNames.length ? null : (el("p", "rec-nick","규정 제6조에 따라 " + hiddenNames.join(", ") + " 선수의 닉네임 변경이 필요합니다. 닉네임을 바꾼 뒤 팀장이 '우리 팀 명단 확인·수정'에서 새 아이디를 저장해 주세요."));
         if (editOpen && t.teamCount === 1) {
           const eb = el("button", "btn small edit-roster", "우리 팀 명단 확인·수정");
           eb.type = "button";
           eb.addEventListener("click", () => openRosterEdit(t, untilText));
           btns.append(eb);
         }
-        card.append(head, ul, btns, el("p", "note", "아이디를 누르면 그 선수의 전적이, 멀티서치를 누르면 팀 전체 전적이 fow.lol 새 창에서 바로 열립니다."));
+        card.append(head, ul, ...(nickNote ? [nickNote] : []), btns, el("p", "note", "아이디를 누르면 그 선수의 전적이, 멀티서치를 누르면 팀 전체 전적이 fow.lol 새 창에서 바로 열립니다."));
         list.append(card);
       });
     }
@@ -314,6 +324,7 @@
     function stepForm(data) {
       dlg.replaceChildren();
       const players = data.players || [];
+      const extras = data.extras || [];
       const tiers = ["", ...(data.tiers || [])];
       const f = el("form", "rdlg-form");
       f.append(el("h3", "", team.school + " 명단 확인·수정"),
@@ -353,14 +364,17 @@
           const n = ni.value.trim(), ln = lineSel ? lineSel.value : "";
           return { slot: p.slot, name: n && ln ? n + " (" + ln + ")" : n, id: ii.value.trim(), tier: ts.value };
         };
+        // 규정 제6조 닉네임 변경 요청이 걸린 아이디: 바뀌기 전까지 안내
+        const nickKey = x => String(x || "").replace(/\s/g, "").toLowerCase();
+        r.needChange = () => !!p.change && nickKey(ii.value) === nickKey(p.id);
         r.check = () => {
           const v = r.value(), n = ni.value.trim();
           let msg = "";
           if (!n && !v.id) msg = isSub ? "" : "주전 칸은 비울 수 없습니다";
           else if (!n || !v.id) msg = "이름과 롤 아이디를 모두 적어 주세요";
           else msg = riotIdError(v.id);
-          err.textContent = msg;
-          tr.classList.toggle("bad", !!msg);
+          err.textContent = msg || (r.needChange() ? "규정 제6조에 따라 이 닉네임은 변경이 필요합니다. 롤에서 닉네임을 바꾼 뒤 새 아이디를 적어 주세요." : "");
+          tr.classList.toggle("bad", !!msg || r.needChange());
           return !msg;
         };
         [ni, ii, ts, lineSel].filter(Boolean).forEach(x => x.addEventListener("input", refresh));
@@ -380,10 +394,12 @@
         const ids = rows.map(r => r.value().id.replace(/\s/g, "").toLowerCase()).filter(Boolean);
         const dup = ids.length !== new Set(ids).size;
         const changed = JSON.stringify(rows.map(r => r.value())) !== orig;
-        status.textContent = dup ? "같은 롤 아이디가 두 번 들어갔습니다." : !allOk ? "빨간 칸을 고친 뒤 저장해 주세요." : changed ? "바뀐 내용이 있습니다. '수정 저장'을 눌러 주세요." : "";
+        const nickLeft = rows.some(r => r.needChange());
+        const extrasLeft = extras.length && !changed;
+        status.textContent = dup ? "같은 롤 아이디가 두 번 들어갔습니다." : !allOk ? "빨간 칸을 고친 뒤 저장해 주세요." : changed ? "바뀐 내용이 있습니다. '수정 저장'을 눌러 주세요." + (nickLeft ? " (닉네임 변경이 필요한 선수가 아직 있습니다)" : "") : nickLeft ? "닉네임 변경이 필요한 선수가 있어서 '이상 없음 확인'을 할 수 없습니다." : extrasLeft ? "칸에 들어가지 못한 선수를 정리한 뒤 저장해 주세요." : "";
         saveBtn.disabled = !allOk || dup || !changed;
-        okBtn.disabled = !allOk || dup || changed;
-        okBtn.title = changed ? "고친 내용이 있으면 '수정 저장'을 눌러 주세요" : !allOk ? "빨간 칸을 먼저 고쳐 주세요" : "";
+        okBtn.disabled = !allOk || dup || changed || nickLeft || !!extrasLeft;
+        okBtn.title = changed ? "고친 내용이 있으면 '수정 저장'을 눌러 주세요" : !allOk ? "빨간 칸을 먼저 고쳐 주세요" : nickLeft ? "닉네임 변경이 필요한 선수가 있습니다" : "";
         return allOk && !dup;
       }
       async function submit(confirmOnly) {
@@ -405,6 +421,16 @@
       okBtn.addEventListener("click", () => submit(true));
       f.addEventListener("submit", e => { e.preventDefault(); submit(false); });
       if (data.confirmed) f.append(el("p", "note", "이전 확인: " + (data.confirmed.status === "수정함" ? "수정 완료" : "확인 완료") + " · " + fmtTime(data.confirmed.at)));
+      // 구글폼에서 10칸 밖(후보6 이상)으로 들어간 선수: 칸으로 옮겨 적고 저장하면 정리됨
+      if (extras.length) {
+        const ex = el("div", "pending rdlg-extras");
+        ex.append(el("b", "", "칸에 들어가지 못한 선수 " + extras.length + "명 (구글폼 기준)"),
+          el("p", "", "한 팀은 주전 5명 + 후보 최대 5명(총 10명)입니다. 아래 선수를 위 칸에 옮겨 적은 뒤 '수정 저장'을 누르면 이 목록은 정리됩니다."));
+        const ul = el("ul");
+        extras.forEach(x => ul.append(el("li", "", (x.name || "(이름 없음)") + " - " + x.id)));
+        ex.append(ul);
+        f.append(ex);
+      }
       f.append(scroller, status, btnRow);
       dlg.append(f);
       refresh();
@@ -1715,6 +1741,44 @@
       logBox.append(d);
     });
     box.append(logBox);
+
+    // 닉네임 점검 (규정 제6조): 변경 요청 = 학생용에서 가리고 팀 카드에 안내 / 확인 필요 = 교사용에만
+    const nick = el("div", "card");
+    nick.append(el("h3", "", "닉네임 점검 (규정 제6조)"),
+      el("p", "note", "'변경 요청'은 학생용 전적 검색에서 아이디를 가리고 그 팀 카드에 닉네임 변경 안내를 띄웁니다. 팀장이 새 아이디를 저장하면 자동으로 풀립니다. '확인 필요'는 교사용에만 보입니다. 금지어 자동 점검에 걸린 아이디도 함께 보여 줍니다."));
+    const { data: scan, error: se } = await sb.rpc("nickname_scan");
+    if (se) nick.append(el("p", "note", "불러오지 못했습니다."));
+    else if (!scan.length) nick.append(el("p", "note", "걸린 아이디가 없습니다."));
+    else {
+      const LV = { change: "변경 요청", check: "확인 필요", "": "표시 없음" };
+      const sc = el("div", "gscroll"), t = el("table", "dtable"), hr = el("tr");
+      ["학교", "칸", "학생", "롤 아이디", "자동 점검", "사유", "처리"].forEach(h => hr.append(el("th", "", h)));
+      const th = el("thead"); th.append(hr);
+      const tb = el("tbody");
+      scan.forEach(x => {
+        const tr = el("tr");
+        const sel = el("select");
+        sel.setAttribute("aria-label", x.lol_id + " 처리");
+        ["", "check", "change"].forEach(v => { const o = el("option", "", LV[v]); o.value = v; sel.append(o); });
+        sel.value = x.level || "";
+        sel.addEventListener("change", async () => {
+          const reason = x.reason || (x.suspect ? "자동 점검: " + x.suspect : null);
+          const { data, error } = await sb.rpc("set_nickname_flag", { p_sheet: x.sheet, p_school: x.school, p_lol_id: x.lol_id, p_level: sel.value || null, p_reason: reason });
+          if (error || !data || data.status === "forbidden") { toast("저장하지 못했습니다", true); sel.value = x.level || ""; return; }
+          x.level = sel.value || null;
+          tr.className = x.level === "change" ? "nick-change" : x.level === "check" ? "nick-check" : "";
+          toast(LV[sel.value] + "(으)로 바꿨습니다");
+          renderRecord();
+        });
+        const td = el("td"); td.append(sel);
+        tr.className = x.level === "change" ? "nick-change" : x.level === "check" ? "nick-check" : "";
+        tr.append(el("td", "", x.label), el("td", "", String(x.line_key).replace(/^\d+\.\s*/, "").replace(" LOL 아이디", "")), el("td", "", x.student_name || ""),
+          el("td", "", x.lol_id), el("td", "", x.suspect || ""), el("td", "", x.reason || ""), td);
+        tb.append(tr);
+      });
+      t.append(th, tb); sc.append(t); nick.append(sc);
+    }
+    box.append(nick);
   }
 
   // 구글폼 신청 접수함 (고치기 권한자)

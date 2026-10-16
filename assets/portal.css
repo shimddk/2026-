@@ -223,3 +223,10 @@ table.dtable td.lose { opacity: .6; }
   .rdlg-table td:nth-child(4) { grid-column: 2; grid-row: 2; }
   .rdlg-table td:nth-child(3) { grid-column: 1 / -1; grid-row: 3; }
 }
+/* 닉네임 점검 */
+.rec-hidden { color: #ffb4b4; font-size: 13px; font-style: italic; }
+.rec-nick { margin: 0; font-size: 12px; color: #ffb4b4; background: rgba(255, 120, 120, .1); border-radius: 8px; padding: 6px 10px; }
+.rdlg-extras { margin: 8px 0; font-size: 13px; }
+.rdlg-extras ul { margin: 4px 0 0; padding-left: 18px; }
+table.dtable tr.nick-change td { background: rgba(255, 120, 120, .12); }
+table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
