@@ -741,8 +741,22 @@ function scrollLog() { log.scrollTop = log.scrollHeight; }
 function userMsg(text) { log.append(el("div", "msg user", text)); scrollLog(); }
 function botFaq(f) {
   const m = el("div", "msg bot");
-  m.append(el("span", "tag " + f.st, f.st === "ok" ? "공식 FAQ" : "공식 FAQ · 미확정"), el("div", "q", f.q), el("div", "", f.a));
+  m.append(el("span", "tag " + f.st, f.st === "ok" ? "공식 FAQ" : "공식 FAQ · 미확정"), el("div", "q", f.q), withDiscordLink(f.a));
   log.append(m);
+}
+// 답변 속 '디스코드 질문방'을 질문 채널 링크로 (나머지는 글자 그대로)
+const DISCORD_QA = "https://discord.com/channels/1545075931545206795/1557422405847093288";
+function withDiscordLink(text) {
+  const d = el("div");
+  String(text).split("디스코드 질문방").forEach((part, i) => {
+    if (i) {
+      const a = el("a", "", "디스코드 질문방");
+      a.href = DISCORD_QA; a.target = "_blank"; a.rel = "noopener noreferrer";
+      d.append(a);
+    }
+    d.append(document.createTextNode(part));
+  });
+  return d;
 }
 function suggButtons(faqs) {
   const box = el("div", "sugg");
