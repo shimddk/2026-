@@ -551,7 +551,7 @@
     const inner = el("div");
     box.append(sw, summary, inner);
 
-    let rows = [], scores = [], keys = [];
+    let rows = [], scores = [], keys = [], tierCountsOpen = false;
     async function load() {
       inner.replaceChildren(el("p", "note", "불러오는 중…"));
       const [m, r, s] = await Promise.all([
@@ -582,15 +582,19 @@
       // 요약: 주전 티어별 인원
       const counts = scores.map(t => [t.tier, rows.reduce((n, r) => n + STARTERS.filter(k => r.data[k] === t.tier).length, 0)]);
       const done = rows.filter(r => r._n === 5).length;
-      summary.replaceChildren(
-        el("div", "tier-chips", null),
-        el("p", "note", "주전 5명 티어가 모두 입력된 팀 " + done + " / " + rows.length + "팀")
-      );
+      // 티어별 인원은 접어 두고 화살표로 펼침 (표가 바로 보이도록)
+      const chipBox = el("details", "score-editor tier-counts");
+      chipBox.open = tierCountsOpen;
+      chipBox.addEventListener("toggle", () => { tierCountsOpen = chipBox.open; });
+      chipBox.append(el("summary", "", "티어별 주전 인원 (" + divOf(current) + ") · 주전 5명 티어가 모두 입력된 팀 " + done + " / " + rows.length + "팀"));
+      const chips = el("div", "tier-chips");
       counts.forEach(([t, n]) => {
         const c = el("span", "tier-chip");
         c.append(el("b", "", t), document.createTextNode(" " + n + "명"));
-        summary.firstChild.append(c);
+        chips.append(c);
       });
+      chipBox.append(chips);
+      summary.replaceChildren(chipBox);
       if (isEditor()) summary.append(scoreEditor());
 
       const tierOptions = ["", ...scores.map(t => t.tier)];
