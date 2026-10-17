@@ -774,6 +774,7 @@
     if (isEditor()) views.push(["t-rcheck", "명단 확인 현황", "팀장이 전적 검색에서 직접 확인·수정한 현황입니다. 저장하면 아이디 명단·티어 현황에 바로 반영되고, 잘못된 수정은 여기서 되돌릴 수 있습니다.", loadRosterCheck]);
     if (isEditor()) views.push(["t-coaching", "젠지 코칭 관리", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다. 담당 코치·상태를 바꾸면 공개 '젠지 코칭' 탭에도 바로 반영됩니다(신청자·메모는 공개 안 됨).", loadCoaching]);
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
+    if (isOwner()) views.push(["t-drawpreview", "예상 조 편성", "지금까지 확정된 팀으로 조 편성을 미리 뽑아 봅니다(관리자 전용). 저장되지 않으며 실제 대진표와 학생 화면에는 아무 영향이 없습니다.", loadDrawPreview]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
     views.forEach(([id, label, lead, loader]) => {
       addTab(id, label, true);
@@ -1297,14 +1298,18 @@
     });
     return result;
   }
-  async function openDraw(div, slots, ros, reload) {
-    const stage = FIRST_STAGE[div];
-    const groups = STAGE_GROUPS[stage];
+  // 편성 대상: 확인 사항(중복 신청 등)이 없는 확정 팀만, 주전 평균 티어 순(티어 없는 팀은 맨 뒤)
+  async function drawTeams(div, ros) {
     const strength = await teamStrength(div);
     const pending = ros.filter(x => String(x.data["확인 사항"] || "").trim()).map(x => x.data["학교 이름"]);
     const names = [...new Set(ros.filter(x => !String(x.data["확인 사항"] || "").trim()).map(x => String(x.data["학교 이름"] || "").trim()).filter(Boolean))];
     const ranked = names.map(n => ({ n, s: strength[normSchool(n)] })).sort((a, b) => (a.s == null) - (b.s == null) || (a.s ?? 0) - (b.s ?? 0) || a.n.localeCompare(b.n, "ko"));
-    const teams = ranked.map(x => x.n);
+    return { ranked, teams: ranked.map(x => x.n), pending };
+  }
+  async function openDraw(div, slots, ros, reload) {
+    const stage = FIRST_STAGE[div];
+    const groups = STAGE_GROUPS[stage];
+    const { teams, pending } = await drawTeams(div, ros);
     const dlg = el("dialog", "rdlg");
     dlg.setAttribute("aria-label", div + " 자동 조 편성");
     const close = () => { dlg.close(); dlg.remove(); };
@@ -1357,6 +1362,57 @@
     document.body.append(dlg);
     draw();
     dlg.showModal();
+  }
+
+  // 예상 조 편성 (관리자 전용): 지금까지 확정된 팀으로 미리 뽑아 보기만 함 — 실제 조 편성(league_slots)에는 저장하지 않음
+  let previewDiv = "중등부";
+  async function loadDrawPreview(box) {
+    box.replaceChildren(el("p", "note", "불러오는 중…"));
+    const div = previewDiv, stage = FIRST_STAGE[div], groups = STAGE_GROUPS[stage];
+    const { data: ros } = await sb.from("sheet_rows").select("data").eq("sheet", div === "중등부" ? "roster_middle" : "roster_high");
+    const { ranked, teams, pending } = await drawTeams(div, ros || []);
+    const info = new Map(ranked.map((x, i) => [x.n, { rank: x.s == null ? null : i + 1, avg: x.s }]));
+    box.replaceChildren();
+    const sw = el("div", "div-switch");
+    ["중등부", "고등부"].forEach(d => {
+      const b = el("button", "chip", d);
+      b.type = "button";
+      b.setAttribute("aria-pressed", d === div);
+      b.addEventListener("click", () => { previewDiv = d; loadDrawPreview(box); });
+      sw.append(b);
+    });
+    const again = el("button", "btn small", "다시 뽑기");
+    again.type = "button";
+    const head = el("div", "slot-head");
+    head.append(sw, again);
+    const body = el("div");
+    box.append(head, el("p", "note", "⚠️ 미리 보기 전용입니다. 실제 조 편성·대진표·학생 화면에는 저장되지 않습니다. 실제 편성은 '대진·경기 결과' 탭의 '자동 조 편성'에서 합니다."), body);
+    function draw() {
+      const result = drawGroups(teams, groups);
+      body.replaceChildren();
+      const size = g => result[g].filter(Boolean).length;
+      const n4 = groups.filter(g => size(g) === 4).length, n3 = groups.filter(g => size(g) === 3).length, n2 = groups.filter(g => size(g) <= 2).length;
+      body.append(el("p", "note", div + " 확정 " + teams.length + "팀 → " + stage + " " + groups.length + "개 조 (4팀 조 " + n4 + " · 3팀 조 " + n3 + (n2 ? " · 2팀 이하 조 " + n2 : "") + ")" +
+        " · 1~4시드 = 주전 평균 티어 순위로 " + groups.length + "팀씩, 시드마다 조는 무작위"));
+      if (pending.length) body.append(el("p", "rdlg-err", "아직 확정되지 않아 빠진 학교(확인 사항 있음): " + pending.join(", ")));
+      if (teams.length > groups.length * 4) body.append(el("p", "rdlg-err", "팀이 " + groups.length * 4 + "팀보다 많아 " + (teams.length - groups.length * 4) + "팀이 들어가지 못했습니다."));
+      const wrap = el("div", "slot-grid");
+      groups.forEach(g => {
+        const c = el("div", "slot-card");
+        c.append(el("h4", "", stage + " " + g + "조"));
+        for (let i = 0; i < 4; i++) {
+          const t = result[g][i], x = t && info.get(t);
+          const row = el("div", "slot-row");
+          row.append(el("span", "slot-no", (i + 1) + "시드"), el("span", t ? "" : "ph", t || "— (빈 자리)"));
+          if (x) row.append(el("span", "slot-st", x.rank ? "티어 " + x.rank + "위 · " + x.avg.toFixed(2) : "티어 미입력"));
+          c.append(row);
+        }
+        wrap.append(c);
+      });
+      body.append(wrap);
+    }
+    again.addEventListener("click", draw);
+    draw();
   }
 
   let matchDiv = "중등부";
