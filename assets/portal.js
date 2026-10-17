@@ -211,7 +211,8 @@
       if (!s.includes("#")) return "태그(#) 없음 · 확인 필요";
       if ((s.match(/#/g) || []).length > 1) return "#가 두 개 · 확인 필요";
       const i = s.indexOf("#"), name = s.slice(0, i).trim(), tag = s.slice(i + 1).trim();
-      if (/[\s,/(]/.test(tag) || tag.length > 5) return "태그 뒤에 다른 글자(티어·메모 등)가 붙어 있음 · 확인 필요";
+      // 태그 안 띄어쓰기는 허용 (라이엇 태그에 띄어쓰기가 들어간 경우가 있음, 예: #마 이). 쉼표·괄호·빗금이나 6자 이상이면 메모가 붙은 것
+      if (/[,/()]/.test(tag) || tag.length > 5) return "태그 뒤에 다른 글자(티어·메모 등)가 붙어 있음 · 확인 필요";
       if (tag.length < 3) return "태그가 너무 짧음 · 확인 필요";
       if (name.length < 3 || name.length > 16) return "아이디 길이(3~16자) 확인 필요";
       const key = x => String(x).replace(/\s/g, "").toLowerCase();
@@ -281,13 +282,13 @@
   }
 
   /* ---------- 팀장 명단 확인·수정 (전적 검색 카드 → 팀장 휴대폰 뒷자리로 본인 확인) ---------- */
-  // 라이엇 아이디 규칙: 이름 3~16자 + #태그 3~5자(글자·숫자만)
+  // 라이엇 아이디 규칙: 이름 3~16자 + #태그 3~5자(글자·숫자, 가운데 띄어쓰기 허용)
   function riotIdError(id) {
     const s = String(id || "").trim();
     if (!/^[^#]+#[^#]+$/.test(s)) return "'이름#태그' 모양으로 적어 주세요 (예: Hide on bush#KR1)";
     const name = s.split("#")[0].trim(), tag = s.split("#")[1].trim();
     if (name.length < 3 || name.length > 16) return "아이디 이름 부분은 3~16자입니다";
-    if (!/^[\p{L}\p{N}]{3,5}$/u.test(tag)) return "태그는 띄어쓰기·기호 없이 글자·숫자 3~5자입니다";
+    if (!/^[\p{L}\p{N}][\p{L}\p{N} ]{1,3}[\p{L}\p{N}]$/u.test(tag)) return "태그는 기호 없이 글자·숫자 3~5자입니다";
     return "";
   }
   const SUB_LINES = ["", "탑", "정글", "미드", "원딜", "서폿", "전체"];
