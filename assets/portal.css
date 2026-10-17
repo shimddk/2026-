@@ -260,3 +260,8 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 .dtable.ref .done-col { white-space: nowrap; text-align: center; }
 .dtable.ref tr.is-done th { color: var(--muted); }
 .dtable.ref tr.is-done.me th { color: var(--neon); }
+
+/* 전적 검색(교사 화면): 닉네임 점검 표시 */
+.rec-list .nick-need, .rec-list .nick-warn { display: block; width: 100%; font-size: 12px; margin-top: 2px; }
+.rec-list .nick-need { color: #ff9a9a; font-weight: 700; }
+.rec-list .nick-warn { color: #ffd38a; }

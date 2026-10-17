@@ -114,13 +114,20 @@
     [1, "탑", /^탑 LOL 아이디$/], [2, "정글", /^정글 LOL 아이디$/], [3, "미드", /^미드 LOL 아이디$/],
     [4, "원딜", /^원딜 LOL 아이디$/], [5, "서폿", /서폿 LOL 아이디$/],
     [6, "후보1", /후보1 LOL 아이디$/], [7, "후보2", /후보2 LOL 아이디$/], [8, "후보3", /후보3 LOL 아이디$/],
-    [9, "후보4", /후보4 LOL 아이디$/], [10, "후보5", /후보5 LOL 아이디$/]
+    [9, "후보4", /후보4 LOL 아이디$/], [10, "후보5", /후보5 LOL 아이디$/],
+    [11, "후보6", /후보6 LOL 아이디$/], [12, "후보7", /후보7 LOL 아이디$/], [13, "후보8", /후보8 LOL 아이디$/], [14, "후보9", /후보9 LOL 아이디$/]
   ];
   async function loadLineups() {
     // 승인된 교사는 원본 명단에서, 그 외는 공개 함수(관리자가 공개를 켰을 때만 결과가 있음)에서
     if (ME.status === "approved") {
-      const { data, error } = await sb.from("sheet_rows").select("sheet,row_no,data").in("sheet", ["roster_middle", "roster_high"]);
+      const [{ data, error }, { data: flags }] = await Promise.all([
+        sb.from("sheet_rows").select("sheet,row_no,data").in("sheet", ["roster_middle", "roster_high"]),
+        sb.from("nickname_flags").select("sheet,school,id_key,level,reason")
+      ]);
       if (error) return null;
+      // 닉네임 점검: 변경 요청(학생에겐 가려짐) / 확인 필요(교사만) — 키는 DB nick_key와 같게(공백 뺀 소문자)
+      const nickKey = x => String(x || "").replace(/\s+/g, "").toLowerCase();
+      const flagOf = new Map((flags || []).map(f => [f.sheet + "|" + f.school + "|" + f.id_key, f]));
       const out = [];
       // 같은 학교의 신청 행마다 1팀, 2팀 … (아이디가 있는 행만)
       const hasId = r => Object.keys(r.data).some(k => /LOL 아이디/.test(k) && String(r.data[k] || "").trim());
@@ -139,7 +146,8 @@
           const id = key && String(r.data[key] || "").trim();
           const nameKey = Object.keys(r.data).find(k => k.includes(line + "(학생 이름)"));
           const name = nameKey ? String(r.data[nameKey] || "").trim() : "";
-          if (id) out.push({ division: r.sheet === "roster_middle" ? "중등부" : "고등부", school, region: r.data["학교 소재 지역"], team_no: teamNo.get(r), team_count: teamCount[tk], slot, line, student_name: name, lol_id: id });
+          if (id) out.push({ division: r.sheet === "roster_middle" ? "중등부" : "고등부", school, region: r.data["학교 소재 지역"], team_no: teamNo.get(r), team_count: teamCount[tk], slot, line, student_name: name, lol_id: id,
+            flag: flagOf.get(r.sheet + "|" + normSchool(school).replace(/\s+/g, "") + "|" + nickKey(id)) || null });
         });
       });
       return { rows: out, teacher: true };
@@ -253,6 +261,9 @@
             li.append(idLink(r));
             const issue = idIssue(r.lol_id, t.ids);
             if (issue) li.append(el("small", "rec-warn", issue));
+            // 교사 화면 전용: 닉네임 점검 표시
+            if (r.flag) li.append(el("small", r.flag.level === "change" ? "nick-need" : "nick-warn",
+              (r.flag.level === "change" ? "변경 요청 · 학생 화면에서는 '닉네임 변경 중'으로 가려짐" : "확인 필요 · 교사에게만 보임") + (r.flag.reason ? " (" + r.flag.reason + ")" : "")));
           }
           ul.append(li);
         });
@@ -262,7 +273,7 @@
           a.href = fowMulti(list); a.target = "_blank"; a.rel = "noopener noreferrer";
           return a;
         };
-        const shownIds = t.ids.filter(r => !r.id_hidden);
+        const shownIds = t.ids.filter(r => !r.id_hidden && !(r.flag && r.flag.level === "change"));
         const starters = shownIds.filter(r => r.slot <= 5).map(r => r.lol_id);
         const btns = el("div", "rec-btns");
         if (starters.length) btns.append(multiLink("주전 " + starters.length + "명 한 번에 (멀티서치)", starters, "btn small"));
