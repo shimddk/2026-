@@ -141,6 +141,7 @@
     el("h3", "rsec", "공식 규정집 (Ver 1.0) · 제1조~제11조"),
     carousel("ruleTrack", RULEBOOK.map(ruleCard)),
     el("h3", "rsec", "팀장 교육 · 운영 세부 지침 13개"),
+    (() => { const p = el("p", "notice-line"); p.innerHTML = "📢 <strong>팀장 대상 대회 교육</strong>: 10월 21일(수) <strong>오후 8시(20:00) / 10시(22:00)</strong> 2회 진행 · 둘 중 한 번 참여 · 교육 시간 20분<br>팀장과 함께 <strong>팀원 최소 1명 이상</strong> 포함해서 참여해 주세요."; return p; })(),
     carousel("briefTrack", BRIEFING.map(briefCard))
   );
 })();

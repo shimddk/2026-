@@ -40,6 +40,12 @@
     font-weight: normal;
     font-display: swap;
   }
+  @font-face {
+    font-family: 'Cafe24Gowoonbam';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.1/Cafe24Oneprettynight.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+  }
   :root {
     --bg: #0a0f24;
     --bg2: #111833;
@@ -133,11 +139,34 @@
     background: linear-gradient(135deg, var(--neon), var(--neon2)); color: #0a0f24;
   }
   .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  /* 질문 챗봇 버튼: 복숭아(#f3ab8c)→코랄→핑크 그라데이션, 글꼴 Cafe24 고운밤, 글자 물결 모션(vibe-motion-ripple: 2.1초 ÷ 속도 1.25, 세기 65, 한 번) */
+  .btn.chatbtn {
+    position: relative; overflow: hidden; white-space: nowrap; flex: none; color: #3a0f1f; font-family: 'Cafe24Gowoonbam', 'Nanum Gothic', sans-serif; font-size: 20px; font-weight: normal;
+    padding: 10px 20px; background: linear-gradient(135deg, #f3ab8c 0%, #ff8a7a 45%, #ff6fae 100%);
+    box-shadow: 0 6px 22px rgba(255, 120, 140, .35);
+  }
+  .btn.chatbtn:hover, .btn.chatbtn:focus-visible { filter: brightness(1.05); box-shadow: 0 8px 28px rgba(255, 120, 140, .5); }
+  .btn.chatbtn .rp { display: inline-block; white-space: pre; }
+  .btn.chatbtn.rippling .rp { animation: chatRipple 1.68s linear both; animation-delay: calc(var(--i) * 70ms); }
+  .btn.chatbtn.rippling::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; border-radius: 50%;
+    background: rgba(255, 255, 255, .55); transform: translate(-50%, -50%) scale(0); animation: chatRing 1.68s linear both; pointer-events: none;
+  }
+  @keyframes chatRipple {
+    0% { transform: translateY(0) scale(1); }
+    18% { transform: translateY(-6.5px) scale(1.16); }
+    36% { transform: translateY(2px) scale(.97); }
+    54% { transform: translateY(-1.5px) scale(1.03); }
+    72%, 100% { transform: translateY(0) scale(1); }
+  }
+  @keyframes chatRing { 0% { transform: translate(-50%, -50%) scale(0); opacity: .65; } 100% { transform: translate(-50%, -50%) scale(28); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .btn.chatbtn.rippling .rp, .btn.chatbtn.rippling::after { animation: none; } }
   .dday { text-align: center; }
   .dday .label { color: var(--muted); font-size: 14px; }
   .dday .num { font-size: 44px; font-weight: 900; color: var(--neon); line-height: 1.2; }
   .dday .date { font-size: 14px; }
   .note { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .notice-line { background: rgba(243, 171, 140, .12); border: 1px solid rgba(243, 171, 140, .45); border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
   .stat .k { color: var(--muted); font-size: 13px; }
   .stat .v { font-size: 20px; font-weight: 800; }
 
@@ -341,7 +370,7 @@
       <p>경기도 중·고등학생이 학교 대표 팀으로 겨루는 온라인 리그입니다.<br>결승 전까지는 디스코드로 온라인 진행하고, 1~4위전은 오프라인에서 열립니다.</p>
       <div class="cta">
         <button class="btn" data-go="apply">참가 신청 안내</button>
-        <button class="btn ghost" data-go="faq">질문 챗봇 열기</button>
+        <button class="btn chatbtn" data-go="faq" aria-label="질문 챗봇 열기">질문 챗봇 열기</button>
       </div>
     </div>
     <!-- 왼쪽: D-Day 세로로 / 오른쪽: 세로 홍보영상 (휴대폰에서는 위아래로) -->
@@ -426,7 +455,8 @@
   <section id="bracket" role="tabpanel" aria-labelledby="tab-bracket" hidden>
     <h2>대진표</h2>
     <p class="lead">중등부는 64강 조별리그 → 32강 조별리그(8개 조), 고등부는 32강 조별리그를 거쳐 16팀이 장로·바론 두 그룹 더블 엘리미네이션으로 겨룹니다. 첫 조별리그는 최대한 4팀씩 조를 짜고, 각 조 1·2위와 성적이 좋은 3위가 다음 단계에 오릅니다. 그룹 1·2위 4팀이 4강 리그를 치르고, 리그 1·2위는 결승, 3·4위는 3·4위전을 11/8 오프라인 결선에서 치릅니다. <strong>모든 경기는 단판(BO1)</strong>입니다.</p>
-    <div class="pending">대진표는 모집 마감(10/19) 이후 확정되어 공지사항으로 안내됩니다. 확정되면 이 화면에 팀 이름이 채워집니다.</div>
+    <p class="notice-line">📢 대진표는 <strong>10월 20일(화) 오후 7시(19:00)</strong>에 공개 예정입니다.</p>
+    <div class="pending">대진표는 10월 20일(화) 19:00에 공개됩니다. 공개되면 이 화면에 팀 이름이 채워집니다.</div>
     <div class="bracket-flow" aria-label="대회 진행 순서">
       <span class="stage">조별리그 · 10/24(토)~25(일)<br><small>중등 64강→32강 · 고등 32강, 4팀 1조 중심</small></span><span class="arrow" aria-hidden="true">→</span>
       <span class="stage">본선 · 10/31(토)~11/1(일)<br><small>더블 엘리미네이션 승자조·패자조</small></span><span class="arrow" aria-hidden="true">→</span>
@@ -601,6 +631,8 @@ const DDAYS = [
 // 일정: 경기 회차는 교사용 '심판 일정' 표(public_schedule)를 그대로 보여 준다. 아래는 불러오기 전·실패 시 기본값.
 const TL_FIXED = [
   { date: "2026-10-19", start: "2026-10-19", when: "10/19(월)", what: "모집 마감", desc: "마감 후 팀장 교육에서 운영 방식을 안내하고 대진표를 공지합니다." },
+  { date: "2026-10-20", start: "2026-10-20", when: "10/20(화) 19:00", what: "대진표 공개", desc: "'대진표' 탭에 조 편성과 학교 이름이 공개됩니다." },
+  { date: "2026-10-21", start: "2026-10-21", when: "10/21(수) 20:00 / 22:00", what: "팀장 대상 대회 교육 (2회 중 선택, 20분)", desc: "팀장과 함께 팀원을 최소 1명 이상 포함해서 참여해 주세요." },
   // 코칭은 대회 종료일까지 진행되므로 완료 표시는 종료일 기준
   { date: "2026-11-08", start: "2026-10-19b", when: "10/17(토)~대회 종료", what: "Gen.G 온라인 코칭", desc: "학교당 최대 3회(회당 80분), 팀장이 디스코드 [GGA-코칭-지원] 채널에 선착순 신청 → 젠지 코치 배정 · 평일 4타임(19:00~), 주말 6타임(13:00~)" },
   { date: "2026-11-08", start: "2026-11-08", when: "11/8(일)", what: "결선 (오프라인)", lines: ["11:00 중등부 3·4위전", "12:00 중등부 결승 (1·2위전) → 시상식", "14:00 고등부 3·4위전", "15:00 고등부 결승 (1·2위전) → 시상식"], desc: "경기도인재개발원 실내체육관 · OBS 방송 중계" }
@@ -623,7 +655,8 @@ const FAQ = [
   [5,"A","예선(조별리그)은 몇 시에 하나요?","중등부: 10/24(토) 64강 조별리그 14:00·18:00(조를 반씩 나눔), 10/25(일) 17:00 32강 조별리그. 고등부: 10/25(일) 13:00 32강 조별리그. 4팀 조는 팀당 3판, 3팀 조는 2판입니다.","ok"],
   [6,"A","경기 시간 확정은 언제쯤 되나요?","경기 시간은 '일정' 탭에 안내된 대로 정해졌습니다. 조 편성과 대진표는 모집 마감(10/19) 이후 확정되어 '대진표' 탭과 공지사항으로 안내합니다.","ok"],
   [7,"A","경기 시간을 바꿀 수 있나요?","많은 학교가 동시에 경기하므로 조별리그 때는 조정이 쉽지 않습니다. 불가피한 상황에 대비해 후보 선수를 추가 신청하시기 바랍니다.","ok"],
-  [8,"A","대진표는 언제 나오나요?","모집 마감(10/19) 이후 확정되며, 공지사항으로 안내합니다.","wait"],
+  [8,"A","대진표는 언제 나오나요?","10월 20일(화) 오후 7시(19:00)에 공개 예정입니다. 공개되면 '대진표' 탭에 학교 이름이 채워집니다.","ok"],
+  [51,"A","팀장 교육은 언제 하나요?","팀장 대상 대회 교육은 10월 21일(수) 오후 8시(20:00)와 10시(22:00) 두 번 진행합니다(교육 시간 20분). 둘 중 한 번에 참여하면 되고, 팀장과 함께 팀원을 최소 1명 이상 포함해서 참여해 주세요.","ok"],
   [9,"A","내년에도 대회가 열리나요?","확정된 안내는 없습니다. 올해 학생들이 대회에 열심히 참여해야 내년에도 열 수 있다고 안내되었습니다.","ok"],
   [10,"B","한 팀은 몇 명이고, 팀장은요?","5인 1팀이며 팀장은 1명입니다.","ok"],
   [11,"B","후보 선수도 가능한가요?","후보 포함 최대 10명까지 가능합니다. 반드시 7명일 필요는 없습니다.","ok"],
@@ -731,6 +764,18 @@ function el(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
+
+// 질문 챗봇 버튼 물결 모션 (vibe-motion-ripple, loop 없음 → 처음 한 번, 마우스를 올리면 다시)
+(function chatRipple() {
+  const b = document.querySelector(".btn.chatbtn");
+  if (!b) return;
+  const text = b.textContent;
+  b.replaceChildren(...[...text].map((ch, i) => { const s = el("span", "rp", ch); s.style.setProperty("--i", i); s.setAttribute("aria-hidden", "true"); return s; }));
+  const play = () => { b.classList.remove("rippling"); void b.offsetWidth; b.classList.add("rippling"); };
+  (document.fonts && document.fonts.load ? document.fonts.load("20px Cafe24Gowoonbam").catch(() => {}) : Promise.resolve()).then(() => setTimeout(play, 300));
+  b.addEventListener("mouseenter", play);
+  b.addEventListener("focus", play);
+})();
 
 const ddWrap = document.getElementById("ddays");
 DDAYS.forEach(d => {
@@ -968,6 +1013,7 @@ function similar(s) {
   return score >= 0.62 ? best : null;
 }
 const RULES = [
+  [51,/팀장\s*교육|대회\s*교육|^(?!.*(?:코칭|코치|젠지|gga|아카데미)).*교육.*(?:언제|몇\s*시|시간|참여|참석)/i],
   [15,/선착순|먼저\s*신청.*(?:우선|유리)/],[24,/부계정.*티어|티어.*부계정|어떤\s*계정.*신청/],[9,/내년|다음\s*해|매년/],
   [32,/챗봇|이\s*사이트|링크.*(?:주소|어디)/],[6,/(?:경기\s*)?시간.*확정|확정.*시간/],
   [1,/마감|모집.*(?:언제|기간)|신청.*(?:언제까지|기한|기간)/],[5,/(?:예선|첫\s*경기|32강).*(?:몇\s*시|시각|오전|오후)/],
