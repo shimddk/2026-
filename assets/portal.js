@@ -1311,6 +1311,7 @@
   const dayLabel = d => d.slice(5).replace("-", "/") + "(" + "일월화수목금토"[new Date(d + "T00:00:00+09:00").getDay()] + ")";
 
   // 학생용 공개 코칭 일정 (신청자 이름·메모 없이, 취소 제외)
+  let coachPick = null; // 고른 코치 (null = 전체, "" = 배정 중)
   async function renderCoachingPublic() {
     const root = document.getElementById("coachRoot");
     if (!root) return;
@@ -1331,28 +1332,59 @@
     });
     sum.append(chips);
     root.append(sum);
-    const byDate = {};
-    data.forEach(r => { (byDate[r.session_date] = byDate[r.session_date] || []).push(r); });
-    Object.keys(byDate).sort().forEach(d => {
-      const sec = el("div", "coach-day");
-      sec.append(el("h3", "", dayLabel(d) + " · " + byDate[d].length + "건"));
-      const scroller = el("div", "gscroll");
-      const t = el("table", "dtable");
-      const hr = el("tr");
-      ["시간", "학교", "부문", "코칭 유형", "담당 코치", "상태"].forEach(h => hr.append(el("th", "", h)));
-      const thead = el("thead"); thead.append(hr);
-      const tb = el("tbody");
-      byDate[d].forEach(r => {
-        const tr = el("tr");
-        tr.append(el("td", "", r.slot + "타임 " + slotTime(d, r.slot)), el("td", "", r.school), el("td", "", r.division || ""),
-          el("td", "", r.coaching_type), el("td", "", r.coach ? r.coach + " 코치님" : "배정 중"), el("td", "", r.status === "신청" ? "대기" : r.status));
-        tb.append(tr);
+    // 코치 이름 필터: 누르면 그 코치님의 모든 코칭 일정만 보임
+    const coaches = {};
+    data.forEach(r => { const k = r.coach || ""; coaches[k] = (coaches[k] || 0) + 1; });
+    const names = Object.keys(coaches).filter(Boolean).sort((a, b) => a.localeCompare(b, "ko"));
+    if (coachPick !== null && !(coachPick in coaches)) coachPick = null;
+    const fbox = el("div", "card coach-filter");
+    fbox.append(el("h3", "", "담당 코치별 보기"));
+    const cats = el("div", "cats");
+    const days = el("div");
+    const chip = (label, key, n) => {
+      const b = el("button", "chip", label + " " + n);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(coachPick === key));
+      b.addEventListener("click", () => {
+        coachPick = key;
+        cats.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+        drawDays();
       });
-      t.append(thead, tb);
-      scroller.append(t);
-      sec.append(scroller);
-      root.append(sec);
-    });
+      cats.append(b);
+    };
+    chip("전체", null, data.length);
+    names.forEach(n => chip(n + " 코치님", n, coaches[n]));
+    if (coaches[""]) chip("배정 중", "", coaches[""]);
+    fbox.append(cats);
+    root.append(fbox, days);
+    drawDays();
+    function drawDays() {
+      days.replaceChildren();
+      const rows = coachPick === null ? data : data.filter(r => (r.coach || "") === coachPick);
+      if (coachPick !== null) days.append(el("p", "note", (coachPick ? coachPick + " 코치님" : "배정 중") + " 코칭 일정 " + rows.length + "건"));
+      const byDate = {};
+      rows.forEach(r => { (byDate[r.session_date] = byDate[r.session_date] || []).push(r); });
+      Object.keys(byDate).sort().forEach(d => {
+        const sec = el("div", "coach-day");
+        sec.append(el("h3", "", dayLabel(d) + " · " + byDate[d].length + "건"));
+        const scroller = el("div", "gscroll");
+        const t = el("table", "dtable");
+        const hr = el("tr");
+        ["시간", "학교", "부문", "코칭 유형", "담당 코치", "상태"].forEach(h => hr.append(el("th", "", h)));
+        const thead = el("thead"); thead.append(hr);
+        const tb = el("tbody");
+        byDate[d].forEach(r => {
+          const tr = el("tr");
+          tr.append(el("td", "", r.slot + "타임 " + slotTime(d, r.slot)), el("td", "", r.school), el("td", "", r.division || ""),
+            el("td", "", r.coaching_type), el("td", "", r.coach ? r.coach + " 코치님" : "배정 중"), el("td", "", r.status === "신청" ? "대기" : r.status));
+          tb.append(tr);
+        });
+        t.append(thead, tb);
+        scroller.append(t);
+        sec.append(scroller);
+        days.append(sec);
+      });
+    }
   }
   renderCoachingPublic();
 

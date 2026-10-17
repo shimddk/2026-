@@ -97,8 +97,8 @@ table.dtable td.notag input { color: #ffd88a; }
 .pub-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); cursor: pointer; }
 
 /* 젠지 코칭 */
-.coach-sum, .coach-form { margin-bottom: 16px; }
-.coach-sum h3, .coach-form h3, .coach-day h3 { margin: 0 0 10px; font-size: 17px; }
+.coach-sum, .coach-form, .coach-filter { margin-bottom: 16px; }
+.coach-sum h3, .coach-form h3, .coach-filter h3, .coach-day h3 { margin: 0 0 10px; font-size: 17px; }
 .coach-day { margin-bottom: 20px; }
 .tier-chip.spent { border-color: #ff8a8a; }
 .tier-chip.spent b { color: #ff9b9b; }
