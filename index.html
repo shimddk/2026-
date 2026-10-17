@@ -130,7 +130,7 @@
   .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 760px; margin: 24px 0 36px; }
   .cta .btn { font-size: 19px; padding: 16px 20px; border-radius: 14px; text-align: center; }
   @media (max-width: 480px) { .cta { gap: 8px; } .cta .btn { font-size: 16px; padding: 14px 10px; } }
-  .btn.closed { background: var(--bg2); color: var(--muted); border: 1px solid var(--line); }
+  .btn.closed, .btn.closed:hover { background: var(--bg2); color: var(--muted); border: 1px solid var(--line); cursor: not-allowed; box-shadow: none; filter: none; }
   .btn {
     border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; cursor: pointer;
     background: linear-gradient(135deg, var(--neon), var(--neon2)); color: #0a0f24;
@@ -142,9 +142,10 @@
     box-shadow: 0 6px 22px rgba(255, 120, 140, .35);
   }
   .btn.chatbtn:hover, .btn.chatbtn:focus-visible { filter: brightness(1.05); box-shadow: 0 8px 28px rgba(255, 120, 140, .5); }
-  .btn.chatbtn .rp { display: inline-block; white-space: pre; }
-  .btn.chatbtn.rippling .rp { animation: chatRipple 1.68s linear both; animation-delay: calc(var(--i) * 70ms); }
-  .btn.chatbtn.rippling::after {
+  .btn.ripple-btn { position: relative; overflow: hidden; white-space: nowrap; }
+  .btn.ripple-btn .rp { display: inline-block; white-space: pre; }
+  .btn.ripple-btn.rippling .rp { animation: chatRipple 1.68s linear both; animation-delay: calc(var(--i) * 70ms); }
+  .btn.ripple-btn.rippling::after {
     content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; border-radius: 50%;
     background: rgba(255, 255, 255, .55); transform: translate(-50%, -50%) scale(0); animation: chatRing 1.68s linear both; pointer-events: none;
   }
@@ -156,7 +157,7 @@
     72%, 100% { transform: translateY(0) scale(1); }
   }
   @keyframes chatRing { 0% { transform: translate(-50%, -50%) scale(0); opacity: .65; } 100% { transform: translate(-50%, -50%) scale(28); opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { .btn.chatbtn.rippling .rp, .btn.chatbtn.rippling::after { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .btn.ripple-btn.rippling .rp, .btn.ripple-btn.rippling::after { animation: none; } }
   .dday { text-align: center; }
   .dday .label { color: var(--muted); font-size: 14px; }
   .dday .num { font-size: 44px; font-weight: 900; color: var(--neon); line-height: 1.2; }
@@ -365,8 +366,8 @@
       <h1>2026 경기도 교육감배<br><span>미래형 이스포츠 스쿨리그</span></h1>
       <p>경기도 중·고등학생이 학교 대표 팀으로 겨루는 온라인 리그입니다.<br>결승 전까지는 디스코드로 온라인 진행하고, 1~4위전은 오프라인에서 열립니다.</p>
       <div class="cta">
-        <button class="btn" data-go="apply" id="applyBtn">참가 신청 안내</button>
-        <button class="btn chatbtn" data-go="faq" aria-label="질문 챗봇 열기">질문 챗봇 열기</button>
+        <button class="btn ripple-btn" data-go="apply" id="applyBtn" aria-label="참가 신청 안내">참가 신청 안내</button>
+        <button class="btn chatbtn ripple-btn" data-go="faq" aria-label="질문 챗봇 열기">질문 챗봇 열기</button>
       </div>
     </div>
     <!-- 왼쪽: D-Day 세로로 / 오른쪽: 세로 홍보영상 (휴대폰에서는 위아래로) -->
@@ -644,7 +645,7 @@ const TL_SESSIONS = [
 /* ---------- 공식 FAQ (출처: 스쿨리그 질문 챗봇, 43·46~49번은 2026-10 확정된 젠지 코칭 안내: 팀장 신청 → 젠지 코치 배정) ---------- */
 // st: ok = 확정, wait = 미확정(추후 안내)
 const FAQ = [
-  [1,"A","모집 마감은 언제인가요?","10/19(월)까지입니다. 처음 안내(10/12)에서 연장되었습니다.","ok"],
+  [1,"A","모집 마감은 언제인가요?","10/19(월) 밤 11시 59분(23:59)까지입니다. 처음 안내(10/12)에서 연장되었습니다.","ok"],
   [2,"A","첫 경기는 언제인가요?","10/24(토)입니다. 중등부 64강 조별리그로 시작합니다(14:00·18:00 두 번에 나눠 진행, 어느 조가 언제인지는 조 편성 후 대진표에 나옵니다). 고등부 첫 경기는 10/25(일) 13:00 32강 조별리그입니다. 자세한 시간은 '일정' 탭을 보세요.","ok"],
   [3,"A","본선 일정은요?","본선은 장로·바론 두 그룹 더블 엘리미네이션입니다. 10/31(토) 승자조(고등부 13:00, 중등부 17:00), 11/1(일) 패자조(중등부 13:00, 고등부 17:00)로 진행하고, 11/4(수) 18:00에 4강 리그(4팀 풀리그)를 합니다.","ok"],
   [4,"A","결선은 언제인가요?","11/8(일) 오프라인입니다. 11:00 중등부 3·4위전, 12:00 중등부 결승 후 시상식, 점심 뒤 14:00 고등부 3·4위전, 15:00 고등부 결승 후 시상식 순서입니다.","ok"],
@@ -761,27 +762,35 @@ function el(tag, cls, text) {
   return e;
 }
 
-// 참가 신청은 10/20(화) 자정에 마감 → 그 뒤에는 홈 버튼을 '참가 모집 완료'로 (페이지를 열어 둔 채 자정이 지나도 바뀜)
+// 홈 버튼 물결 모션 (vibe-motion-ripple, loop 없음 → 처음 한 번, 마우스를 올리면 다시). 참가 신청 → 질문 챗봇 순서로
+function rippleButton(b, delay) {
+  if (!b) return;
+  b.replaceChildren(...[...b.textContent].map((ch, i) => { const s = el("span", "rp", ch); s.style.setProperty("--i", i); s.setAttribute("aria-hidden", "true"); return s; }));
+  const play = () => { if (b.disabled) return; b.classList.remove("rippling"); void b.offsetWidth; b.classList.add("rippling"); };
+  setTimeout(play, delay);
+  b.addEventListener("mouseenter", play);
+  b.addEventListener("focus", play);
+}
+
+// 참가 신청은 10/19(월) 23:59 마감 → 10/20 00:00부터 '참가 모집 완료', 누를 수 없음 (페이지를 열어 둔 채 자정이 지나도 바뀜)
 (function applyClose() {
   const b = document.getElementById("applyBtn");
   if (!b) return;
-  const CLOSE = Date.parse("2026-10-21T00:00:00+09:00");
-  const done = () => { b.textContent = "참가 모집 완료"; b.classList.add("closed"); };
+  const CLOSE = Date.parse("2026-10-20T00:00:00+09:00");
+  const done = () => {
+    b.disabled = true;
+    b.removeAttribute("data-go");
+    b.classList.remove("rippling");
+    b.classList.add("closed");
+    b.textContent = "참가 모집 완료";
+    b.setAttribute("aria-label", "참가 모집 완료 (10/19 마감)");
+  };
   const left = CLOSE - Date.now();
-  if (left <= 0) done(); else if (left < 2147483647) setTimeout(done, left + 500);
+  if (left <= 0) { done(); return; }
+  rippleButton(b, 300);
+  if (left < 2147483647) setTimeout(done, left + 500);
 })();
-
-// 질문 챗봇 버튼 물결 모션 (vibe-motion-ripple, loop 없음 → 처음 한 번, 마우스를 올리면 다시)
-(function chatRipple() {
-  const b = document.querySelector(".btn.chatbtn");
-  if (!b) return;
-  const text = b.textContent;
-  b.replaceChildren(...[...text].map((ch, i) => { const s = el("span", "rp", ch); s.style.setProperty("--i", i); s.setAttribute("aria-hidden", "true"); return s; }));
-  const play = () => { b.classList.remove("rippling"); void b.offsetWidth; b.classList.add("rippling"); };
-  setTimeout(play, 300);
-  b.addEventListener("mouseenter", play);
-  b.addEventListener("focus", play);
-})();
+rippleButton(document.querySelector(".btn.chatbtn"), 700);
 
 const ddWrap = document.getElementById("ddays");
 DDAYS.forEach(d => {
