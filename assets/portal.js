@@ -777,7 +777,7 @@
   let STAFF = [];
   const STAFF_COLS = [
     ["seq", "순번", "int"], ["region", "지역"], ["school", "소속"], ["position", "직책"], ["name", "성명"],
-    ["title", "역할"], ["title2", "역할2"], ["referee_ok", "심판가능", "bool"], ["phone", "연락처"],
+    ["title", "역할"], ["referee_ok", "심판가능", "bool"], ["phone", "연락처"],
     ["pre_duty", "행정 업무"], ["event_duty", "대회 업무"]
   ].map(([k, label, type]) => ({ key: k, label, type, get: r => r[k] }));
   // 담당 학교: 관리자만 지정 (DB 트리거 staff_schools_guard가 한 번 더 막음)
