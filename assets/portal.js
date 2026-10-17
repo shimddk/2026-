@@ -1261,7 +1261,13 @@
     const g = GRP_NAME[p[1].split("-")[0]];
     return (g ? g + " " : "") + (m ? m.round_label.replace("라운드", "R") : p[1]) + (p[0] === "W" ? " 승자" : " 패자");
   }
-  const sessText = s => s ? (Number(s.day.slice(5, 7)) + "/" + Number(s.day.slice(8, 10)) + "(" + "일월화수목금토"[new Date(s.day + "T00:00:00+09:00").getDay()] + ") " + String(s.start_time).slice(0, 5)) : "";
+  // 회차 날짜·시간 (+ 본선 라운드별 몇 분 뒤: matches.time_offset_min)
+  const sessText = (s, offsetMin = 0) => {
+    if (!s) return "";
+    const [h, m] = String(s.start_time).split(":").map(Number), t = h * 60 + m + (offsetMin || 0);
+    return Number(s.day.slice(5, 7)) + "/" + Number(s.day.slice(8, 10)) + "(" + "일월화수목금토"[new Date(s.day + "T00:00:00+09:00").getDay()] + ") " +
+      String(Math.floor(t / 60) % 24).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
+  };
 
   // 주전 평균 티어 점수 (낮을수록 강함, 티어 현황과 같은 계산)
   async function teamStrength(div) {
@@ -1488,7 +1494,7 @@
     const columns = [
       { key: "_stage", label: "단계", readonly: true, get: r => r.stage },
       { key: "_round", label: "경기", readonly: true, get: label },
-      { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id, get: r => r.session_id ? sessText(sessById[r.session_id]) : r.scheduled_at },
+      { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id, get: r => r.session_id ? sessText(sessById[r.session_id], r.time_offset_min) : r.scheduled_at },
       teamCol(1), { key: "score1", label: "점수1", type: "int", get: r => r.score1 },
       { key: "score2", label: "점수2", type: "int", get: r => r.score2 }, teamCol(2),
       { key: "winner", label: "승자", readonly: true, get: r => r.winner, cellClass: r => (r.winner ? "win" : "") },

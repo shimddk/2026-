@@ -812,12 +812,12 @@ function bkAdv(label, m) {
   a.append(el("b", "", (m && m.winner) || "미정"));
   return a;
 }
-// 학교가 정해지기 전 자리 이름: 중등 32강 = 64강 4개 조씩 {W1,X2,Y1,Z2}/{X1,W2,Z1,Y2}, 4강 리그 = 장로1·바론1·장로2·바론2
+// 학교가 정해지기 전 자리 이름: 중등 32강 k조 = 64강 k조 1위·(k+4)조 2위·(k+8)조 1위·(k+12)조 2위, 4강 리그 = 장로1·바론1·장로2·바론2
 function bkSeedLabel(stage, g, seed) {
   if (stage === "4강 리그") return ["장로 1위", "바론 1위", "장로 2위", "바론 2위"][seed - 1];
   if (stage === "32강" && BK.div === "중등부") {
-    const gi = BK_GROUPS["32강"].indexOf(g), q = Math.floor(gi / 2), k = gi % 2, G = BK_GROUPS["64강"].slice(q * 4, q * 4 + 4);
-    const pick = k === 0 ? [[G[0], 1], [G[1], 2], [G[2], 1], [G[3], 2]] : [[G[1], 1], [G[0], 2], [G[3], 1], [G[2], 2]];
+    const k = BK_GROUPS["32강"].indexOf(g), r = (k + 4) % 8, G = BK_GROUPS["64강"];
+    const pick = [[G[k], 1], [G[r], 2], [G[k + 8], 1], [G[r + 8], 2]];
     return "64강 " + pick[seed - 1][0] + "조 " + pick[seed - 1][1] + "위";
   }
   return "";
