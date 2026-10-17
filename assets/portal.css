@@ -252,3 +252,6 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 /* 심판 일정: 내 줄 강조 */
 .dtable.ref tr.me th { color: var(--neon); }
 .dtable.ref tr.me { background: rgba(53, 224, 255, .06); }
+
+/* 신청서 원본 보기 */
+.raw-cell { white-space: pre-wrap; }

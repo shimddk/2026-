@@ -2156,9 +2156,35 @@
     box.append(nick);
   }
 
+  // 신청서 원본 (선수 관련 칸만) 보기 — 자동 분석이 안 된 신청서를 직접 입력할 때
+  function showRawSubmission(i) {
+    const v = (i.payload && (i.payload.values || i.payload)) || {};
+    const dlg = el("dialog", "rdlg");
+    dlg.setAttribute("aria-label", (i.school || "") + " 신청서 원본");
+    const close = () => { dlg.close(); dlg.remove(); };
+    dlg.append(el("h3", "", (i.school || "") + " · 팀장 " + (i.captain || "?") + " 신청서 원본"),
+      el("p", "rdlg-err", i.note || ""),
+      el("p", "note", "이 신청서는 자동으로 나누지 못해 '적용'할 수 없습니다. 아래 원본을 보고 '아이디 명단'에서 직접 입력한 뒤 '무시'를 눌러 정리하세요. 중복 신청 학교면 입력할 때 확정 여부를 묻습니다."));
+    const t = el("table", "dtable");
+    const tb = el("tbody");
+    Object.keys(v).filter(k => /^(7|8|9|10|11)\./.test(k) || /학교|팀장/.test(k)).forEach(k => {
+      const tr = el("tr");
+      const td = el("td", "raw-cell", String(v[k] ?? ""));
+      tr.append(el("th", "", k), td);
+      tb.append(tr);
+    });
+    t.append(tb);
+    const btns = el("div", "rdlg-btns");
+    const c = el("button", "btn", "닫기"); c.type = "button"; c.addEventListener("click", close);
+    btns.append(c);
+    dlg.append(t, btns);
+    document.body.append(dlg);
+    dlg.showModal();
+  }
+
   // 구글폼 신청 접수함 (고치기 권한자)
   async function loadInbox(box) {
-    const { data: items, error } = await sb.from("form_inbox").select("id,received_at,kind,school,division,captain,status,note,handled_by,handled_at")
+    const { data: items, error } = await sb.from("form_inbox").select("id,received_at,kind,school,division,captain,status,note,handled_by,handled_at,payload")
       .eq("kind", "submission").order("received_at", { ascending: false }).limit(200);
     box.replaceChildren();
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
@@ -2192,13 +2218,23 @@
           if (action === "apply" && !confirm((i.school || "") + " 신청 내용으로 기존 명단·연락처·티어를 덮어쓸까요? 이전 내용은 접수함에 보관됩니다.")) return;
           apply.disabled = ignore.disabled = true;
           const { data, error } = await sb.functions.invoke("form-intake", { body: { action, id: i.id } });
-          if (error || (data && data.error)) { toast("처리 실패: " + ((data && data.error) || error.message), true); apply.disabled = ignore.disabled = false; return; }
+          let why = data && data.error;
+          // 서버가 422 등으로 돌려준 실제 이유를 읽는다 (없으면 기본 메시지)
+          if (error && !why) { try { why = (await error.context.json()).error; } catch (e) {} }
+          if (error || why) { toast("처리 실패: " + (why || error.message), true); apply.disabled = ignore.disabled = false; return; }
           toast(action === "apply" ? "적용했습니다" : "무시했습니다");
           loadInbox(box);
         };
         apply.addEventListener("click", () => act("apply"));
         ignore.addEventListener("click", () => act("ignore"));
         td.append(apply, ignore);
+        // 자동으로 나누지 못한 신청서: '적용' 대신 원본을 보고 아이디 명단에 직접 입력
+        if (/자동으로 나누지 못했습니다|선수 정보를 자동으로/.test(i.note || "")) {
+          const raw = el("button", "btn ghost small", "원본 보기");
+          raw.type = "button";
+          raw.addEventListener("click", () => showRawSubmission(i));
+          td.append(raw);
+        }
       }
       if (review) tr.append(td);
       tb.append(tr);
