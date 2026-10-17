@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 사이트 로고와 같은 모양: 하늘색→보라 네모 + 트로피 (제작자: 원곡고등학교 교사 심승보) -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#35e0ff"/>
+      <stop offset="1" stop-color="#b26bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#g)"/>
+  <g fill="#ffd34d" stroke="#8a5a00" stroke-width="1.5" stroke-linejoin="round">
+    <!-- 손잡이 -->
+    <path d="M20 17h-6a2 2 0 0 0-2 2c0 7 4 12 11 13" fill="none" stroke="#ffd34d" stroke-width="4" stroke-linecap="round"/>
+    <path d="M44 17h6a2 2 0 0 1 2 2c0 7-4 12-11 13" fill="none" stroke="#ffd34d" stroke-width="4" stroke-linecap="round"/>
+    <!-- 컵 -->
+    <path d="M19 12h26v10c0 9-5.5 15-13 15s-13-6-13-15z"/>
+    <!-- 기둥·받침 -->
+    <path d="M28.5 36h7v8h-7z"/>
+    <path d="M21 44h22a2 2 0 0 1 2 2v6H19v-6a2 2 0 0 1 2-2z"/>
+  </g>
+</svg>
