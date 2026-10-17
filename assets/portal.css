@@ -232,3 +232,14 @@ table.dtable tr.nick-change td { background: rgba(255, 120, 120, .12); }
 table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 .rdlg-rowerr .nick-need { color: #ff9a9a; font-weight: 700; margin-top: 2px; }
 .rdlg-rowerr .nick-warn { color: #ffd38a; margin-top: 2px; }
+
+/* 지원단 명단: 담당 학교 */
+.staff-schools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 180px; max-width: 420px; }
+.staff-schools .ss-count { font-weight: 700; color: var(--neon); margin-right: 2px; }
+.ss-body { max-height: 56vh; overflow-y: auto; margin: 10px 0; }
+.ss-body h4 { margin: 12px 0 6px; font-size: 15px; }
+.ss-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 10px; }
+.ss-item { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 4px 6px; border-radius: 8px; cursor: pointer; }
+.ss-item:hover { background: rgba(255, 255, 255, .05); }
+.ss-item small { width: 100%; padding-left: 22px; color: var(--muted); font-size: 12px; }
+.ss-item.taken { opacity: .75; }

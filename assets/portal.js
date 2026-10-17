@@ -655,7 +655,9 @@
           const td = el("td", [c.cls, c.cellClass && c.cellClass(r)].filter(Boolean).join(" "));
           const v = c.get(r);
           const ro = typeof c.readonly === "function" ? c.readonly(r) : c.readonly;
-          if (isEditor() && onSave && !ro) {
+          if (c.cell) {
+            c.cell(td, r);
+          } else if (isEditor() && onSave && !ro) {
             if (c.type === "bool") {
               const cb = el("input");
               cb.type = "checkbox";
@@ -776,8 +778,103 @@
   const STAFF_COLS = [
     ["seq", "순번", "int"], ["region", "지역"], ["school", "소속"], ["position", "직책"], ["name", "성명"],
     ["title", "역할"], ["title2", "역할2"], ["referee_ok", "심판가능", "bool"], ["phone", "연락처"],
-    ["pre_duty", "대회 전 업무 분장"], ["duty_note", "추가 설명"], ["duty_checked", "확인"], ["event_duty", "대회 업무"]
+    ["pre_duty", "행정 업무"], ["event_duty", "대회 업무"]
   ].map(([k, label, type]) => ({ key: k, label, type, get: r => r[k] }));
+  // 담당 학교: 관리자만 지정 (DB 트리거 staff_schools_guard가 한 번 더 막음)
+  STAFF_COLS.push({
+    key: "schools", label: "담당 학교", get: r => (r.schools || []).join(", "),
+    cell: (td, r) => {
+      const list = r.schools || [];
+      const wrap = el("div", "staff-schools");
+      if (list.length) wrap.append(el("span", "ss-count", list.length + "개"));
+      list.forEach(s => wrap.append(el("span", "tier-chip", s)));
+      if (!list.length && !isOwner()) wrap.append(el("span", "note", "—"));
+      if (isOwner()) {
+        const b = el("button", "btn ghost small", list.length ? "고치기" : "지정하기");
+        b.type = "button";
+        b.addEventListener("click", () => openSchoolPicker(r));
+        wrap.append(b);
+      }
+      td.append(wrap);
+    }
+  });
+
+  // 참가 학교 목록 (아이디 명단 기준, 부문별)
+  async function fetchSchools() {
+    const { data, error } = await sb.from("sheet_rows").select("sheet,data").in("sheet", ["roster_middle", "roster_high"]);
+    if (error) return null;
+    const out = { 중등부: new Set(), 고등부: new Set() };
+    data.forEach(x => { const s = String(x.data["학교 이름"] || "").trim(); if (s) out[x.sheet === "roster_middle" ? "중등부" : "고등부"].add(s); });
+    return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, [...v].sort((a, b) => a.localeCompare(b, "ko"))]));
+  }
+
+  async function openSchoolPicker(staffRow) {
+    const schools = await fetchSchools();
+    if (!schools) { toast("학교 목록을 불러오지 못했습니다", true); return; }
+    const owner = {};
+    STAFF.forEach(s => { if (s.id !== staffRow.id) (s.schools || []).forEach(x => { (owner[x] = owner[x] || []).push(s.name); }); });
+    const chosen = new Set(staffRow.schools || []);
+    const dlg = el("dialog", "rdlg");
+    dlg.setAttribute("aria-label", staffRow.name + " 선생님 담당 학교");
+    const close = () => { dlg.close(); dlg.remove(); };
+    const count = el("b");
+    const head = el("p", "note");
+    head.append("선택한 학교 ", count, " · 다른 선생님이 맡은 학교는 이름이 함께 보입니다. 개수 제한은 없습니다.");
+    const q = el("input", "gsearch");
+    q.type = "search"; q.placeholder = "학교 검색"; q.setAttribute("aria-label", "학교 검색");
+    const body = el("div", "ss-body");
+    const upd = () => { count.textContent = chosen.size + "개"; };
+    function draw() {
+      body.replaceChildren();
+      const term = q.value.trim();
+      Object.entries(schools).forEach(([div, list]) => {
+        const shown = list.filter(s => !term || s.includes(term));
+        if (!shown.length) return;
+        body.append(el("h4", "", div + " (" + shown.length + ")"));
+        const g = el("div", "ss-grid");
+        shown.forEach(s => {
+          const l = el("label", "ss-item" + (owner[s] ? " taken" : ""));
+          const cb = el("input"); cb.type = "checkbox"; cb.checked = chosen.has(s);
+          cb.addEventListener("change", () => { cb.checked ? chosen.add(s) : chosen.delete(s); upd(); });
+          l.append(cb, document.createTextNode(" " + s));
+          if (owner[s]) l.append(el("small", "", owner[s].join("·")));
+          g.append(l);
+        });
+        body.append(g);
+      });
+      // 목록에 없는(이름이 바뀌었거나 빠진) 학교도 지우지 않고 보여 줌
+      const known = new Set(Object.values(schools).flat());
+      const extra = [...chosen].filter(s => !known.has(s) && (!term || s.includes(term)));
+      if (extra.length) {
+        body.append(el("h4", "", "명단에 없는 학교"));
+        const g = el("div", "ss-grid");
+        extra.forEach(s => {
+          const l = el("label", "ss-item");
+          const cb = el("input"); cb.type = "checkbox"; cb.checked = true;
+          cb.addEventListener("change", () => { cb.checked ? chosen.add(s) : chosen.delete(s); upd(); });
+          l.append(cb, document.createTextNode(" " + s));
+          g.append(l);
+        });
+        body.append(g);
+      }
+    }
+    q.addEventListener("input", draw);
+    const btns = el("div", "rdlg-btns");
+    const cancel = el("button", "btn ghost", "닫기"); cancel.type = "button"; cancel.addEventListener("click", close);
+    const ok = el("button", "btn", "저장"); ok.type = "button";
+    ok.addEventListener("click", async () => {
+      ok.disabled = true;
+      const v = [...chosen].sort((a, b) => a.localeCompare(b, "ko"));
+      if (await save(sb.from("staff").update({ schools: v }).eq("id", staffRow.id), "담당 학교를 저장했습니다")) {
+        staffRow.schools = v; close(); if (staffBox) loadStaff(staffBox);
+      } else ok.disabled = false;
+    });
+    btns.append(cancel, ok);
+    dlg.append(el("h3", "", staffRow.name + " 선생님 담당 학교"), head, q, body, btns);
+    document.body.append(dlg);
+    upd(); draw();
+    dlg.showModal();
+  }
 
   async function fetchStaff() {
     const { data, error } = await sb.from("staff").select("*").order("seq", { nullsFirst: false }).order("id");
@@ -785,7 +882,9 @@
     STAFF = data;
     return data;
   }
+  let staffBox = null;
   async function loadStaff(box) {
+    staffBox = box;
     const rows = await fetchStaff();
     grid(box, {
       columns: STAFF_COLS, rows, exportName: "지원단 명단",
