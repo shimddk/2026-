@@ -244,3 +244,11 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 .ss-item:hover { background: rgba(255, 255, 255, .05); }
 .ss-item small { width: 100%; padding-left: 22px; color: var(--muted); font-size: 12px; }
 .ss-item.taken { opacity: .75; }
+
+/* 대진: 조 편성 머리줄 (단계 고르기·자동 조 편성) */
+.slot-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 6px; }
+.slot-head h3 { margin: 0; }
+.slot-row .ph { color: var(--muted); }
+/* 심판 일정: 내 줄 강조 */
+.dtable.ref tr.me th { color: var(--neon); }
+.dtable.ref tr.me { background: rgba(53, 224, 255, .06); }

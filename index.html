@@ -186,6 +186,9 @@
   .timeline .when { font-weight: 800; color: var(--neon); }
   .timeline .what { font-weight: 700; }
   .timeline .desc { color: var(--muted); font-size: 14px; }
+  .timeline .tl-lines { margin: 4px 0 2px; padding-left: 18px; font-size: 15px; }
+  .timeline .tl-lines li { padding: 0; }
+  .timeline .tl-lines li::before { content: none; }
 
   /* 신청 */
   ol.steps { margin: 0; padding-left: 20px; }
@@ -372,7 +375,8 @@
           <dt>대회명</dt><dd>2026 경기도 교육감배 미래형 이스포츠 스쿨리그</dd>
           <dt>종목</dt><dd>리그 오브 레전드 (LEAGUE OF LEGENDS)</dd>
           <dt>참가 대상</dt><dd>경기도 소속 중·고등학교 재학생 (중등부, 고등부 분리 운영)</dd>
-          <dt>모집 규모</dt><dd>중등부 32팀, 고등부 32팀</dd>
+          <dt>모집 규모</dt><dd>중등부 최대 64팀(64강 조별리그부터), 고등부 최대 32팀(32강 조별리그부터)</dd>
+          <dt>경기 방식</dt><dd>조별리그 → 본선 더블 엘리미네이션 → 4강 리그 → 결선(3·4위전·결승), 모든 경기 단판(BO1)</dd>
           <dt>주최</dt><dd>경기도교육청</dd>
           <dt>주관</dt><dd>OBS, HADO K, GGA</dd>
           <dt>운영</dt><dd>경기도 교육청 학교 이스포츠 지원단</dd>
@@ -397,7 +401,7 @@
   <!-- 일정 -->
   <section id="schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
     <h2>대회 일정</h2>
-    <p class="lead">세부 경기 시간과 대진표는 모집 마감(10/19) 이후 확정되어 공지사항으로 안내됩니다.</p>
+    <p class="lead">경기 시간은 아래와 같습니다(모든 경기 단판). 조 편성과 대진표는 모집 마감(10/19) 이후 확정되어 '대진표' 탭과 공지사항으로 안내됩니다.</p>
     <div class="card">
       <ol class="timeline" id="timeline"></ol>
     </div>
@@ -406,19 +410,20 @@
   <!-- 대진표 -->
   <section id="bracket" role="tabpanel" aria-labelledby="tab-bracket" hidden>
     <h2>대진표</h2>
-    <p class="lead">중등부·고등부 각 32팀이 예선 조별리그(8개 조)를 거쳐, 조 1·2위 16팀이 장로·바론 두 그룹으로 나뉘어 더블 엘리미네이션으로 겨룹니다. 그룹마다 1·2위 4팀이 11/8 결선에 오릅니다.</p>
+    <p class="lead">중등부는 64강 조별리그(16개 조) → 32강 조별리그(8개 조), 고등부는 32강 조별리그(8개 조)를 거쳐 조 1·2위 16팀이 장로·바론 두 그룹 더블 엘리미네이션으로 겨룹니다. 그룹 1·2위 4팀이 4강 리그를 치르고, 리그 1·2위는 결승, 3·4위는 3·4위전을 11/8 오프라인 결선에서 치릅니다. <strong>모든 경기는 단판(BO1)</strong>입니다.</p>
     <div class="pending">대진표는 모집 마감(10/19) 이후 확정되어 공지사항으로 안내됩니다. 확정되면 이 화면에 팀 이름이 채워집니다.</div>
     <div class="bracket-flow" aria-label="대회 진행 순서">
-      <span class="stage">예선 32강 · 10/24(토)<br><small>4팀 1조 조별리그, bo1</small></span><span class="arrow" aria-hidden="true">→</span>
-      <span class="stage">본선 16강~4강 · 10/25~11/4<br><small>더블 엘리미네이션</small></span><span class="arrow" aria-hidden="true">→</span>
-      <span class="stage">결선 1~4위전 · 11/8(일)<br><small>오프라인</small></span>
+      <span class="stage">조별리그 · 10/24(토)~25(일)<br><small>중등 64강→32강 · 고등 32강, 3~4팀 1조</small></span><span class="arrow" aria-hidden="true">→</span>
+      <span class="stage">본선 · 10/31(토)~11/1(일)<br><small>더블 엘리미네이션 승자조·패자조</small></span><span class="arrow" aria-hidden="true">→</span>
+      <span class="stage">4강 리그 · 11/4(수)<br><small>4팀 풀리그</small></span><span class="arrow" aria-hidden="true">→</span>
+      <span class="stage">결선 · 11/8(일)<br><small>오프라인 3·4위전·결승</small></span>
     </div>
     <div class="div-switch" id="divSwitch" role="group" aria-label="부문 선택">
       <button type="button" class="chip" data-div="중등부" aria-pressed="true">중등부</button>
       <button type="button" class="chip" data-div="고등부" aria-pressed="false">고등부</button>
     </div>
     <div id="groups"></div>
-    <p class="note">예선 순위는 승 → 득실(세트) → 맞대결 순으로 정합니다. 32팀이 채워지지 않으면 3위 팀도 승급할 수 있으며, 조 편성·그룹 배치·세트 방식 등 세부 방식은 10/19 이후 확정됩니다.</p>
+    <p class="note">조 순위는 승수 → (2팀이 같으면) 맞대결 승자 순으로 정하고, 3팀 이상 같으면 지원단이 규정에 따라 정합니다. 팀 수에 따라 3팀 조가 있으며, 3팀 조는 팀당 2경기를 치릅니다. 조 편성은 모집 마감(10/19) 후 티어 평균으로 나눈 포트에서 무작위로 배정합니다.</p>
   </section>
 
   <!-- 경기 규정 -->
@@ -431,15 +436,13 @@
         <table>
           <thead><tr><th>구분</th><th>방식</th></tr></thead>
           <tbody>
-            <tr><td>32강~16강</td><td>단판</td></tr>
-            <tr><td>8강</td><td>3판 2선승</td></tr>
-            <tr><td>4강</td><td>3판 2선승</td></tr>
-            <tr><td>결승</td><td>3판 2선승</td></tr>
+            <tr><td>조별리그 (중등 64강·32강, 고등 32강)</td><td>단판</td></tr>
+            <tr><td>본선 더블 엘리미네이션</td><td>단판</td></tr>
+            <tr><td>4강 리그</td><td>단판</td></tr>
+            <tr><td>결선 (3·4위전·결승)</td><td>단판</td></tr>
           </tbody>
         </table>
-        <p class="note">모집 인원과 일정에 따라 바뀔 수 있습니다.</p>
-        <span class="badge-wait">지원단 최종 확인 중</span>
-        <p class="note" style="margin:0">규정집은 "싱글 토너먼트", 공식 FAQ·팀장 교육은 "더블 엘리미네이션"으로 안내되어 있습니다.</p>
+        <p class="note"><strong>모든 경기는 단판(BO1)</strong>이며, 피어리스 규칙은 적용하지 않습니다. 경기 시간은 '일정' 탭을 보세요.</p>
       </div>
       <div class="card">
         <h3>🟨 경고·벌칙 (규정집 제9조)</h3>
@@ -580,27 +583,30 @@ const DDAYS = [
   { label: "예선 시작", date: "2026-10-24" },
   { label: "결선", date: "2026-11-08" }
 ];
-const TIMELINE = [
-  { date: "2026-10-19", when: "10/19(월)", what: "모집 마감", desc: "마감 후 팀장 교육에서 경기 시간·운영 방식을 안내하고 대진표를 공지합니다." },
+// 일정: 경기 회차는 교사용 '심판 일정' 표(public_schedule)를 그대로 보여 준다. 아래는 불러오기 전·실패 시 기본값.
+const TL_FIXED = [
+  { date: "2026-10-19", start: "2026-10-19", when: "10/19(월)", what: "모집 마감", desc: "마감 후 팀장 교육에서 운영 방식을 안내하고 대진표를 공지합니다." },
   // 코칭은 대회 종료일까지 진행되므로 완료 표시는 종료일 기준
-  { date: "2026-11-08", when: "10/17(토)~대회 종료", what: "Gen.G 온라인 코칭", desc: "학교당 최대 3회(회당 80분), 팀장이 디스코드 [GGA-코칭-지원] 채널에 선착순 신청 → 젠지 코치 배정 · 평일 4타임(19:00~), 주말 6타임(13:00~)" },
-  { date: "2026-10-24", when: "10/24(토)", what: "예선 (32강)", desc: "4개 팀 1조 조별리그, 팀당 1판(bo1), 1·2위 16강 진출 (10/19 이후 확정)" },
-  { date: "2026-10-25", when: "10/25(일)", what: "본선 1라운드", desc: "더블 엘리미네이션" },
-  { date: "2026-10-31", when: "10/31(토)", what: "본선 2라운드", desc: "" },
-  { date: "2026-11-01", when: "11/1(일)", what: "본선 3라운드", desc: "" },
-  { date: "2026-11-04", when: "11/2(월)~11/4(수)", what: "남은 본선 경기", desc: "" },
-  { date: "2026-11-08", when: "11/8(일)", what: "결선 (1~4위전, 오프라인)", desc: "경기도인재개발원 실내체육관 · OBS 방송 중계" }
+  { date: "2026-11-08", start: "2026-10-19b", when: "10/17(토)~대회 종료", what: "Gen.G 온라인 코칭", desc: "학교당 최대 3회(회당 80분), 팀장이 디스코드 [GGA-코칭-지원] 채널에 선착순 신청 → 젠지 코치 배정 · 평일 4타임(19:00~), 주말 6타임(13:00~)" },
+  { date: "2026-11-08", start: "2026-11-08", when: "11/8(일)", what: "결선 (오프라인)", lines: ["11:00 중등부 3·4위전", "12:00 중등부 결승 (1·2위전) → 시상식", "14:00 고등부 3·4위전", "15:00 고등부 결승 (1·2위전) → 시상식"], desc: "경기도인재개발원 실내체육관 · OBS 방송 중계" }
 ];
+const TL_SESSIONS = [
+  ["2026-10-24", "14:00", "중등부 64강 조별리그 (1/2) · A~H조", "3판"], ["2026-10-24", "18:00", "중등부 64강 조별리그 (2/2) · I~P조", "3판"],
+  ["2026-10-25", "13:00", "고등부 32강 조별리그", "3판"], ["2026-10-25", "17:00", "중등부 32강 조별리그", "3판"],
+  ["2026-10-31", "13:00", "고등부 더블 엘리미네이션 승자조", "최대 3판"], ["2026-10-31", "17:00", "중등부 더블 엘리미네이션 승자조", "최대 3판"],
+  ["2026-11-01", "13:00", "중등부 더블 엘리미네이션 패자조", "최대 4판"], ["2026-11-01", "17:00", "고등부 더블 엘리미네이션 패자조", "최대 4판"],
+  ["2026-11-04", "18:00", "중등부 4강 리그", "3판"], ["2026-11-04", "18:00", "고등부 4강 리그", "3판"]
+].map(([day, start_time, label, student_games]) => ({ day, start_time, label, student_games }));
 
 /* ---------- 공식 FAQ (출처: 스쿨리그 질문 챗봇, 43·46~49번은 2026-10 확정된 젠지 코칭 안내: 팀장 신청 → 젠지 코치 배정) ---------- */
 // st: ok = 확정, wait = 미확정(추후 안내)
 const FAQ = [
   [1,"A","모집 마감은 언제인가요?","10/19(월)까지입니다. 처음 안내(10/12)에서 연장되었습니다.","ok"],
-  [2,"A","첫 경기는 언제인가요?","예선(32강)은 10/24(토) 하루에 진행합니다.","ok"],
-  [3,"A","본선 일정은요?","10/25(일) 1라운드, 10/31(토) 2라운드, 11/1(일) 3라운드이며, 남은 경기는 11/2~11/4(수)에 진행합니다. 더블 엘리미네이션입니다.","ok"],
-  [4,"A","결선은 언제인가요?","11/8(일)입니다.","ok"],
-  [5,"A","예선은 몇 시에 하나요?","10/24(토) 하루에 중등부·고등부 조별리그를 모두 진행하며, 지금 예정은 중등부 약 13시~17시, 고등부 약 17시~20시입니다. 정확한 시간은 모집 마감(10/19) 뒤 팀장 교육과 공지사항으로 안내합니다.","wait"],
-  [6,"A","경기 시간 확정은 언제쯤 되나요?","19일 이후 확정됩니다. 모집 마감 후 팀장 교육에서 안내합니다.","wait"],
+  [2,"A","첫 경기는 언제인가요?","10/24(토)입니다. 중등부 64강 조별리그로 시작합니다(14:00 A~H조, 18:00 I~P조). 고등부 첫 경기는 10/25(일) 13:00 32강 조별리그입니다. 자세한 시간은 '일정' 탭을 보세요.","ok"],
+  [3,"A","본선 일정은요?","본선은 장로·바론 두 그룹 더블 엘리미네이션입니다. 10/31(토) 승자조(고등부 13:00, 중등부 17:00), 11/1(일) 패자조(중등부 13:00, 고등부 17:00)로 진행하고, 11/4(수) 18:00에 4강 리그(4팀 풀리그)를 합니다.","ok"],
+  [4,"A","결선은 언제인가요?","11/8(일) 오프라인입니다. 11:00 중등부 3·4위전, 12:00 중등부 결승 후 시상식, 점심 뒤 14:00 고등부 3·4위전, 15:00 고등부 결승 후 시상식 순서입니다.","ok"],
+  [5,"A","예선(조별리그)은 몇 시에 하나요?","중등부: 10/24(토) 64강 조별리그 14:00(A~H조)·18:00(I~P조), 10/25(일) 17:00 32강 조별리그. 고등부: 10/25(일) 13:00 32강 조별리그. 팀당 하루 3판(3팀 조는 2판)입니다.","ok"],
+  [6,"A","경기 시간 확정은 언제쯤 되나요?","경기 시간은 '일정' 탭에 안내된 대로 정해졌습니다. 조 편성과 대진표는 모집 마감(10/19) 이후 확정되어 '대진표' 탭과 공지사항으로 안내합니다.","ok"],
   [7,"A","경기 시간을 바꿀 수 있나요?","많은 학교가 동시에 경기하므로 조별리그 때는 조정이 쉽지 않습니다. 불가피한 상황에 대비해 후보 선수를 추가 신청하시기 바랍니다.","ok"],
   [8,"A","대진표는 언제 나오나요?","모집 마감(10/19) 이후 확정되며, 공지사항으로 안내합니다.","wait"],
   [9,"A","내년에도 대회가 열리나요?","확정된 안내는 없습니다. 올해 학생들이 대회에 열심히 참여해야 내년에도 열 수 있다고 안내되었습니다.","ok"],
@@ -627,13 +633,13 @@ const FAQ = [
   [30,"C","선생님께 DM을 보내도 되나요?","개별 DM은 자제하고 질문방에 남겨 주세요. 긴급하면 @지원단 선생님을 호출합니다.","ok"],
   [31,"C","문의처는 어디인가요?","최대한 FAQ와 공지사항을 확인해 주시고, 급한 경우에만 디스코드 질문방을 참고해 주세요.","ok"],
   [32,"C","대회 안내 챗봇은 어디서 쓰나요?","지금 보고 있는 이 사이트의 '질문/FAQ' 탭이 대회 안내 챗봇입니다. 공식 FAQ와 디스코드 질문방의 선생님 답변(10분마다 갱신)으로 일정, 팀 구성, 신청, 경기 규칙, 코칭을 바로 물어볼 수 있습니다. 질문방에 남기기 전에 먼저 챗봇에 물어봐 주세요.","ok"],
-  [33,"D","예선은 어떤 방식인가요?","현재 안내는 4개 팀이 한 조로 조별리그를 하고, 팀당 1판(bo1)씩 치러 1·2위가 16강에 진출하는 방식입니다. 대진표, 리그전 방식 등 모든 운영 방식은 10/19 이후 확정됩니다.","wait"],
-  [34,"D","32팀이 안 채워지면요?","대회는 그대로 진행하고, 3등 팀도 2등에 준하는 승급 시스템으로 16강에 갈 수 있다는 안내가 있었습니다. 10/19 이후 확정됩니다.","wait"],
+  [33,"D","예선(조별리그)은 어떤 방식인가요?","3~4개 팀이 한 조로 조별리그를 하고, 모든 경기는 단판(BO1)입니다. 조 1·2위가 다음 단계로 갑니다. 중등부는 64강(16개 조) → 32강(8개 조), 고등부는 32강(8개 조)을 거쳐 본선에 갑니다. 조 편성은 티어 평균으로 나눈 포트에서 무작위로 배정합니다.","ok"],
+  [34,"D","32팀(중등부 64팀)이 안 채워지면요?","대회는 그대로 진행합니다. 팀 수에 맞춰 일부 조를 3팀 조로 만들고, 3팀 조도 1·2위가 다음 단계로 갑니다(3팀 조는 팀당 2경기).","ok"],
   [35,"D","팀이 너무 많으면요?","내부 예선전을 진행할 예정입니다.","ok"],
-  [36,"D","16강부터는 어떻게 하나요?","더블 엘리미네이션이라는 안내는 있으나, 세트 방식(3판 2선 등)은 협의 중이며 미확정입니다.","wait"],
+  [36,"D","본선(16강)부터는 어떻게 하나요?","조별리그 1·2위 16팀이 장로·바론 두 그룹(각 8팀)으로 나뉘어 더블 엘리미네이션을 합니다. 그룹 1·2위 4팀이 11/4(수) 4강 리그(4팀 풀리그)를 치르고, 리그 1·2위는 11/8 결승, 3·4위는 3·4위전을 합니다. 모든 경기는 단판(BO1)입니다.","ok"],
   [37,"D","밴이 있나요?","모든 경기는 사용자 설정 토너먼트 드래프트 모드로 진행하며 게임 안에서 밴합니다.","ok"],
-  [38,"D","3판 2선에서 이전 판에 쓴 챔피언을 다시 쓸 수 있나요(피어리스)?","피어리스는 BO3(3판 2선승) 경기에만 적용하고, BO1(단판) 경기에는 적용하지 않습니다. 소프트 피어리스(우리 팀이 앞 판에 쓴 챔피언은 다시 못 씀)가 원칙이며, 양 팀이 합의하면 하드 피어리스(양 팀 모두 못 씀)로 할 수 있습니다. 합의한 내용은 지원단에 보고해 주세요.","ok"],
-  [39,"D","라인은 고정인가요?","대회 시작 전까지는 라인을 바꿀 수 있습니다(팀장 대화방에 알리고, 디스코드 닉네임도 맞춰 수정). 대회가 시작되면 등록한 라인대로 경기하며, 탑으로 등록한 선수가 픽 과정에서 미드로 가는 것은 불가능합니다. 3판 2선승 경기의 2·3세트 전에 후보 선수·라인을 바꾸는 것은 가능하지만, 결승·3/4위전은 부득이한 경우가 아니면 바꿀 수 없습니다. 게임이 시작된 뒤의 라인스왑 전략은 가능하며, 밴픽을 위한 챔피언 스왑·교환도 괜찮습니다.","ok"],
+  [38,"D","피어리스(이전 판 챔피언 금지)가 있나요?","없습니다. 모든 경기가 단판(BO1)이라 피어리스 규칙은 적용하지 않습니다.","ok"],
+  [39,"D","라인은 고정인가요?","대회 시작 전까지는 라인을 바꿀 수 있습니다(팀장 대화방에 알리고, 디스코드 닉네임도 맞춰 수정). 대회가 시작되면 등록한 라인대로 경기하며, 탑으로 등록한 선수가 픽 과정에서 미드로 가는 것은 불가능합니다. 경기와 경기 사이에 후보 선수·라인을 바꾸는 것은 가능하지만, 결승·3/4위전은 부득이한 경우가 아니면 바꿀 수 없습니다. 게임이 시작된 뒤의 라인스왑 전략은 가능하며, 밴픽을 위한 챔피언 스왑·교환도 괜찮습니다.","ok"],
   [40,"D","어디서 경기하나요?","결승 전까지는 전용 디스코드 채널로 온라인 진행하고, 1~4위전만 오프라인(경기도인재개발원 실내체육관, 수원시 장안구 경수대로 1150)입니다.","ok"],
   [41,"D","경기 당일에 본계정 말고 부계정으로 들어와도 되나요?","등록한 계정 외의 사용은 경고 조치입니다. 반드시 사전 승인이 있어야 하며, 부득이한 사정이 아니라면 반드시 사전 신청 및 등록한 계정만 사용 가능합니다.","ok"],
   [42,"E","입상하면 무엇을 받나요?","입상팀(1~3위)에 경기도 교육감상을 수여하고, Gen.G Global Academy 코칭을 지원합니다. 결승전(3/4위전)은 OBS가 방송 중계합니다. 몇 강부터 방송(해설)할지는 대진 확정 후 정해집니다. 상금·상품에 대한 안내는 자료에 없으니 포스터를 참고해 주세요.","ok"],
@@ -719,19 +725,38 @@ DDAYS.forEach(d => {
 });
 
 const tl = document.getElementById("timeline");
-TIMELINE.forEach(t => {
-  const li = el("li", daysUntil(t.date) < 0 ? "done" : "");
-  li.append(el("div", "when", t.when), el("div", "what", t.what));
-  if (t.desc) li.append(el("div", "desc", t.desc));
-  tl.append(li);
-});
+function mdLabel(iso) {
+  const d = new Date(iso + "T00:00:00Z");
+  return (d.getUTCMonth() + 1) + "/" + d.getUTCDate() + "(" + "일월화수목금토"[d.getUTCDay()] + ")";
+}
+function renderTimeline(sessions) {
+  const byDay = {};
+  sessions.forEach(x => { (byDay[x.day] = byDay[x.day] || []).push(x); });
+  const items = TL_FIXED.concat(Object.keys(byDay).map(day => ({
+    date: day, start: day, when: mdLabel(day),
+    what: "경기", lines: byDay[day].sort((p, q) => String(p.start_time).localeCompare(String(q.start_time)))
+      .map(x => String(x.start_time).slice(0, 5) + " " + x.label + (x.student_games ? " · 팀당 " + x.student_games : ""))
+  }))).sort((p, q) => p.start.localeCompare(q.start));
+  tl.replaceChildren();
+  items.forEach(t => {
+    const li = el("li", daysUntil(t.date) < 0 ? "done" : "");
+    li.append(el("div", "when", t.when), el("div", "what", t.what));
+    if (t.lines) { const ul = el("ul", "tl-lines"); t.lines.forEach(x => ul.append(el("li", "", x))); li.append(ul); }
+    if (t.desc) li.append(el("div", "desc", t.desc));
+    tl.append(li);
+  });
+}
+renderTimeline(TL_SESSIONS);
+window.applySchedule = rows => { if (rows && rows.length) renderTimeline(rows); };
 
 /* ---------- 대진표 ---------- */
-// 교사용 화면에서 입력한 대진·결과(공개 함수)를 받아 예선 순위표와 본선 브래킷을 그린다
-const GROUPS = "ABCDEFGH".split("");
+// 교사용 화면에서 입력한 대진·결과(공개 함수)를 받아 조별 순위표·본선 브래킷·4강 리그·결선을 그린다
+// 중등부: 64강 조별(16조) → 32강 조별(8조) / 고등부: 32강 조별(8조) → 본선 장로·바론 더블 엘리미네이션 → 4강 리그 → 11/8 결선
 const BK = { matches: [], standings: [], div: "중등부" };
 const BK_NAME = { E: "장로", B: "바론" };
-// 출처를 사람이 읽는 말로: G:A:1 → A조 1번, R:A:1 → A조 1위, W:E-U1-1 → 승자조 1R 1경기 승자
+const BK_GROUPS = { "64강": "ABCDEFGHIJKLMNOP".split(""), "32강": "ABCDEFGH".split("") };
+const BK_STAGES = { 중등부: ["64강", "32강"], 고등부: ["32강"] };
+// 출처를 사람이 읽는 말로: G:64강:A:1 → 64강 A조 1번, R:64강:A:1 → 64강 A조 1위, W:E-U1-1 → 승자조 1R 1경기 승자
 function bkShort(code) {
   const m = BK.matches.find(x => x.code === code && x.division === BK.div);
   if (!m) return code;
@@ -740,19 +765,23 @@ function bkShort(code) {
 function bkSrc(src, here) {
   if (!src) return "추후 공개";
   const p = src.split(":");
-  if (p[0] === "G") return p[1] + "조 " + p[2] + "번";
-  if (p[0] === "R") return p[1] + "조 " + p[2] + "위";
+  if (p[0] === "G" || p[0] === "R") {
+    const tail = p[0] === "G" ? p[3] + "번" : p[3] + "위";
+    return p[1] === "4강 리그" ? "4강 리그 " + tail : p[1] + " " + p[2] + "조 " + tail;
+  }
   const g = p[1].split("-")[0];
+  if (p[0] === "W" && /U3$/.test(p[1])) return BK_NAME[g] + " 1위";
+  if (p[0] === "W" && /L4$/.test(p[1])) return BK_NAME[g] + " 2위";
   return (BK_NAME[g] && g !== here ? BK_NAME[g] + " " : "") + bkShort(p[1]) + (p[0] === "W" ? " 승자" : " 패자");
 }
-const bkBo = n => (n === 1 ? "단판" : n + "판 " + Math.ceil(n / 2) + "선승");
 function bkBox(m) {
   const box = el("div", "mbox");
-  box.append(el("div", "mh", [m.round_label, m.scheduled_at, bkBo(m.best_of)].filter(Boolean).join(" · ")));
-  [[m.team1, m.score1, m.src1], [m.team2, m.score2, m.src2]].forEach(([t, s, src]) => {
+  box.append(el("div", "mh", [m.round_label, m.scheduled_at].filter(Boolean).join(" · ")));
+  [1, 2].forEach(n => {
+    const t = m["team" + n], s = m["score" + n], src = m["src" + n];
     const cls = !t ? " ph" : m.winner ? (m.winner === t ? " win" : " lose") : "";
     const row = el("div", "mt" + cls);
-    row.append(el("span", "", t || bkSrc(src, m.code.split("-")[0])), el("b", "", s == null ? "" : String(s)));
+    row.append(el("span", "", t || (String(src).startsWith("G:") ? bkTeam(m, n) : bkSrc(src, m.code.split("-")[0]))), el("b", "", s == null ? "" : String(s)));
     box.append(row);
   });
   return box;
@@ -768,6 +797,62 @@ function bkAdv(label, m) {
   a.append(el("b", "", (m && m.winner) || "미정"));
   return a;
 }
+// 학교가 정해지기 전 자리 이름: 중등 32강 = 64강 4개 조씩 {W1,X2,Y1,Z2}/{X1,W2,Z1,Y2}, 4강 리그 = 장로1·바론1·장로2·바론2
+function bkSeedLabel(stage, g, seed) {
+  if (stage === "4강 리그") return ["장로 1위", "바론 1위", "장로 2위", "바론 2위"][seed - 1];
+  if (stage === "32강" && BK.div === "중등부") {
+    const gi = BK_GROUPS["32강"].indexOf(g), q = Math.floor(gi / 2), k = gi % 2, G = BK_GROUPS["64강"].slice(q * 4, q * 4 + 4);
+    const pick = k === 0 ? [[G[0], 1], [G[1], 2], [G[2], 1], [G[3], 2]] : [[G[1], 1], [G[0], 2], [G[3], 1], [G[2], 2]];
+    return "64강 " + pick[seed - 1][0] + "조 " + pick[seed - 1][1] + "위";
+  }
+  return "";
+}
+function bkTeam(m, n) {
+  const t = m["team" + n], src = m["src" + n];
+  if (t) return t;
+  const p = (src || "").split(":");
+  return (p[0] === "G" && bkSeedLabel(p[1], p[2], Number(p[3]))) || bkSrc(src);
+}
+// 조 순위표 카드 (조별리그·4강 리그 공용). 3팀 조의 빈 자리 경기는 숨김
+function bkGroupCard(ms, stage, g, title) {
+  const card = el("div", "card group");
+  card.append(el("h3", "", title));
+  const rows = BK.standings.filter(s => s.division === BK.div && s.stage === stage && s.grp === g);
+  const t = el("table", "stand");
+  const hr = el("tr");
+  ["순위", "학교", "승", "패"].forEach(h => hr.append(el("th", "", h)));
+  const th = el("thead"); th.append(hr);
+  const tb = el("tbody");
+  const all = ms.filter(m => m.stage === stage && m.grp === g);
+  const games = all.filter(m => !m.void);
+  if (!rows.length) {
+    // 아직 학교가 없으면 자리마다 어디서 오는지(앞 단계 순위 등) 보여 줌
+    for (let i = 1; i <= 4; i++) {
+      const tr = el("tr");
+      tr.append(el("td", "", "-"), el("td", "sch", bkSeedLabel(stage, g, i) || "추후 공개"), el("td", "", ""), el("td", "", ""));
+      tb.append(tr);
+    }
+  }
+  rows.forEach(s => {
+    const up = stage !== "4강 리그" && s.rank && s.rank <= 2;
+    const tr = el("tr", up ? "up" : "");
+    tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), el("td", "sch", s.school), el("td", "", s.wins), el("td", "", s.losses));
+    tb.append(tr);
+  });
+  t.append(th, tb);
+  card.append(t);
+  if (games.length) {
+    const d = el("details");
+    d.append(el("summary", "", "경기 " + games.length + "개 · " + (games[0].scheduled_at || "")));
+    games.forEach(m => {
+      const line = el("div", "gm");
+      line.append(el("span", "", bkTeam(m, 1) + " vs " + bkTeam(m, 2)), el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
+      d.append(line);
+    });
+    card.append(d);
+  }
+  return card;
+}
 function renderBracket() {
   document.querySelectorAll("#divSwitch .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.div === BK.div));
   const root = document.getElementById("groups");
@@ -775,66 +860,53 @@ function renderBracket() {
   const by = code => ms.find(m => m.code === code);
   root.replaceChildren();
 
-  // 1) 예선 조별 순위
-  root.append(el("h3", "bk-title", "예선 조별리그"));
-  const gwrap = el("div", "groups");
-  GROUPS.forEach(g => {
-    const card = el("div", "card group");
-    card.append(el("h3", "", BK.div + " " + g + "조"));
-    const rows = BK.standings.filter(s => s.division === BK.div && s.grp === g);
-    const t = el("table", "stand");
-    const hr = el("tr");
-    ["순위", "학교", "승", "패", "득실"].forEach(h => hr.append(el("th", "", h)));
-    const th = el("thead"); th.append(hr);
-    const tb = el("tbody");
-    if (!rows.length) for (let i = 1; i <= 4; i++) { const tr = el("tr"); tr.append(el("td", "", "-"), el("td", "sch", "추후 공개"), el("td", "", ""), el("td", "", ""), el("td", "", "")); tb.append(tr); }
-    rows.forEach(s => {
-      const tr = el("tr", s.rank && s.rank <= 2 ? "up" : "");
-      tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), el("td", "sch", s.school), el("td", "", s.wins), el("td", "", s.losses), el("td", "", (s.diff > 0 ? "+" : "") + s.diff));
-      tb.append(tr);
-    });
-    t.append(th, tb);
-    card.append(t);
-    const games = ms.filter(m => m.stage === "예선" && m.grp === g);
-    if (games.length) {
-      const d = el("details");
-      d.append(el("summary", "", "경기 " + games.length + "개 · " + (games[0].scheduled_at || "")));
-      games.forEach(m => {
-        const line = el("div", "gm");
-        line.append(el("span", "", (m.team1 || bkSrc(m.src1)) + " vs " + (m.team2 || bkSrc(m.src2))), el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
-        d.append(line);
-      });
-      card.append(d);
-    }
-    gwrap.append(card);
+  // 1) 조별리그 (중등 64강 → 32강, 고등 32강)
+  BK_STAGES[BK.div].forEach(stage => {
+    const first = ms.find(m => m.stage === stage);
+    const sub = stage === "64강" ? "16개 조 · 조 1·2위 32강 진출"
+      : BK.div === "중등부" ? "8개 조 · 64강 조 1·2위끼리 · 조 1·2위 본선 진출" : "8개 조 · 조 1·2위 본선 진출";
+    const h = el("h3", "bk-title", stage + " 조별리그");
+    h.append(el("small", "", sub + (first && first.scheduled_at ? " · " + first.scheduled_at.split(" ")[0] : "")));
+    root.append(h);
+    const gwrap = el("div", "groups");
+    BK_GROUPS[stage].forEach(g => gwrap.append(bkGroupCard(ms, stage, g, stage + " " + g + "조")));
+    root.append(gwrap);
   });
-  root.append(gwrap);
   if (!ms.length) return;
 
-  // 2) 본선: 장로·바론 그룹 더블 엘리미네이션
+  // 2) 본선: 장로·바론 그룹 더블 엘리미네이션 (승자조 1일차, 패자조 2일차)
   ["E", "B"].forEach(g => {
     const k = s => by(g + "-" + s);
-    root.append(el("h3", "bk-title", "본선 " + BK_NAME[g] + " 그룹"));
-    const t = el("small", "", "더블 엘리미네이션 · 승자조 우승 = 그룹 1위, 패자조 우승 = 그룹 2위");
-    root.lastChild.append(t);
-    root.append(el("div", "bk-row-label", "승자조"));
+    const h = el("h3", "bk-title", "본선 " + BK_NAME[g] + " 그룹");
+    h.append(el("small", "", "더블 엘리미네이션 · 승자조 우승 = 그룹 1위, 패자조 우승 = 그룹 2위 → 4강 리그"));
+    root.append(h);
+    root.append(el("div", "bk-row-label", "승자조" + (k("U1-1") && k("U1-1").scheduled_at ? " · " + k("U1-1").scheduled_at : "")));
     const up = el("div", "bk-scroll"), ub = el("div", "bk");
-    ub.append(bkCol("1라운드 (16강)", [k("U1-1"), k("U1-2"), k("U1-3"), k("U1-4")]), bkCol("2라운드", [k("U2-1"), k("U2-2")]),
-      bkCol("승자조 결승", [k("U3")]), bkCol("결선 진출", [bkAdv(BK_NAME[g] + " 1위", k("U3"))]));
+    ub.append(bkCol("1라운드", [k("U1-1"), k("U1-2"), k("U1-3"), k("U1-4")]), bkCol("2라운드", [k("U2-1"), k("U2-2")]),
+      bkCol("승자조 결승", [k("U3")]), bkCol("4강 리그 진출", [bkAdv(BK_NAME[g] + " 1위", k("U3"))]));
     up.append(ub); root.append(up);
-    root.append(el("div", "bk-row-label", "패자조"));
+    root.append(el("div", "bk-row-label", "패자조" + (k("L1-1") && k("L1-1").scheduled_at ? " · " + k("L1-1").scheduled_at : "")));
     const lo = el("div", "bk-scroll"), lb = el("div", "bk");
     lb.append(bkCol("1라운드", [k("L1-1"), k("L1-2")]), bkCol("2라운드", [k("L2-1"), k("L2-2")]), bkCol("3라운드", [k("L3")]),
-      bkCol("패자조 결승", [k("L4")]), bkCol("결선 진출", [bkAdv(BK_NAME[g] + " 2위", k("L4"))]));
+      bkCol("패자조 결승", [k("L4")]), bkCol("4강 리그 진출", [bkAdv(BK_NAME[g] + " 2위", k("L4"))]));
     lo.append(lb); root.append(lo);
   });
 
-  // 3) 결선 (11/8 오프라인)
-  root.append(el("h3", "bk-title", "결선 · 1~4위전"));
+  // 3) 4강 리그 (4팀이 서로 한 번씩)
+  const lg = ms.find(m => m.stage === "4강 리그");
+  const lh = el("h3", "bk-title", "4강 리그");
+  lh.append(el("small", "", "장로·바론 1·2위 4팀 풀리그 · 1·2위는 결승, 3·4위는 3·4위전" + (lg && lg.scheduled_at ? " · " + lg.scheduled_at : "")));
+  root.append(lh);
+  const lw = el("div", "groups");
+  lw.append(bkGroupCard(ms, "4강 리그", "L", BK.div + " 4강 리그"));
+  root.append(lw);
+
+  // 4) 결선 (11/8 오프라인)
+  root.append(el("h3", "bk-title", "결선 · 11/8(일) 오프라인"));
   const fs = el("div", "bk-scroll"), fb = el("div", "bk");
   const champ = el("div", "adv", "🏆 우승");
   champ.append(el("b", "", (by("F-FINAL") && by("F-FINAL").winner) || "미정"));
-  fb.append(bkCol("4강", [by("F-SF1"), by("F-SF2")]), bkCol("결승 · 3·4위전", [by("F-FINAL"), by("F-3RD")]), bkCol("최종", [champ]));
+  fb.append(bkCol("3·4위전", [by("F-3RD")]), bkCol("결승", [by("F-FINAL")]), bkCol("최종", [champ]));
   fs.append(fb); root.append(fs);
 }
 document.querySelectorAll("#divSwitch .chip").forEach(b => b.addEventListener("click", () => { BK.div = b.dataset.div; renderBracket(); }));
