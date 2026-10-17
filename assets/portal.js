@@ -763,8 +763,9 @@
     const views = [
       ["t-staff", "지원단 명단", "지원단 선생님 명단과 업무 분장입니다.", loadStaff],
       ["t-roster", SHEETS.roster.title, "학생 실명과 LOL 아이디가 들어 있습니다. 화면 밖으로 옮기지 마세요.", b => loadSheet(b, SHEETS.roster)],
-      ["t-captains", SHEETS.captains.title, "", b => loadSheet(b, SHEETS.captains)],
-      ["t-advisors", SHEETS.advisors.title, "", b => loadSheet(b, SHEETS.advisors)],
+      // 연락처 표는 심판 권한에 안 보임 (DB에서도 막음)
+      ...(ME.role === "referee" ? [] : [["t-captains", SHEETS.captains.title, "", b => loadSheet(b, SHEETS.captains)],
+        ["t-advisors", SHEETS.advisors.title, "", b => loadSheet(b, SHEETS.advisors)]]),
       ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
       ["t-referee", "심판 일정", "경기 회차(날짜·시간)마다 심판으로 들어갈 수 있는 선생님을 체크합니다. 본인 줄만 체크할 수 있고, 회차 관리는 관리자만 합니다.", loadReferee],
@@ -902,7 +903,9 @@
   }
 
   async function fetchStaff() {
-    const { data, error } = await sb.from("staff").select("*").order("seq", { nullsFirst: false }).order("id");
+    // 심판(젠지 코치) 권한은 연락처를 뺀 목록만 (DB에서도 staff 표 직접 읽기 막음)
+    const { data, error } = ME.role === "referee" ? await sb.rpc("staff_directory")
+      : await sb.from("staff").select("*").order("seq", { nullsFirst: false }).order("id");
     if (error) { toast("명단을 불러오지 못했습니다", true); return []; }
     STAFF = data;
     return data;
@@ -912,7 +915,7 @@
     staffBox = box;
     const [rows] = await Promise.all([fetchStaff(), fetchSchools()]); // 학교 지역 표시용
     grid(box, {
-      columns: STAFF_COLS, rows, exportName: "지원단 명단",
+      columns: ME.role === "referee" ? STAFF_COLS.filter(c => c.key !== "phone") : STAFF_COLS, rows, exportName: "지원단 명단",
       onSave: async (r, c, v) => { if (await save(sb.from("staff").update({ [c.key]: v }).eq("id", r.id))) r[c.key] = v; },
       onDelete: async r => { if (await save(sb.from("staff").delete().eq("id", r.id), "삭제했습니다")) loadStaff(box); },
       onAdd: async () => { const n = prompt("추가할 선생님 성명"); if (n && await save(sb.from("staff").insert({ name: n.trim() }), "추가했습니다")) loadStaff(box); }
