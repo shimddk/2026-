@@ -40,12 +40,6 @@
     font-weight: normal;
     font-display: swap;
   }
-  @font-face {
-    font-family: 'Cafe24Gowoonbam';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.1/Cafe24Oneprettynight.woff') format('woff');
-    font-weight: normal;
-    font-display: swap;
-  }
   :root {
     --bg: #0a0f24;
     --bg2: #111833;
@@ -133,16 +127,18 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .hero p { color: var(--muted); max-width: 760px; word-break: keep-all; } /* 문장마다 줄바꿈, 넓은 화면에서 한 문장이 한 줄에 들어가게 */
-  .cta { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0 32px; }
+  .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 760px; margin: 24px 0 36px; }
+  .cta .btn { font-size: 19px; padding: 16px 20px; border-radius: 14px; text-align: center; }
+  @media (max-width: 480px) { .cta { gap: 8px; } .cta .btn { font-size: 16px; padding: 14px 10px; } }
+  .btn.closed { background: var(--bg2); color: var(--muted); border: 1px solid var(--line); }
   .btn {
     border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; cursor: pointer;
     background: linear-gradient(135deg, var(--neon), var(--neon2)); color: #0a0f24;
   }
   .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
-  /* 질문 챗봇 버튼: 복숭아(#f3ab8c)→코랄→핑크 그라데이션, 글꼴 Cafe24 고운밤, 글자 물결 모션(vibe-motion-ripple: 2.1초 ÷ 속도 1.25, 세기 65, 한 번) */
+  /* 질문 챗봇 버튼: 복숭아(#f3ab8c)→코랄→핑크 그라데이션, 나눔고딕, 글자 물결 모션(vibe-motion-ripple: 2.1초 ÷ 속도 1.25, 세기 65, 한 번) */
   .btn.chatbtn {
-    position: relative; overflow: hidden; white-space: nowrap; flex: none; color: #3a0f1f; font-family: 'Cafe24Gowoonbam', 'Nanum Gothic', sans-serif; font-size: 20px; font-weight: normal;
-    padding: 10px 20px; background: linear-gradient(135deg, #f3ab8c 0%, #ff8a7a 45%, #ff6fae 100%);
+    position: relative; overflow: hidden; white-space: nowrap; flex: none; color: #3a0f1f; background: linear-gradient(135deg, #f3ab8c 0%, #ff8a7a 45%, #ff6fae 100%);
     box-shadow: 0 6px 22px rgba(255, 120, 140, .35);
   }
   .btn.chatbtn:hover, .btn.chatbtn:focus-visible { filter: brightness(1.05); box-shadow: 0 8px 28px rgba(255, 120, 140, .5); }
@@ -369,7 +365,7 @@
       <h1>2026 경기도 교육감배<br><span>미래형 이스포츠 스쿨리그</span></h1>
       <p>경기도 중·고등학생이 학교 대표 팀으로 겨루는 온라인 리그입니다.<br>결승 전까지는 디스코드로 온라인 진행하고, 1~4위전은 오프라인에서 열립니다.</p>
       <div class="cta">
-        <button class="btn" data-go="apply">참가 신청 안내</button>
+        <button class="btn" data-go="apply" id="applyBtn">참가 신청 안내</button>
         <button class="btn chatbtn" data-go="faq" aria-label="질문 챗봇 열기">질문 챗봇 열기</button>
       </div>
     </div>
@@ -765,6 +761,16 @@ function el(tag, cls, text) {
   return e;
 }
 
+// 참가 신청은 10/20(화) 자정에 마감 → 그 뒤에는 홈 버튼을 '참가 모집 완료'로 (페이지를 열어 둔 채 자정이 지나도 바뀜)
+(function applyClose() {
+  const b = document.getElementById("applyBtn");
+  if (!b) return;
+  const CLOSE = Date.parse("2026-10-21T00:00:00+09:00");
+  const done = () => { b.textContent = "참가 모집 완료"; b.classList.add("closed"); };
+  const left = CLOSE - Date.now();
+  if (left <= 0) done(); else if (left < 2147483647) setTimeout(done, left + 500);
+})();
+
 // 질문 챗봇 버튼 물결 모션 (vibe-motion-ripple, loop 없음 → 처음 한 번, 마우스를 올리면 다시)
 (function chatRipple() {
   const b = document.querySelector(".btn.chatbtn");
@@ -772,7 +778,7 @@ function el(tag, cls, text) {
   const text = b.textContent;
   b.replaceChildren(...[...text].map((ch, i) => { const s = el("span", "rp", ch); s.style.setProperty("--i", i); s.setAttribute("aria-hidden", "true"); return s; }));
   const play = () => { b.classList.remove("rippling"); void b.offsetWidth; b.classList.add("rippling"); };
-  (document.fonts && document.fonts.load ? document.fonts.load("20px Cafe24Gowoonbam").catch(() => {}) : Promise.resolve()).then(() => setTimeout(play, 300));
+  setTimeout(play, 300);
   b.addEventListener("mouseenter", play);
   b.addEventListener("focus", play);
 })();
