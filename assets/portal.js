@@ -945,9 +945,16 @@
         r._avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
         r._n = nums.length;
       });
-      // 순위: 평균이 낮을수록(높은 티어) 1위, 같은 평균은 같은 순위
-      const sorted = rows.filter(r => r._avg != null).map(r => r._avg).sort((a, b) => a - b);
-      rows.forEach(r => { r._rank = r._avg == null ? null : sorted.indexOf(r._avg) + 1; });
+    }
+    // 순위: 확인이 필요하거나 주전 5명 티어가 다 들어오지 않은 팀은 빼고, 평균이 낮을수록(높은 티어) 1위, 같은 평균은 같은 순위
+    function rankAndSort(isCheck) {
+      rows.forEach(r => { r._todo = isCheck(r) ? "확인 필요" : r._n < 5 ? "티어 미입력 (" + r._n + "/5)" : ""; });
+      const sorted = rows.filter(r => !r._todo).map(r => r._avg).sort((a, b) => a - b);
+      rows.forEach(r => { r._rank = r._todo ? null : sorted.indexOf(r._avg) + 1; });
+      // 할 일이 있는 팀을 맨 위(확인 필요 → 티어 미입력, 학교 이름순), 그 아래 순위순
+      const name = r => String(r.data["학교"] || "");
+      const group = r => (r._todo === "확인 필요" ? 0 : r._todo ? 1 : 2);
+      rows.sort((a, b) => group(a) - group(b) || (group(a) === 2 ? a._rank - b._rank : 0) || name(a).localeCompare(name(b), "ko"));
     }
 
     function render() {
@@ -973,6 +980,8 @@
       const tierOptions = ["", ...scores.map(t => t.tier)];
       const playerCols = new Set(keys.filter(k => /^(선수|예비)\d/.test(k)));
       const columns = keys.map(k => {
+        // '순번' 자리에 자동 순위를 보여 줌 (순번 값은 지우지 않고 화면에서만 뺌)
+        if (k === "순번") return { key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? r._todo : r._rank, cellClass: r => (r._todo ? "dupe" : "") };
         const col = { key: k, label: k, get: r => r.data[k] };
         if (playerCols.has(k)) {
           const extra = [...new Set(rows.map(r => r.data[k]).filter(v => v && !tierOptions.includes(v)))];
@@ -981,10 +990,9 @@
         return col;
       });
       const filters = [addDupeColumn(columns, rows, "학교")];
-      columns.push(
-        { key: "_avg", label: "평균(주전5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") },
-        { key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? "" : r._rank }
-      );
+      rankAndSort(r => filters[0].get(r) === "확인 필요");
+      if (!keys.includes("순번")) columns.unshift({ key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? r._todo : r._rank, cellClass: r => (r._todo ? "dupe" : "") });
+      columns.push({ key: "_avg", label: "평균(주전5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") });
       grid(inner, {
         columns, rows, filters, exportName: "팀별 티어 현황(" + divOf(current) + ")",
         onSave: async (r, c, v) => {
