@@ -1495,11 +1495,13 @@
 
   // 심판 일정: 경기 회차(날짜·시간)마다 가능한 선생님 체크. 본인 칸만 체크, 관리자는 회차 추가·수정·삭제와 모든 칸 수정
   async function loadReferee(box) {
-    const [staff, { data: sessions, error }, { data: avail }] = await Promise.all([
+    const [staff, { data: sessions, error }, { data: avail }, { data: doneRows }] = await Promise.all([
       fetchStaff(),
       sb.from("ref_sessions").select("*").order("day").order("start_time").order("sort"),
-      sb.from("ref_avail").select("*").eq("available", true)
+      sb.from("ref_avail").select("*").eq("available", true),
+      sb.from("ref_done").select("*")
     ]);
+    const done = new Set((doneRows || []).map(d => d.staff_id)); // '입력 완료'를 누른 선생님
     box.replaceChildren();
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
     const reload = () => loadReferee(box);
@@ -1514,14 +1516,14 @@
 
     box.append(el("p", "note", isOwner()
       ? "관리자: 모든 선생님 칸을 체크할 수 있고, 아래 '회차 관리'에서 시간·경기·필요 인원을 고치거나 회차를 추가·삭제할 수 있습니다."
-      : ME.staffId ? "본인 줄(굵게 표시)만 체크할 수 있습니다. 체크하면 바로 저장됩니다." : "계정이 지원단 이름과 연결되지 않아 체크할 수 없습니다. 관리자에게 연결을 요청하세요."));
+      : ME.staffId ? "본인 줄(굵게 표시)만 체크할 수 있습니다. 체크하면 바로 저장됩니다. 가능한 회차를 다 체크했으면 맨 왼쪽 '입력 완료'를 눌러 주세요." : "계정이 지원단 이름과 연결되지 않아 체크할 수 없습니다. 관리자에게 연결을 요청하세요."));
     if (!(sessions || []).length) box.append(el("p", "note", "등록된 경기 회차가 없습니다."));
 
     const scroller = el("div", "gscroll");
     const table = el("table", "dtable ref");
     const thead = el("thead");
     const hr = el("tr");
-    hr.append(el("th", "", "선생님"));
+    hr.append(el("th", "done-col", "입력 완료"), el("th", "", "선생님"));
     (sessions || []).forEach(s => {
       const th = el("th");
       th.append(el("div", "", Number(s.day.slice(5, 7)) + "/" + Number(s.day.slice(8, 10)) + "(" + wd(s.day) + ") " + String(s.start_time).slice(0, 5)), el("small", "", s.label));
@@ -1533,7 +1535,8 @@
     (sessions || []).forEach(s => { counts[s.id] = refs.filter(r => has.has(s.id + "|" + r.id)).length; });
     const foot = el("tr", "sum");
     function drawFoot() {
-      foot.replaceChildren(el("th", "", "가능 / 필요"));
+      const nDone = refs.filter(r => done.has(r.id)).length;
+      foot.replaceChildren(el("td", "done-col " + (nDone >= refs.length ? "ok" : "short"), nDone + " / " + refs.length), el("th", "", "가능 / 필요"));
       (sessions || []).forEach(s => {
         const td = el("td", counts[s.id] >= s.needed ? "ok" : "short");
         td.append(el("strong", "", counts[s.id] + " / " + s.needed), el("div", "state", counts[s.id] >= s.needed ? "충분" : "부족 " + (s.needed - counts[s.id]) + "명"));
@@ -1542,7 +1545,26 @@
     }
     refs.forEach(r => {
       const tr = el("tr", r.id === ME.staffId ? "me" : "");
-      tr.append(el("th", "", r.name + (r.school ? " (" + r.school + ")" : "")));
+      // 맨 왼쪽: 내가 가능한 회차를 다 체크했다는 표시
+      const dtd = el("td", "c done-col");
+      if (canEdit(r)) {
+        const dc = el("input");
+        dc.type = "checkbox";
+        dc.checked = done.has(r.id);
+        dc.setAttribute("aria-label", r.name + " 심판 일정 입력 완료");
+        dc.addEventListener("change", async () => {
+          const ok = dc.checked
+            ? await save(sb.from("ref_done").insert({ staff_id: r.id }), "입력 완료로 표시했습니다")
+            : await save(sb.from("ref_done").delete().eq("staff_id", r.id), "입력 완료 표시를 지웠습니다");
+          if (!ok) { dc.checked = !dc.checked; return; }
+          if (dc.checked) done.add(r.id); else done.delete(r.id);
+          tr.classList.toggle("is-done", dc.checked);
+          drawFoot();
+        });
+        dtd.append(dc);
+      } else dtd.textContent = done.has(r.id) ? "✔" : "";
+      if (done.has(r.id)) tr.classList.add("is-done");
+      tr.append(dtd, el("th", "", r.name + (r.school ? " (" + r.school + ")" : "")));
       (sessions || []).forEach(s => {
         const td = el("td", "c");
         const on = has.has(s.id + "|" + r.id);

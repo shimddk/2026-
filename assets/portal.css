@@ -255,3 +255,8 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 
 /* 신청서 원본 보기 */
 .raw-cell { white-space: pre-wrap; }
+
+/* 심판 일정: 입력 완료 열 */
+.dtable.ref .done-col { white-space: nowrap; text-align: center; }
+.dtable.ref tr.is-done th { color: var(--muted); }
+.dtable.ref tr.is-done.me th { color: var(--neon); }
