@@ -265,3 +265,8 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 .rec-list .nick-need, .rec-list .nick-warn { display: block; width: 100%; font-size: 12px; margin-top: 2px; }
 .rec-list .nick-need { color: #ff9a9a; font-weight: 700; }
 .rec-list .nick-warn { color: #ffd38a; }
+
+/* 진출 팀 배정 */
+.adv-list { margin: 10px 0; }
+.adv-list h4 { margin: 0 0 6px; }
+.adv-list .slot-row.adv-on { background: rgba(53, 224, 255, .08); border-radius: 8px; }

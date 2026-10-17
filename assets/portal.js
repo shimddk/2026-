@@ -480,7 +480,7 @@
   const ME = { status: null, role: null, name: null, email: null };
   const isEditor = () => ME.role === "editor" || ME.role === "owner";
   const isOwner = () => ME.role === "owner";
-  const ROLE_LABEL = { viewer: "보기", editor: "보기·고치기", owner: "관리자" };
+  const ROLE_LABEL = { viewer: "보기", editor: "보기·고치기", owner: "관리자", referee: "심판" };
 
   function renderAcct() {
     acct.replaceChildren();
@@ -1249,7 +1249,7 @@
   // 대진·경기 결과: 조 편성(중등 64강·고등 32강) → 조별 순위(자동) → 중등 32강 조(자동) → 본선 장로·바론 더블 엘리미네이션 → 4강 리그 → 11/8 결선
   // 출처(src)가 있는 칸은 DB가 자동으로 채움 (G:단계:조:번호 / R:단계:조:순위 / W:코드 승자 / L:코드 패자). 모든 경기 단판(BO1).
   const GRP_NAME = { E: "장로", B: "바론" };
-  const STAGE_GROUPS = { "64강": "ABCDEFGHIJKLMNOP".split(""), "32강": "ABCDEFGH".split(""), "4강 리그": ["L"] };
+  const STAGE_GROUPS = { "64강": "ABCDEFGHIJKLMNOP".split(""), "32강": "ABCDEFGH".split(""), "4강 리그": ["L"], "본선 진출": ["S"] };
   const FIRST_STAGE = { 중등부: "64강", 고등부: "32강" };
   function srcText(src, matches) {
     if (!src) return "";
@@ -1332,6 +1332,194 @@
   }
   const drawRangeText = d => d.slack == null ? "순위 차이 조건을 맞추지 못해 시드만 지켜 무작위로 뽑았습니다"
     : "바로 위 시드 팀과의 순위 차이 " + (d.G - d.slack) + "~" + (d.G + d.slack) + "위" + (d.slack > d.base ? " (기본 " + (d.G - d.base) + "~" + (d.G + d.base) + "위로는 조합이 없어 넓힘)" : "");
+
+  // ── 조 수: 팀 수 ÷ 4 올림 (최대한 4팀 조). 중등 최대 16조, 고등 최대 8조 ──
+  const MAX_GROUPS = { 중등부: 16, 고등부: 8 };
+  const groupsFor = (div, n) => STAGE_GROUPS[FIRST_STAGE[div]].slice(0, Math.min(MAX_GROUPS[div], Math.max(1, Math.ceil(n / 4))));
+  // 다음 단계 자리 수: 중등 32강(1위 자리 16 + 2위 자리 16), 고등 본선(8 + 8)
+  const SEATS = { 중등부: 16, 고등부: 8 };
+  const fmtDur = sec => sec == null ? "" : Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+  function parseDur(v) {
+    const m = String(v || "").trim().match(/^(\d{1,3})(?::(\d{1,2}))?$/);
+    if (!m) return undefined;
+    const sec = Number(m[1]) * 60 + Number(m[2] || 0);
+    return sec >= 1 && sec <= 7200 && Number(m[2] || 0) < 60 ? sec : undefined;
+  }
+
+  // ── 첫 조별 단계 결과로 다음 단계 진출 팀 고르기 (2026-10-18 사용자 결정) ──
+  //  1위 자리 = 각 조 1위 + 잘한 2위, 2위 자리 = 나머지 2위 + 잘한 3위(3팀 조의 3위는 제외)
+  //  비교: 2위는 승률, 3위는 승수 → 시간 점수 = (진 경기 시간 합 − 이긴 경기 시간 합) ÷ 경기 수 (클수록 위: 빨리 이기고 오래 버팀)
+  function computeAdvance(div, slots, stand, matches) {
+    const stage = FIRST_STAGE[div], problems = [];
+    const groups = [...new Set(slots.filter(x => x.stage === stage && x.school).map(x => x.grp))].sort();
+    const size = g => slots.filter(x => x.stage === stage && x.grp === g && x.school).length;
+    const stats = {};
+    matches.filter(m => m.stage === stage && m.team1 && m.team2 && m.winner).forEach(m => {
+      [m.team1, m.team2].forEach(t => {
+        const st = stats[t] = stats[t] || { games: 0, wins: 0, winSec: 0, lossSec: 0, noTime: 0 };
+        st.games++;
+        if (m.duration_sec == null) st.noTime++;
+        if (m.winner === t) { st.wins++; st.winSec += m.duration_sec || 0; } else st.lossSec += m.duration_sec || 0;
+      });
+    });
+    const row = (x, g) => {
+      const st = stats[x.school] || { games: 0, wins: 0, winSec: 0, lossSec: 0, noTime: 0 };
+      return { school: x.school, grp: g, rank: x.rank, size: size(g), wins: st.wins, games: st.games, rate: st.games ? st.wins / st.games : 0,
+        time: st.games ? (st.lossSec - st.winSec) / st.games : 0, noTime: st.noTime };
+    };
+    const firsts = [], runners = [], thirds = [];
+    groups.forEach(g => {
+      const st = stand.filter(x => x.division === div && x.stage === stage && x.grp === g);
+      if (!st.length || !st[0].complete) { problems.push(stage + " " + g + "조 경기가 아직 다 끝나지 않았습니다"); return; }
+      if (st.some(x => !x.rank)) { problems.push(stage + " " + g + "조 동률 · 순위 직접 지정이 필요합니다"); return; }
+      st.forEach(x => {
+        if (x.rank === 1) firsts.push(row(x, g));
+        else if (x.rank === 2) runners.push(row(x, g));
+        else if (x.rank === 3 && size(g) === 4) thirds.push(row(x, g)); // 3팀 조의 3위는 제외
+      });
+    });
+    const byTime = (a, b) => b.time - a.time;
+    runners.sort((a, b) => b.rate - a.rate || byTime(a, b) || a.school.localeCompare(b.school, "ko"));
+    thirds.sort((a, b) => b.wins - a.wins || byTime(a, b) || a.school.localeCompare(b.school, "ko"));
+    const seats = SEATS[div], G = groups.length;
+    const promoteN = Math.max(0, seats - G), thirdN = Math.max(0, seats - (G - promoteN));
+    if (G > seats) problems.push("조가 " + G + "개라 1위만으로도 자리(" + seats + ")를 넘습니다");
+    if (thirdN > thirds.length) problems.push("올릴 3위가 " + thirdN + "팀 필요한데 후보가 " + thirds.length + "팀뿐입니다");
+    // 자르는 선 바로 앞뒤가 같은 성적이거나 경기 시간이 비어 있으면 표시 → 관리자가 직접 고름
+    const tieAt = (list, n, key) => n > 0 && n < list.length && key(list[n - 1]) === key(list[n]);
+    const tieR = tieAt(runners, promoteN, x => x.rate + "|" + x.time.toFixed(1)), tieT = tieAt(thirds, thirdN, x => x.wins + "|" + x.time.toFixed(1));
+    const missing = [...runners.slice(0, promoteN + 1), ...thirds.slice(0, thirdN + 1)].filter(x => x.noTime).map(x => x.school);
+    return { stage, groups, firsts, runners, thirds, promoteN, thirdN, problems, tieR, tieT, missing };
+  }
+
+  // ── 진출 팀을 다음 단계 자리에 놓기: 같은 첫 단계 조 출신끼리 최대한 늦게 만나게 (무작위 + 개선 반복) ──
+  //  중등: 32강 A~H조의 1·3번 = 1위 자리, 2·4번 = 2위 자리 / 고등: 본선 진출 1~8 = 1위 자리 A~H, 9~16 = 2위 자리 A~H
+  function seatKeys(div) {
+    const L = "ABCDEFGH".split("");
+    if (div === "중등부") {
+      const ones = [], twos = [];
+      L.forEach((g, i) => { [1, 3].forEach(seed => ones.push({ grp: g, seed, k: [g, "p" + (i >> 1), "h" + (i >> 2)] })); [2, 4].forEach(seed => twos.push({ grp: g, seed, k: [g, "p" + (i >> 1), "h" + (i >> 2)] })); });
+      return { ones, twos };
+    }
+    // 고등 본선 승자조 1R: 장로 A1–B2, C1–D2 … / 바론 B1–A2, D1–C2 …
+    const key = (grpName, m) => [grpName + m, grpName + (m >> 1), grpName];
+    return {
+      ones: L.map((g, i) => ({ grp: "S", seed: i + 1, k: i % 2 === 0 ? key("장로", i >> 1) : key("바론", i >> 1) })),
+      twos: L.map((g, j) => ({ grp: "S", seed: j + 9, k: j % 2 === 1 ? key("장로", j >> 1) : key("바론", j >> 1) }))
+    };
+  }
+  function assignSeats(div, ones, twos) {
+    const { ones: s1, twos: s2 } = seatKeys(div);
+    const W = [1000, 100, 10]; // 같은 조(고등: 같은 1R 경기) > 1라운드 상대 > 같은 절반(고등: 같은 그룹)
+    const cost = (a, b) => {
+      const seats = [...a.map((t, i) => [t, s1[i]]), ...b.map((t, i) => [t, s2[i]])];
+      let c = 0;
+      for (let i = 0; i < seats.length; i++) for (let j = i + 1; j < seats.length; j++) {
+        if (seats[i][0].grp !== seats[j][0].grp) continue;
+        const k = seats[i][1].k, l = seats[j][1].k;
+        c += k[0] === l[0] ? W[0] : k[1] === l[1] ? W[1] : k[2] === l[2] ? W[2] : 0;
+      }
+      return c;
+    };
+    let best = null, bestC = Infinity;
+    for (let r = 0; r < 60; r++) {
+      const a = shuffle(ones.slice()), b = shuffle(twos.slice());
+      let c = cost(a, b), improved = true;
+      while (improved) {
+        improved = false;
+        for (const arr of [a, b]) for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+          const c2 = cost(a, b);
+          if (c2 < c) { c = c2; improved = true; } else [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      }
+      if (c < bestC) { bestC = c; best = { a: a.slice(), b: b.slice() }; }
+      if (bestC === 0) break;
+    }
+    return { seats: [...best.a.map((t, i) => ({ ...s1[i], team: t })), ...best.b.map((t, i) => ({ ...s2[i], team: t }))], cost: bestC };
+  }
+  const seatLabel = (div, seat) => div === "중등부" ? "32강 " + seat.grp + "조 " + seat.seed + "번 (" + (seat.seed % 2 ? "1위 자리" : "2위 자리") + ")"
+    : (seat.seed <= 8 ? "1위 자리 " + "ABCDEFGH"[seat.seed - 1] : "2위 자리 " + "ABCDEFGH"[seat.seed - 9]);
+
+  async function openAdvance(div, slots, stand, matches, reload) {
+    const ad = computeAdvance(div, slots, stand, matches);
+    const target = div === "중등부" ? "32강" : "본선 진출";
+    const dlg = el("dialog", "rdlg");
+    dlg.setAttribute("aria-label", div + " 진출 팀 배정");
+    const close = () => { dlg.close(); dlg.remove(); };
+    const pickR = new Set(ad.runners.slice(0, ad.promoteN).map(x => x.school));
+    const pickT = new Set(ad.thirds.slice(0, ad.thirdN).map(x => x.school));
+    const body = el("div");
+    let placed = null;
+    const timeLine = x => (x.time >= 0 ? "+" : "") + (x.time / 60).toFixed(1) + "분" + (x.noTime ? " ⚠시간 " + x.noTime + "경기 비어 있음" : "");
+    function pickList(title, list, picked, need, line) {
+      const box = el("div", "adv-list");
+      box.append(el("h4", "", title + " — " + need + "팀 선택 (" + picked.size + "/" + need + ")"));
+      list.forEach((x, i) => {
+        const l = el("label", "slot-row" + (picked.has(x.school) ? " adv-on" : ""));
+        const cb = el("input"); cb.type = "checkbox"; cb.checked = picked.has(x.school);
+        cb.addEventListener("change", () => { cb.checked ? picked.add(x.school) : picked.delete(x.school); placed = null; draw(); });
+        l.append(cb, el("span", "", (i + 1) + ". " + x.school + " (" + x.grp + "조 " + x.size + "팀)"), el("span", "slot-st", line(x) + " · 시간 점수 " + timeLine(x)));
+        box.append(l);
+      });
+      return box;
+    }
+    function draw() {
+      body.replaceChildren();
+      body.append(el("p", "note", div + " " + ad.stage + " " + ad.groups.length + "개 조 → 1위 자리 " + SEATS[div] + " = 조 1위 " + ad.firsts.length + " + 잘한 2위 " + ad.promoteN +
+        " / 2위 자리 " + SEATS[div] + " = 나머지 2위 " + (ad.runners.length - ad.promoteN) + " + 잘한 3위 " + ad.thirdN + " (3팀 조의 3위 제외). 기본 선택은 규칙대로이고, 동률이면 직접 바꿀 수 있습니다."));
+      ad.problems.forEach(t => body.append(el("p", "rdlg-err", t)));
+      if (ad.tieR || ad.tieT) body.append(el("p", "rdlg-err", "자르는 선에 같은 성적인 팀이 있습니다(" + [ad.tieR && "2위", ad.tieT && "3위"].filter(Boolean).join("·") + "). 규정에 따라 직접 골라 주세요."));
+      if (ad.missing.length) body.append(el("p", "rdlg-err", "경기 시간이 비어 있는 팀: " + ad.missing.join(", ") + " — 경기 결과 표에 시간을 넣으면 더 정확합니다."));
+      if (ad.problems.length) return;
+      if (ad.promoteN) body.append(pickList("잘한 2위 → 1위 자리", ad.runners, pickR, ad.promoteN, x => "승률 " + Math.round(x.rate * 100) + "% (" + x.wins + "/" + x.games + ")"));
+      if (ad.thirdN) body.append(pickList("잘한 3위 → 2위 자리", ad.thirds, pickT, ad.thirdN, x => x.wins + "승"));
+      if (pickR.size !== ad.promoteN || pickT.size !== ad.thirdN) { body.append(el("p", "rdlg-err", "선택한 팀 수를 맞춰 주세요.")); return; }
+      const ones = [...ad.firsts, ...ad.runners.filter(x => pickR.has(x.school))];
+      const twos = [...ad.runners.filter(x => !pickR.has(x.school)), ...ad.thirds.filter(x => pickT.has(x.school))];
+      placed = placed || assignSeats(div, ones, twos);
+      body.append(el("h4", "", "배정 결과 " + (placed.cost === 0 ? "· 같은 조 출신끼리 일찍 만나는 경우 없음" : placed.cost < 100 ? "· 같은 조 출신은 같은 절반에만 일부 (1라운드 재대결 없음)" : "· ⚠ 같은 조 출신이 일찍 만날 수 있음")));
+      const wrap = el("div", "slot-grid");
+      const groupsOut = {};
+      placed.seats.forEach(x => { const k = div === "중등부" ? "32강 " + x.grp + "조" : (x.seed <= 8 ? "1위 자리" : "2위 자리"); (groupsOut[k] = groupsOut[k] || []).push(x); });
+      Object.entries(groupsOut).forEach(([k, list]) => {
+        const c = el("div", "slot-card");
+        c.append(el("h4", "", k));
+        list.sort((a, b) => a.seed - b.seed).forEach(x => {
+          const r = el("div", "slot-row");
+          r.append(el("span", "slot-no", div === "중등부" ? x.seed + "번" : "ABCDEFGH"[(x.seed - 1) % 8]), el("span", "", x.team.school), el("span", "slot-st", x.team.grp + "조 " + x.team.rank + "위"));
+          c.append(r);
+        });
+        wrap.append(c);
+      });
+      body.append(wrap);
+    }
+    const btns = el("div", "rdlg-btns");
+    const again = el("button", "btn ghost", "다시 배정"); again.type = "button";
+    again.addEventListener("click", () => { placed = null; draw(); });
+    const cancel = el("button", "btn ghost", "닫기"); cancel.type = "button"; cancel.addEventListener("click", close);
+    const ok = el("button", "btn", "이대로 저장"); ok.type = "button";
+    ok.addEventListener("click", async () => {
+      if (!placed) { toast("배정 결과가 없습니다", true); return; }
+      const filled = slots.filter(x => x.stage === target && x.school).length;
+      if (filled && !confirm(target + " 자리에 이미 학교 " + filled + "개가 있습니다. 이 결과로 바꿀까요?")) return;
+      ok.disabled = true;
+      for (const x of placed.seats) {
+        const slot = slots.find(y => y.stage === target && y.grp === x.grp && y.seed === x.seed);
+        if (!slot) continue;
+        const { error } = await sb.from("league_slots").update({ school: x.team.school, final_rank: null }).eq("id", slot.id);
+        if (error) { toast("저장 실패: " + error.message, true); ok.disabled = false; return; }
+      }
+      toast("진출 팀을 배정했습니다");
+      close(); reload();
+    });
+    btns.append(again, cancel, ok);
+    dlg.append(el("h3", "", div + " 진출 팀 배정 (" + ad.stage + " → " + (div === "중등부" ? "32강" : "본선") + ")"), body, btns);
+    document.body.append(dlg);
+    draw();
+    dlg.showModal();
+  }
+
   // 편성 대상: 확인 사항(중복 신청 등)이 없는 확정 팀만, 주전 평균 티어 순(티어 없는 팀은 맨 뒤)
   async function drawTeams(div, ros) {
     const strength = await teamStrength(div);
@@ -1342,8 +1530,8 @@
   }
   async function openDraw(div, slots, ros, reload) {
     const stage = FIRST_STAGE[div];
-    const groups = STAGE_GROUPS[stage];
     const { teams, pending } = await drawTeams(div, ros);
+    const groups = groupsFor(div, teams.length);
     const dlg = el("dialog", "rdlg");
     dlg.setAttribute("aria-label", div + " 자동 조 편성");
     const close = () => { dlg.close(); dlg.remove(); };
@@ -1388,7 +1576,9 @@
           if (error) { toast("저장 실패: " + error.message, true); ok.disabled = false; return; }
         }
       }
-      toast("조 편성을 저장했습니다");
+      // 중등 64강: 실제 조 수에 맞춰 14:00 / 18:00 회차를 반씩 나눔
+      if (div === "중등부") { const { data: split } = await sb.rpc("rebalance_first_stage_sessions", { p_div: div }); if (split) toast("조 편성을 저장했습니다 · 회차 " + split); else toast("조 편성을 저장했습니다"); }
+      else toast("조 편성을 저장했습니다");
       close(); reload();
     });
     btns.append(again, cancel, ok);
@@ -1402,9 +1592,10 @@
   let previewDiv = "중등부";
   async function loadDrawPreview(box) {
     box.replaceChildren(el("p", "note", "불러오는 중…"));
-    const div = previewDiv, stage = FIRST_STAGE[div], groups = STAGE_GROUPS[stage];
+    const div = previewDiv, stage = FIRST_STAGE[div];
     const { data: ros } = await sb.from("sheet_rows").select("data").eq("sheet", div === "중등부" ? "roster_middle" : "roster_high");
     const { ranked, teams, pending } = await drawTeams(div, ros || []);
+    const groups = groupsFor(div, teams.length);
     const info = new Map(ranked.map((x, i) => [x.n, { rank: x.s == null ? null : i + 1, avg: x.s }]));
     box.replaceChildren();
     const sw = el("div", "div-switch");
@@ -1479,11 +1670,11 @@
       b.addEventListener("click", () => { matchDiv = d; reload(); });
       sw.append(b);
     });
-    box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성에 학교를 넣으면(자동 조 편성 가능) 경기 칸이 채워집니다. ② 점수를 넣으면 승자가 정해지고, 조 경기가 끝나면 1·2위가 다음 단계" +
-      (matchDiv === "중등부" ? "(32강 조 → 본선)" : "(본선)") + "에 자동으로 들어갑니다. ③ 본선·4강 리그·결선도 점수를 넣으면 다음 칸이 자동으로 채워집니다. 모든 경기 단판(BO1)이라 이긴 팀 1, 진 팀 0을 넣으세요."));
+    box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 점수(이긴 팀 1, 진 팀 0)와 경기 시간(분:초)을 넣으면 조 순위가 계산됩니다. " +
+      "③ " + FIRST_STAGE[matchDiv] + "이 모두 끝나면 관리자가 '진출 팀 배정'을 눌러 " + (matchDiv === "중등부" ? "32강" : "본선") + " 자리를 채웁니다(1위 + 잘한 2위 → 1위 자리, 나머지 2위 + 잘한 3위 → 2위 자리). ④ 그다음 단계는 점수를 넣으면 자동으로 이어집니다."));
 
     // 1) 조 편성 + 조별 순위 (단계 고르기)
-    const stages = matchDiv === "중등부" ? ["64강", "32강", "4강 리그"] : ["32강", "4강 리그"];
+    const stages = matchDiv === "중등부" ? ["64강", "32강", "4강 리그"] : ["32강", "본선 진출", "4강 리그"];
     if (!stages.includes(slotStage[matchDiv])) slotStage[matchDiv] = stages[0];
     const stage = slotStage[matchDiv];
     const editable = stage === FIRST_STAGE[matchDiv]; // 첫 단계만 직접 편성, 나머지는 앞 단계 결과로 자동
@@ -1510,15 +1701,22 @@
       auto.addEventListener("click", () => openDraw(matchDiv, slots || [], ros || [], reload));
       head.append(auto);
     }
+    if (isOwner()) {
+      const adv = el("button", "btn ghost small", "진출 팀 배정 (" + FIRST_STAGE[matchDiv] + " → " + (matchDiv === "중등부" ? "32강" : "본선") + ")");
+      adv.type = "button";
+      adv.addEventListener("click", () => openAdvance(matchDiv, slots || [], stand || [], rows, reload));
+      head.append(adv);
+    }
     sec.append(head, dl);
     const placed = (slots || []).filter(s => s.stage === stage && s.school).length;
     sec.append(el("p", "note", editable
       ? "참가 학교 " + schools.length + "개 중 " + placed + "개 배정 · 3팀 조는 4번 자리를 비워 두면 그 자리 경기는 자동으로 빠집니다." + (isOwner() ? "" : " 자동 조 편성은 관리자만 할 수 있습니다.")
-      : "이 단계의 학교는 앞 단계 순위로 자동으로 채워집니다."));
+      : stage === "4강 리그" ? "본선 결과로 자동으로 채워집니다." : "앞 단계가 끝난 뒤 관리자가 '진출 팀 배정'으로 채웁니다."));
     const gwrap = el("div", "slot-grid");
-    STAGE_GROUPS[stage].forEach(g => {
+    const usedGroups = new Set((slots || []).filter(s => s.stage === stage && s.school).map(s => s.grp));
+    STAGE_GROUPS[stage].filter(g => !editable || !usedGroups.size || usedGroups.has(g)).forEach(g => {
       const card = el("div", "slot-card");
-      card.append(el("h4", "", stage === "4강 리그" ? "4강 리그" : stage + " " + g + "조"));
+      card.append(el("h4", "", stage === "4강 리그" ? "4강 리그" : stage === "본선 진출" ? "본선 진출 자리 (1~8 = 1위 자리 A~H, 9~16 = 2위 자리 A~H)" : stage + " " + g + "조"));
       const st = (stand || []).filter(x => x.division === matchDiv && x.stage === stage && x.grp === g);
       const rankOf = s => st.find(y => y.seed === s.seed);
       (slots || []).filter(s => s.stage === stage && s.grp === g).forEach(s => {
@@ -1531,7 +1729,7 @@
           i.setAttribute("aria-label", stage + " " + g + "조 " + s.seed + "번 학교");
           i.addEventListener("change", async () => { if (await save(sb.from("league_slots").update({ school: i.value.trim() || null }).eq("id", s.id))) reload(); });
           row.append(i);
-        } else row.append(el("span", s.school ? "" : "ph", s.school || "(" + srcText(s.src, rows) + ")"));
+        } else row.append(el("span", s.school ? "" : "ph", s.school || "(" + (s.src ? srcText(s.src, rows) : seatLabel(matchDiv, s)) + ")"));
         row.append(el("span", "slot-st" + (x && x.rank && x.rank <= 2 ? " up" : ""), x ? (x.rank ? x.rank + "위 · " : "") + x.wins + "승 " + x.losses + "패" : ""));
         if (s.school && used[normSchool(s.school)] > 1) row.append(el("small", "rec-warn", "다른 조와 중복"));
         card.append(row);
@@ -1591,6 +1789,7 @@
       teamCol(1), { key: "score1", label: "점수1", type: "int", get: r => r.score1 },
       { key: "score2", label: "점수2", type: "int", get: r => r.score2 }, teamCol(2),
       { key: "winner", label: "승자", readonly: true, get: r => r.winner, cellClass: r => (r.winner ? "win" : "") },
+      { key: "duration_sec", label: "경기 시간(분:초)", get: r => fmtDur(r.duration_sec) },
       { key: "referee", label: "심판", get: r => r.referee, list: r => (r.session_id ? "refs-" + r.session_id : "refs-all") },
       { key: "note", label: "비고", get: r => r.note }
     ];
@@ -1603,7 +1802,11 @@
         { label: "조·그룹", values: [...(matchDiv === "중등부" ? STAGE_GROUPS["64강"] : STAGE_GROUPS["32강"]), "장로", "바론"], get: r => r.grp || "", initial: matchPick[1], onPick: v => { matchPick[1] = v; } }
       ],
       onSave: async (r, c, v) => {
-        const val = typeof v === "string" ? (v.trim() || null) : v;
+        let val = typeof v === "string" ? (v.trim() || null) : v;
+        if (c.key === "duration_sec" && val != null) {
+          val = parseDur(val);
+          if (val === undefined) { toast("경기 시간은 28:45처럼 분:초로 적어 주세요", true); return; }
+        }
         if (await save(sb.from("matches").update({ [c.key]: val }).eq("id", r.id))) {
           // 점수·학교가 바뀌면 다음 칸이 자동으로 바뀌므로 다시 불러옴
           if (["score1", "score2", "team1", "team2"].includes(c.key)) reload(); else r[c.key] = val;
@@ -2094,7 +2297,7 @@
     renderWarningsPublic();
     const resetOn = reset && typeof reset.value === "string" ? reset.value : null;
     const counted = r => !resetOn || r.occurred_on > resetOn;
-    const canEdit = r => isEditor() || (!ME.external && r.recorded_by === ME.id);
+    const canEdit = r => isEditor() || (!ME.external && ME.role !== "referee" && r.recorded_by === ME.id);
 
     // 1) 학교별 누적 (초기화 이후 기록만)
     const sum = warnSummary(rows, counted, resetOn);
@@ -2111,7 +2314,7 @@
     box.append(sum);
 
     // 2) 기록 추가 (지원단, 외부인 제외)
-    if (ME.status === "approved" && !ME.external) box.append(warnForm(() => loadWarnings(box)));
+    if (ME.status === "approved" && !ME.external && ME.role !== "referee") box.append(warnForm(() => loadWarnings(box)));
 
     // 3) 기록 목록 (자세한 내용·기록자는 교사용에만)
     const sec = el("div", "coach-day");
@@ -2462,7 +2665,7 @@
       const rTd = el("td");
       const rSel = el("select");
       rSel.setAttribute("aria-label", "권한 선택");
-      [["viewer", "보기"], ["editor", "보기·고치기"], ["owner", "관리자"]].forEach(([v, l]) => { const o = el("option", "", l); o.value = v; rSel.append(o); });
+      [["viewer", "보기"], ["referee", "심판 (심판 일정만 체크)"], ["editor", "보기·고치기"], ["owner", "관리자"]].forEach(([v, l]) => { const o = el("option", "", l); o.value = v; rSel.append(o); });
       rSel.value = p.role;
       rTd.append(rSel);
       // 외부인을 고르면 권한은 '보기'로 고정
@@ -2471,7 +2674,12 @@
         if (isExt) rSel.value = "viewer";
         rSel.disabled = self || isExt;
       };
-      sSel.addEventListener("change", syncRole);
+      sSel.addEventListener("change", () => {
+        // 젠지 코치(심판)를 고르면 권한을 '심판'으로 맞춰 줌
+        const st = staff.find(x => String(x.id) === sSel.value);
+        if (st && /젠지 코치/.test(st.position || st.title || "")) rSel.value = "referee";
+        syncRole();
+      });
       syncRole();
       const aTd = el("td", "actions");
       const approve = el("button", "btn small", p.status === "approved" ? "저장" : "승인");
