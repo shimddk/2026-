@@ -130,6 +130,8 @@
   .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 760px; margin: 24px 0 36px; }
   .cta .btn { font-size: 19px; padding: 16px 20px; border-radius: 14px; text-align: center; }
   @media (max-width: 480px) { .cta { gap: 8px; } .cta .btn { font-size: 16px; padding: 14px 10px; } }
+  .apply-cta { margin: 6px 0 22px; }
+  .btn.apply-form { display: inline-block; font-size: 19px; padding: 16px 26px; border-radius: 14px; text-decoration: none; }
   .btn.closed, .btn.closed:hover { background: var(--bg2); color: var(--muted); border: 1px solid var(--line); cursor: not-allowed; box-shadow: none; filter: none; }
   .btn {
     border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; cursor: pointer;
@@ -535,13 +537,17 @@
   <!-- 참가 신청 -->
   <section id="apply" role="tabpanel" aria-labelledby="tab-apply" hidden>
     <h2>참가 신청</h2>
-    <p class="lead">모집 마감: <strong>2026.10.19.(월)</strong> (처음 안내한 10/12에서 연장)</p>
+    <p class="lead">모집 마감: <strong>2026.10.19.(월) 23:59</strong> (처음 안내한 10/12에서 연장)</p>
+    <div class="apply-cta">
+      <a class="btn apply-form" id="applyFormLink" href="https://docs.google.com/forms/d/e/1FAIpQLSejXitU1hAJvZ7FdsIcJ7okhyaiFqhjB27NVtIyXxK9fqaq1A/viewform" target="_blank" rel="noopener noreferrer">📝 구글폼으로 참가 신청하기 (새 창)</a>
+      <p class="note" id="applyFormNote">팀장이 한 번만 제출합니다. 제출 후 10분 안에 사이트 명단에 반영되고, 전적 검색의 '우리 팀 명단 확인·수정'에서 확인할 수 있습니다.</p>
+    </div>
     <div class="grid">
       <div class="card">
         <h3 style="margin-top:0">신청 절차</h3>
         <ol class="steps">
           <li>학교 안에서 대표 팀 1팀을 정합니다. (선발전 또는 최대 10명으로 합치기)</li>
-          <li>포스터 QR 또는 안내된 구글폼 링크로 신청합니다. QR이 안 찍히면 링크를 이용하세요.</li>
+          <li>위 <strong>구글폼으로 참가 신청하기</strong> 버튼(또는 포스터 QR)으로 신청합니다.</li>
           <li>팀장 정보(생년월일·전화번호·학번)와 선수별 아이디·최고 티어·라인을 적습니다.</li>
           <li>디스코드에 팀원 전원이 입장한 뒤 "권한 신청방"에서 권한을 요청합니다.</li>
           <li>내용 확인 후 최종 참가 여부와 세부 일정이 별도로 안내됩니다.</li>
@@ -784,6 +790,15 @@ function rippleButton(b, delay) {
     b.classList.add("closed");
     b.textContent = "참가 모집 완료";
     b.setAttribute("aria-label", "참가 모집 완료 (10/19 마감)");
+    // 참가 신청 탭의 구글폼 버튼도 닫음 (링크 제거)
+    const f = document.getElementById("applyFormLink");
+    if (f) {
+      const span = el("span", "btn apply-form closed", "참가 모집 완료 (10/19 23:59 마감)");
+      span.setAttribute("aria-disabled", "true");
+      f.replaceWith(span);
+      const n = document.getElementById("applyFormNote");
+      if (n) n.textContent = "참가 신청이 마감되었습니다. 명단 수정은 전적 검색의 '우리 팀 명단 확인·수정'을 이용하세요(10/20 23:59까지).";
+    }
   };
   const left = CLOSE - Date.now();
   if (left <= 0) { done(); return; }
