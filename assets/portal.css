@@ -234,7 +234,8 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 .rdlg-rowerr .nick-warn { color: #ffd38a; margin-top: 2px; }
 
 /* 지원단 명단: 담당 학교 */
-.staff-schools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 180px; max-width: 420px; }
+.dtable th.col-schools, .dtable td.col-schools { min-width: 460px; width: 40%; }
+.staff-schools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .staff-schools .ss-count { font-weight: 700; color: var(--neon); margin-right: 2px; }
 .ss-body { max-height: 56vh; overflow-y: auto; margin: 10px 0; }
 .ss-body h4 { margin: 12px 0 6px; font-size: 15px; }

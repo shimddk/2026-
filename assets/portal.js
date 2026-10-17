@@ -778,16 +778,16 @@
   const STAFF_COLS = [
     ["seq", "순번", "int"], ["region", "지역"], ["school", "소속"], ["position", "직책"], ["name", "성명"],
     ["title", "역할"], ["referee_ok", "심판가능", "bool"], ["phone", "연락처"],
-    ["pre_duty", "행정 업무"], ["event_duty", "대회 업무"]
+    ["pre_duty", "담당 업무"]
   ].map(([k, label, type]) => ({ key: k, label, type, get: r => r[k] }));
   // 담당 학교: 관리자만 지정 (DB 트리거 staff_schools_guard가 한 번 더 막음)
   STAFF_COLS.push({
-    key: "schools", label: "담당 학교", get: r => (r.schools || []).join(", "),
+    key: "schools", label: "담당 학교", cls: "col-schools", get: r => (r.schools || []).map(schoolLabel).join(", "),
     cell: (td, r) => {
       const list = r.schools || [];
       const wrap = el("div", "staff-schools");
       if (list.length) wrap.append(el("span", "ss-count", list.length + "개"));
-      list.forEach(s => wrap.append(el("span", "tier-chip", s)));
+      list.forEach(s => wrap.append(el("span", "tier-chip", schoolLabel(s))));
       if (!list.length && !isOwner()) wrap.append(el("span", "note", "—"));
       if (isOwner()) {
         const b = el("button", "btn ghost small", list.length ? "고치기" : "지정하기");
@@ -799,13 +799,22 @@
     }
   });
 
-  // 참가 학교 목록 (아이디 명단 기준, 부문별)
+  // 참가 학교 목록 (아이디 명단 기준, 부문별). 저장은 학교 이름만, 화면은 "(안산)원곡고등학교"
+  const SCHOOL_REGION = {};
+  const schoolLabel = s => (SCHOOL_REGION[s] ? "(" + SCHOOL_REGION[s] + ")" : "") + s;
   async function fetchSchools() {
     const { data, error } = await sb.from("sheet_rows").select("sheet,data").in("sheet", ["roster_middle", "roster_high"]);
     if (error) return null;
     const out = { 중등부: new Set(), 고등부: new Set() };
-    data.forEach(x => { const s = String(x.data["학교 이름"] || "").trim(); if (s) out[x.sheet === "roster_middle" ? "중등부" : "고등부"].add(s); });
-    return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, [...v].sort((a, b) => a.localeCompare(b, "ko"))]));
+    data.forEach(x => {
+      const s = String(x.data["학교 이름"] || "").trim();
+      if (!s) return;
+      out[x.sheet === "roster_middle" ? "중등부" : "고등부"].add(s);
+      const rg = String(x.data["학교 소재 지역"] || "").trim().replace(/(시|군)$/, "");
+      if (rg) SCHOOL_REGION[s] = rg;
+    });
+    // 지역순 → 학교 이름순: (광명)… (안산)…
+    return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, [...v].sort((a, b) => schoolLabel(a).localeCompare(schoolLabel(b), "ko"))]));
   }
 
   async function openSchoolPicker(staffRow) {
@@ -821,14 +830,14 @@
     const head = el("p", "note");
     head.append("선택한 학교 ", count, " · 다른 선생님이 맡은 학교는 이름이 함께 보입니다. 개수 제한은 없습니다.");
     const q = el("input", "gsearch");
-    q.type = "search"; q.placeholder = "학교 검색"; q.setAttribute("aria-label", "학교 검색");
+    q.type = "search"; q.placeholder = "학교·지역 검색 (예: 안산)"; q.setAttribute("aria-label", "학교 검색");
     const body = el("div", "ss-body");
     const upd = () => { count.textContent = chosen.size + "개"; };
     function draw() {
       body.replaceChildren();
       const term = q.value.trim();
       Object.entries(schools).forEach(([div, list]) => {
-        const shown = list.filter(s => !term || s.includes(term));
+        const shown = list.filter(s => !term || schoolLabel(s).includes(term));
         if (!shown.length) return;
         body.append(el("h4", "", div + " (" + shown.length + ")"));
         const g = el("div", "ss-grid");
@@ -836,7 +845,7 @@
           const l = el("label", "ss-item" + (owner[s] ? " taken" : ""));
           const cb = el("input"); cb.type = "checkbox"; cb.checked = chosen.has(s);
           cb.addEventListener("change", () => { cb.checked ? chosen.add(s) : chosen.delete(s); upd(); });
-          l.append(cb, document.createTextNode(" " + s));
+          l.append(cb, document.createTextNode(" " + schoolLabel(s)));
           if (owner[s]) l.append(el("small", "", owner[s].join("·")));
           g.append(l);
         });
@@ -885,7 +894,7 @@
   let staffBox = null;
   async function loadStaff(box) {
     staffBox = box;
-    const rows = await fetchStaff();
+    const [rows] = await Promise.all([fetchStaff(), fetchSchools()]); // 학교 지역 표시용
     grid(box, {
       columns: STAFF_COLS, rows, exportName: "지원단 명단",
       onSave: async (r, c, v) => { if (await save(sb.from("staff").update({ [c.key]: v }).eq("id", r.id))) r[c.key] = v; },
