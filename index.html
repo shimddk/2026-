@@ -236,10 +236,23 @@
   .quick::-webkit-scrollbar { display: none; }
   .quick .chip { white-space: nowrap; }
 
-  .promo-video { margin-top: 24px; }
-  .promo-video h2 { margin: 0 0 12px; font-size: 20px; }
-  /* 세로 영상(9:16): 화면 높이에 맞추고 가운데 정렬 */
-  .promo-video video { display: block; margin: 0 auto; width: auto; max-width: 100%; height: auto; max-height: 78vh; aspect-ratio: 9 / 16; border-radius: 12px; background: #000; }
+  /* 홈: 왼쪽 D-Day 세로 목록 + 오른쪽 세로 홍보영상 */
+  .home-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 16px; align-items: stretch; }
+  .home-dd { display: flex; flex-direction: column; min-width: 0; }
+  #ddays { display: flex; flex-direction: column; gap: 16px; flex: 1; }
+  #ddays .dday { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .home-dd .note { margin-bottom: 0; }
+  .promo-video { display: flex; flex-direction: column; }
+  .promo-video h2 { margin: 0 0 12px; font-size: 18px; }
+  .promo-video video { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: 12px; background: #000; }
+  @media (max-width: 760px) {
+    .home-split { grid-template-columns: 1fr; }
+    #ddays { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    #ddays .dday { padding: 12px 6px; }
+    #ddays .dday .num { font-size: 28px; }
+    #ddays .dday .label, #ddays .dday .date { font-size: 12px; }
+    .promo-video video { width: auto; max-width: 100%; max-height: 78vh; margin: 0 auto; }
+  }
   footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 24px 0 40px; }
   footer strong { color: var(--text); }
   footer .copyright { display: inline-block; margin-top: 8px; font-size: 12px; }
@@ -309,13 +322,18 @@
         <button class="btn ghost" data-go="faq">질문 챗봇 열기</button>
       </div>
     </div>
-    <div class="grid" id="ddays" aria-label="대회 D-Day"></div>
-    <p class="note">한국 시간 기준으로 오늘 날짜에 맞춰 자동 계산됩니다.</p>
-    <div class="card promo-video">
-      <h2>젠지 이스포츠 캐니언 홍보영상</h2>
-      <video controls playsinline preload="metadata" src="assets/canyon-promo.mp4#t=0.1" aria-label="젠지 이스포츠 캐니언 홍보영상">
-        이 브라우저에서는 영상을 재생할 수 없습니다. <a href="assets/canyon-promo.mp4">영상 파일로 보기</a>
-      </video>
+    <!-- 왼쪽: D-Day 세로로 / 오른쪽: 세로 홍보영상 (휴대폰에서는 위아래로) -->
+    <div class="home-split">
+      <div class="home-dd">
+        <div id="ddays" aria-label="대회 D-Day"></div>
+        <p class="note">한국 시간 기준으로 오늘 날짜에 맞춰 자동 계산됩니다.</p>
+      </div>
+      <div class="card promo-video">
+        <h2>젠지 이스포츠 캐니언 홍보영상</h2>
+        <video controls playsinline preload="metadata" src="assets/canyon-promo.mp4#t=0.1" aria-label="젠지 이스포츠 캐니언 홍보영상">
+          이 브라우저에서는 영상을 재생할 수 없습니다. <a href="assets/canyon-promo.mp4">영상 파일로 보기</a>
+        </video>
+      </div>
     </div>
     <div class="grid" style="margin-top:24px">
       <div class="card stat"><div class="k">종목</div><div class="v">리그 오브 레전드</div></div>
