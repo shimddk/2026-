@@ -694,6 +694,7 @@
               // 칸 너비를 내용 길이에 맞춤 (한글은 두 칸 폭)
               const w = [...String(i.value)].reduce((n, ch) => n + (ch.charCodeAt(0) > 255 ? 2 : 1), 0);
               i.size = Math.max(4, Math.min(40, w + 1));
+              if (w > 16) i.title = i.value; // 좁은 칸에서 잘린 긴 값은 마우스를 올리면 전체
               i.setAttribute("aria-label", c.label);
               if (c.list) { const id = c.list(r); if (id) i.setAttribute("list", id); } // 고를 수 있는 값 목록 (예: 심판)
               if (c.type === "int") i.inputMode = "numeric";
@@ -1154,14 +1155,14 @@
         const seq = { key: "_no", label: "순번", readonly: true, get: r => r._no };
         const at = columns.findIndex(c => c.key === "순번");
         if (at >= 0) columns[at] = seq; else columns.unshift(seq);
-        // 학교 칸은 글자 길이만큼만 (넓은 빈 칸 줄임)
-        const sc = columns.find(c => c.key === "학교");
-        if (sc) sc.cls = "col-fit";
+        // 표가 한눈에 들어오게: 칸은 글자 길이만큼만, 학교는 좁게(긴 이름은 …, 마우스를 올리면 전체)
+        columns.forEach(c => { if (!c.cls) c.cls = c.key === "학교" ? "col-school" : "col-fit"; });
         // 디스코드 팀장 권한 부여 현황: O / X (고치기 권한자가 확인 후 바꿈)
         const perm = columns.find(c => c.key === "권한 부여 현황");
         if (perm) {
           perm.options = ["", "O", "X"];
-          perm.cellClass = r => (r.data["권한 부여 현황"] === "X" ? "dupe" : "");
+          perm.cellClass = r => (r.data["권한 부여 현황"] === "X" ? "perm-x" : "");
+          perm.redraw = true; // O/X를 바꾸면 칸 색도 바로 바뀌게
           filters.push({ label: "권한 부여", values: ["O", "X"], get: r => r.data["권한 부여 현황"] || "" });
         }
       }
@@ -1251,7 +1252,7 @@
           const oldVal = r.data[c.key];
           if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) {
             r.data = { ...r.data, [c.key]: v };
-            if (c.afterSave && await c.afterSave(r, oldVal, v)) { draw(); return; }
+            if (c.redraw || (c.afterSave && await c.afterSave(r, oldVal, v))) { draw(); return; }
             // 중복 신청 학교의 선수 칸을 직접 채웠으면 → 이 명단으로 확정할지 묻는다 (확정하면 전적 검색·팀장 확인에 포함)
             const sheet = r.sheet || current;
             if (sheet.startsWith("roster_") && /중복/.test(String(r.data["확인 사항"] || "")) && /학생 이름|LOL 아이디/.test(c.key) && String(v || "").trim() &&
