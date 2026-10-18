@@ -55,10 +55,16 @@
   }
 
   /* ---------- 학생용 공개 대진표 ---------- */
+  // 공개 시각(app_settings bracket_publish_at, 10/20 19:00) 전에는 학생에게 학교 이름이 안 옴 → 페이지를 열어 둔 채 그 시각이 되면 다시 불러옴
+  let bracketTimer = null;
   function loadPublicBracket() {
-    Promise.all([sb.rpc("public_bracket"), sb.rpc("public_standings"), sb.rpc("public_schedule")]).then(([m, s, sc]) => {
+    Promise.all([sb.rpc("public_bracket"), sb.rpc("public_standings"), sb.rpc("public_schedule"), sb.rpc("public_bracket_publish_at")]).then(([m, s, sc, pa]) => {
+      const at = pa && !pa.error && pa.data ? Date.parse(pa.data) : null;
+      if (window.setBracketPublish) window.setBracketPublish(at);
       if (!m.error && m.data && m.data.length && window.applyBracket) window.applyBracket(m.data, s.error ? [] : s.data);
       if (!sc.error && window.applySchedule) window.applySchedule(sc.data);
+      const left = at ? at - Date.now() : 0;
+      if (!bracketTimer && left > 0 && left < 2147483647) bracketTimer = setTimeout(() => { bracketTimer = null; loadPublicBracket(); }, left + 3000);
     });
   }
   loadPublicBracket();
@@ -858,7 +864,7 @@
       ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
       ["t-referee", "심판 일정", "경기 회차(날짜·시간)마다 심판으로 들어갈 수 있는 선생님을 체크합니다. 본인 줄만 체크할 수 있고, 회차 관리는 관리자만 합니다.", loadReferee],
-      ["t-warn", "경고 조치", "팀별 주의·경고 기록입니다. 규정집 제9조 기준(주의 2회 = 경고 1회, 누적 경고 2회 세트 패배 · 3회 실격)으로 조치를 보여 줍니다. 지원단 선생님은 누구나 기록할 수 있고, 삭제는 기록한 본인과 편집자만 가능합니다. 학생용 '경고 현황' 탭에는 자세한 내용·기록자 없이 공개됩니다.", loadWarnings]
+      ["t-warn", "경고 조치", "팀별 주의·경고 기록입니다. 최종 규정(주의 2회 = 경고 1회, 누적 경고 1회 진영 선택 제한 · 2회 밴카드 전체 제한 + 진영 선택 제한 · 3회 실격패)으로 조치를 보여 줍니다. 지원단 선생님은 누구나 기록할 수 있고, 삭제는 기록한 본인과 편집자만 가능합니다. 학생용 '경고 현황' 탭에는 자세한 내용·기록자 없이 공개됩니다.", loadWarnings]
     ];
     // 코칭 일정은 공개 '젠지 코칭' 탭에서 모두 보이고, 여기서는 고치기 권한자가 관리 (신청자·메모 포함)
     if (isEditor()) views.push(["t-rcheck", "명단 확인 현황", "팀장이 전적 검색에서 직접 확인·수정한 현황입니다. 저장하면 아이디 명단·티어 현황에 바로 반영되고, 잘못된 수정은 여기서 되돌릴 수 있습니다.", loadRosterCheck]);
@@ -2385,18 +2391,18 @@
     return f;
   }
 
-  // 경고 조치: 공식 규정집 제9조 기준
-  // 주의 2회 = 경고 1회, 누적 경고 1회 조치 없음 · 2회 세트 패배 · 3회 실격(그날 모든 경기 패배), 결승 전 일괄 초기화
+  // 경고 조치: 2026-10-19 경기 규정·팀장 교육 최종 통일 (사용자 확정)
+  // 주의 2회 = 경고 1회, 누적 경고 1회 라운드 전체 진영 선택 제한 · 2회 밴카드 전체 제한 + 진영 선택 제한 · 3회 실격패, 결승 전 일괄 초기화
   const WARN_STEPS = [
-    [1, "조치 없음 (다음 경고 시 세트 패배)"],
-    [2, "세트 패배 (해당 라운드를 치르지 않고 패배)"],
+    [1, "해당 라운드 전체 진영 선택 제한"],
+    [2, "밴카드 전체 제한 + 진영 선택 제한"],
     [3, "실격패 (해당 날짜의 모든 경기 패배)"]
   ];
   const WARN_KINDS = ["주의", "경고", "세트 패배", "실격"];
   // [구분, 사유, 횟수] — 규정집 조항 기준. 실제 판정은 운영사무국, 발표는 심판장
   const WARN_REASONS = [
-    ["주의", "지각 10분 (제9조)"], ["경고", "지각 15분 (제9조)"], ["세트 패배", "지각 20분 (제9조)"],
-    ["경고", "욕설·폭언·비방, 판정 불복 (제3조)"], ["경고", "전체 채팅 (제7조)"],
+    ["주의", "지각 15분 (양 팀장 합의 시 15분까지는 주의 없음)"], ["세트 패배", "지각 20분 – 세트 몰수 및 실격"],
+    ["경고", "욕설·폭언·비방, 판정 불복 (제3조)"], ["경고", "GG 외 전체 채팅·인장·이모티콘 (표현 허용 범위)"], ["경고", "퍼즈 2회 이상"],
     ["경고", "심판 지시 없는 게임 중단·무단 일시정지 (제5·8조)"], ["경고", "고의 접속 종료 (제8조)"],
     ["경고", "등록하지 않은 계정 사용 (제6조)"], ["경고", "부적절한 닉네임·변경 요청 불응 (제6·10조)"],
     ["경고", "심판·운영사무국 지시 불이행 (제9조)"], ["경고", "스포츠맨십 위반·과도한 도발 (제3조)"],
@@ -2432,18 +2438,18 @@
         const direct = [p.set ? "세트 패배 " + p.set + "회" : "", p.dq ? "실격 " + p.dq + "회" : ""].filter(Boolean).join(" · ");
         tr.append(el("td", "", p.school), el("td", "", p.division), el("td", "", p.caution + "회"), el("td", "", p.warn + "회"),
           el("td", p.level >= 3 ? "dupe" : p.level ? "warn-lv" : "", p.level + "회"),
-          el("td", p.level >= 2 ? "dupe" : "", warnAction(p.level) || (p.caution ? "다음 주의 시 경고 1회" : "")),
+          el("td", p.level >= 1 ? "dupe" : "", warnAction(p.level) || (p.caution ? "다음 주의 시 경고 1회" : "")),
           el("td", direct ? "dupe" : "", direct));
         tb.append(tr);
       });
       t.append(th, tb); sc.append(t); sum.append(sc);
     }
     const steps = el("details", "score-editor");
-    steps.append(el("summary", "", "조치 단계 보기 (규정집 제9조)"));
+    steps.append(el("summary", "", "조치 단계 보기"));
     const ul = el("ul", "warn-steps");
     ul.append(el("li", "", "주의 2회 = 경고 1회"));
     WARN_STEPS.forEach(([k, v]) => ul.append(el("li", "", "누적 경고 " + k + "회: " + v)));
-    ul.append(el("li", "", "지각: 10분 주의 · 15분 경고 · 20분 세트 몰수/실격"),
+    ul.append(el("li", "", "지각: 15분부터 주의 · 20분부터 세트 몰수 및 실격 (양 팀장 합의 시 15분까지는 주의 없음)"),
       el("li", "", "경기구역 무단 이탈·담합·버그 악용·대리 게임·대회장 흡연은 바로 실격"),
       el("li", "", "누적 경고는 결승 전 일괄 초기화 · 판정 권한은 운영사무국, 발표는 심판장"));
     steps.append(ul);

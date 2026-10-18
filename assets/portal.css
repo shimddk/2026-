@@ -12,6 +12,13 @@ nav[role="tablist"].has-teacher { flex-wrap: wrap; overflow: visible; row-gap: 6
   color: var(--t-yellow); letter-spacing: .05em; margin-top: 2px;
 }
 .tab-break::after { content: ""; flex: 1; height: 1px; background: rgba(255, 181, 71, .3); }
+/* 휴대폰 교사용: 로그인하면 계정 영역(모드 버튼·이름·로그아웃)이 길어져 화면 밖으로 밀림 → 둘째 줄(방문자 수 옆)로 내림 */
+@media (max-width: 600px) {
+  body.teacher-mode .head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "logo logo" "visits acct" "nav nav"; }
+  body.teacher-mode .head .acct-wrap { min-width: 0; }
+  body.teacher-mode .acct .who { max-width: 96px; }
+  body.teacher-mode .acct .btn.small { white-space: nowrap; padding: 6px 10px; }
+}
 
 /* 로그인 전 안내 창, 하단 링크 */
 #loginNotice { max-width: min(440px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--text); padding: 20px; }

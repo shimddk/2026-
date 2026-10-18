@@ -519,25 +519,26 @@
         <p class="note"><mark class="hl"><strong>모든 경기는 단판(BO1)</strong>이며, 피어리스 규칙은 적용하지 않습니다.</mark> 경기 시간은 '일정' 탭을 보세요.</p>
       </div>
       <div class="card">
-        <h3>🟨 경고·벌칙 (규정집 제9조)</h3>
+        <h3>🟨 경고·벌칙</h3>
         <div class="steps-row" aria-label="경고 단계">
-          <span><b>주의 2회</b>= 경고 1회</span>
-          <span><b>경고 1회</b>없음</span>
-          <span><b>경고 2회</b>세트 패배</span>
-          <span><b>경고 3회</b>실격</span>
+          <span><b>경고 1회</b>라운드 전체 진영 선택 제한</span>
+          <span><b>경고 2회</b>밴카드 전체 제한 + 진영 선택 제한</span>
+          <span><b>경고 3회</b>실격패</span>
         </div>
-        <p class="note">누적 경고는 결승 전에 초기화됩니다.</p>
-        <span class="badge-wait">지원단 최종 확인 중</span>
-        <p class="note" style="margin:0">팀장 교육에는 경고 1~4회 단계(진영 제한 → 밴카드 제한 → 몰수패)가 따로 안내되어 있습니다.</p>
+        <p class="note">주의 2회는 경고 1회로 봅니다. 누적 경고는 결승 전에 초기화됩니다.</p>
       </div>
       <div class="card">
-        <h3>⏰ 지각 벌칙 (규정집 제9조)</h3>
+        <h3>⏰ 지각 벌칙</h3>
         <div class="steps-row" aria-label="지각 벌칙">
-          <span><b>10분</b>주의</span>
-          <span><b>15분</b>경고</span>
-          <span><b>20분</b>세트 몰수·실격</span>
+          <span><b>15분부터</b>주의</span>
+          <span><b>20분부터</b>세트 몰수 및 실격</span>
         </div>
-        <p class="note">팀장 교육: 30분 넘게 미입장 시 경고 1회, 1시간 초과 시 경고 2회 몰수패.</p>
+        <p class="note">양 팀장이 서로 합의하면 15분까지는 주의 없이 기다릴 수 있습니다.</p>
+        <h3 style="margin-top:14px">🗺️ 온라인 진영 선택</h3>
+        <div class="steps-row" aria-label="진영 선택">
+          <span><b>조별리그</b>하위팀이 선택</span>
+          <span><b>본선(더블 엘리)부터</b>상위팀이 선택</span>
+        </div>
       </div>
     </div>
     <div id="rulesRoot"></div>
@@ -553,7 +554,7 @@
   <!-- 경고 현황 (보기 전용) -->
   <section id="warn" role="tabpanel" aria-labelledby="tab-warn" hidden>
     <h2>경고 현황</h2>
-    <p class="lead">심판 선생님이 기록한 팀별 주의·경고입니다. 규정집 제9조에 따라 주의 2회는 경고 1회로 보고, 누적 경고 2회는 세트 패배, 3회는 실격입니다. 판정 이의는 경기 후 디스코드로 제기해 주세요.</p>
+    <p class="lead">심판 선생님이 기록한 팀별 주의·경고입니다. 주의 2회는 경고 1회로 보고, 누적 경고 1회는 라운드 전체 진영 선택 제한, 2회는 밴카드 전체 제한 + 진영 선택 제한, 3회는 실격패입니다. 판정 이의는 경기 후 디스코드로 제기해 주세요.</p>
     <div id="warnRoot"><p class="note">불러오는 중…</p></div>
   </section>
 
@@ -688,8 +689,12 @@ const FAQ = [
   [5,"A","예선(조별리그)은 몇 시에 하나요?","중등부: 10/24(토) 64강 조별리그 14:00·18:00(조를 반씩 나눔), 10/25(일) 17:00 32강 조별리그. 고등부: 10/25(일) 13:00 32강 조별리그. 4팀 조는 팀당 3판, 3팀 조는 2판입니다.","ok"],
   [6,"A","경기 시간 확정은 언제쯤 되나요?","경기 시간은 '일정' 탭에 안내된 대로 정해졌습니다. 조 편성과 대진표는 모집 마감(10/19) 이후 확정되어 '대진표' 탭과 공지사항으로 안내합니다.","ok"],
   [7,"A","경기 시간을 바꿀 수 있나요?","많은 학교가 동시에 경기하므로 조별리그 때는 조정이 쉽지 않습니다. 불가피한 상황에 대비해 후보 선수를 추가 신청하시기 바랍니다.","ok"],
-  [8,"A","대진표는 언제 나오나요?","10월 20일(화) 오후 7시(19:00)에 공개 예정입니다. 공개되면 '대진표' 탭에 학교 이름이 채워집니다.","ok"],
-  [51,"A","팀장 교육은 언제 하나요?","팀장 대상 대회 교육은 10월 21일(수) 오후 8시(20:00)와 10시(22:00) 두 번 진행합니다(교육 시간 20분). 둘 중 한 번에 참여하면 되고, 팀장과 함께 팀원을 최소 1명 이상 포함해서 참여해 주세요.","ok"],
+  [8,"A","대진표는 언제 나오나요?","10월 20일(화) 오후 7시(19:00)에 '대진표' 탭에 공개됩니다. 공개 시각이 지나면 조 편성과 학교 이름을 바로 볼 수 있습니다.","ok"],
+  [51,"A","팀장 교육은 언제 하나요?","팀장 대상 대회 교육은 10월 21일(수) 오후 8시(20:00)와 10시(22:00) 두 번 진행합니다(교육 시간 20분). 둘 중 한 번에 참여하면 되고, 팀장과 함께 팀원을 최소 1명 이상 포함해서 참여해 주세요. 교육 내용은 '경기 규정' 탭의 팀장 교육 카드에서도 볼 수 있습니다.","ok"],
+  [52,"D","지각하면 어떻게 되나요?","경기 시간에서 15분이 지나도 입장하지 않으면 주의, 20분부터는 세트 몰수 및 실격입니다. 양 팀장이 서로 합의하면 15분까지는 주의 없이 기다릴 수 있습니다. 늦을 것 같으면 바로 지도교사나 지원단 선생님에게 연락하세요. 주의 2회는 경고 1회로 봅니다.","ok"],
+  [53,"D","경고를 받으면 어떻게 되나요?","경고 1회: 해당 라운드 전체 진영 선택 제한\n경고 2회: 밴카드 전체 제한 + 진영 선택 제한\n경고 3회: 실격패\n\n주의 2회는 경고 1회로 보고, 누적 경고는 결승 전에 초기화됩니다. 팀별 현황은 '경고 현황' 탭에서 볼 수 있습니다.","ok"],
+  [54,"D","진영(블루/레드)은 누가 정하나요?","온라인 경기에서 조별리그는 하위팀이, 본선(더블 엘리미네이션)부터는 상위팀이 진영을 선택합니다. 단, 경고 1회 이상인 팀은 해당 라운드 동안 진영을 선택할 수 없습니다.","ok"],
+  [55,"D","게임 중 채팅이나 퍼즈(일시정지)는 써도 되나요?","전체 채팅·인장·이모티콘 등 표현은 GG만 허용되고 나머지는 모두 금지입니다(어기면 경고 1회). 퍼즈는 팀원도 쓸 수 있고 1회 가능하며, 2회부터는 경고 1회입니다.","ok"],
   [9,"A","내년에도 대회가 열리나요?","확정된 안내는 없습니다. 올해 학생들이 대회에 열심히 참여해야 내년에도 열 수 있다고 안내되었습니다.","ok"],
   [10,"B","한 팀은 몇 명이고, 팀장은요?","5인 1팀이며 팀장은 1명입니다.","ok"],
   [11,"B","후보 선수도 가능한가요?","후보 포함 최대 10명까지 가능합니다. 반드시 7명일 필요는 없습니다.","ok"],
@@ -1051,13 +1056,41 @@ function renderBracket() {
 document.querySelectorAll("#divSwitch .chip").forEach(b => b.addEventListener("click", () => { BK.div = b.dataset.div; renderBracket(); }));
 renderBracket();
 
+// 대진표 공개 시각(DB app_settings 'bracket_publish_at')에 맞춰 안내 문구를 바꿈 — 시각이 지나면 열어 둔 페이지도 바뀜
+BK.publishAt = Date.parse("2026-10-20T19:00:00+09:00"); // DB 값을 받기 전 기본값
+const bracketOpen = () => !BK.publishAt || Date.now() >= BK.publishAt;
+function bracketNotice() {
+  const line = document.querySelector("#bracket .notice-line");
+  if (!line) return;
+  const when = new Date(BK.publishAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" });
+  line.replaceChildren();
+  if (bracketOpen()) line.append("📢 대진표가 공개되었습니다. 아래에서 부문·단계를 골라 보세요. 경기 결과는 경기 후 지원단이 입력합니다.");
+  else { line.append("📢 대진표는 "); line.append(el("strong", "", when)); line.append("에 공개 예정입니다."); }
+  updatePending();
+}
+function updatePending() {
+  const pending = document.querySelector("#bracket .pending");
+  if (!pending) return;
+  const named = BK.matches.some(m => m.team1 || m.team2);
+  pending.textContent = named ? "확정된 대진과 경기 결과가 반영되고 있습니다. 결과는 경기 후 지원단이 입력합니다."
+    : bracketOpen() ? "대진표 틀입니다. 조 편성이 반영되면 학교 이름이 채워집니다."
+    : "대진표 틀입니다. 공개 시각이 되면 이 화면에 학교 이름이 채워집니다.";
+}
+let bracketNoticeTimer = null;
+window.setBracketPublish = function (at) {
+  if (at) BK.publishAt = at;
+  bracketNotice();
+  const left = BK.publishAt - Date.now();
+  clearTimeout(bracketNoticeTimer);
+  if (left > 0 && left < 2147483647) bracketNoticeTimer = setTimeout(bracketNotice, left + 500);
+};
+window.setBracketPublish();
+
 // portal.js가 공개 함수 결과를 넘겨줌
 window.applyBracket = function (matches, standings) {
   BK.matches = matches || [];
   BK.standings = standings || [];
-  const pending = document.querySelector("#bracket .pending");
-  const named = BK.matches.some(m => m.team1 || m.team2);
-  if (pending) pending.textContent = named ? "확정된 대진과 경기 결과가 반영되고 있습니다. 결과는 경기 후 지원단이 입력합니다." : "대진표 틀입니다. 모집 마감(10/19) 이후 조 편성이 확정되면 학교 이름이 채워집니다.";
+  updatePending();
   renderBracket();
 };
 
@@ -1091,6 +1124,8 @@ function similar(s) {
   return score >= 0.62 ? best : null;
 }
 const RULES = [
+  [52,/지각|미입장|(?:경기|입장|접속).*늦|늦(?:으면|게).*(?:경기|입장|들어|접속)/],[53,/경고.*(?:받으면|몇\s*회|누적|어떻게|벌칙)|벌칙|밴\s*카드.*제한/],
+  [54,/진영|블루|레드/],[55,/전체\s*채팅|게임.*채팅|채팅.*(?:써|쓰|사용|금지|돼|되)|퍼즈|일시\s*정지|이모티콘|인장|\bgg\b/i],
   [51,/팀장\s*교육|대회\s*교육|^(?!.*(?:코칭|코치|젠지|gga|아카데미)).*교육.*(?:언제|몇\s*시|시간|참여|참석)/i],
   [15,/선착순|먼저\s*신청.*(?:우선|유리)/],[24,/부계정.*티어|티어.*부계정|어떤\s*계정.*신청/],[9,/내년|다음\s*해|매년/],
   [32,/챗봇|이\s*사이트|링크.*(?:주소|어디)/],[6,/(?:경기\s*)?시간.*확정|확정.*시간/],
@@ -1115,7 +1150,7 @@ const RULES = [
   [42,/혜택|입상|우승|뭐\s*주|교육감상|상금|상품|코칭|방송|중계/]
 ];
 // 공식 자료에 답이 없는 주제 → 지원단 문의 안내
-const UNKNOWN = /참가비|참가\s*비용|유료|무료|지각|불참|몰수패|접속.*끊|재경기|대리\s*플레이|계정\s*공유|마이크|카메라|화면\s*공유|상대\s*전적|이동|인솔|보호자|초상권|개인정보.*동의|생활기록부|초대\s*링크|담당자.*누구|버스|주차|식사|점심|숙박|날씨/;
+const UNKNOWN = /참가비|참가\s*비용|유료|무료|불참|몰수패|접속.*끊|재경기|대리\s*플레이|계정\s*공유|마이크|카메라|화면\s*공유|상대\s*전적|이동|인솔|보호자|초상권|개인정보.*동의|생활기록부|초대\s*링크|담당자.*누구|버스|주차|식사|점심|숙박|날씨/;
 // 더 구체적인 답이 함께 걸리면 일반 답은 빼기
 const OVERRIDE = { 49:[43,42], 50:[23,11,10], 39:[17,18], 23:[20], 5:[2], 6:[5], 16:[13,10], 11:[10], 22:[20], 21:[20], 38:[37], 43:[42,20,22,21], 45:[16,44], 24:[23,41,20], 15:[20,13], 46:[43,42,20], 47:[43,42,6,20], 48:[43,42,20] };
 
