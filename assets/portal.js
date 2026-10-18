@@ -613,8 +613,10 @@
   /* ---------- 표 그리기 (보기/고치기 공용) ---------- */
   // columns[i]: { key, label, get, type?, options?, readonly?, cls? (열 구분용), cellClass?(row) }
   // filters: [{ label, values: [...], get(row) }] → 검색창 옆 드롭다운
-  function grid(box, { columns, rows, onSave, onDelete, onAdd, exportName, filterable = true, filters = [] }) {
+  function grid(box, { columns, rows, onSave, onDelete, onAdd, exportName, filterable = true, filters = [], canSave }) {
     box.replaceChildren();
+    // canSave: 편집자가 아니어도 칸을 고칠 수 있는 표 (예: 심판의 경기 결과 입력). 추가·삭제·내려받기는 그대로 편집자만
+    const saveOk = canSave ?? isEditor();
     const bar = el("div", "gbar");
     let q = "";
     const picked = filters.map(f => f.initial || "");
@@ -671,7 +673,7 @@
           const ro = typeof c.readonly === "function" ? c.readonly(r) : c.readonly;
           if (c.cell) {
             c.cell(td, r);
-          } else if (isEditor() && onSave && !ro) {
+          } else if (saveOk && onSave && !ro) {
             if (c.type === "bool") {
               const cb = el("input");
               cb.type = "checkbox";
@@ -1781,14 +1783,14 @@
     const label = r => (r.stage === "본선" ? r.grp + " · " : "") + r.round_label; // 조별·리그 경기는 이름에 이미 조가 있음
     const teamCol = n => ({
       key: "team" + n, label: "학교" + n,
-      readonly: r => !!r["src" + n],
+      readonly: r => !!r["src" + n] || !isEditor(),
       get: r => r["team" + n] || (r["src" + n] ? "(" + srcText(r["src" + n], rows) + ")" : ""),
       cellClass: r => (!r["team" + n] ? "ph" : r.winner ? (r.winner === r["team" + n] ? "win" : "lose") : "")
     });
     const columns = [
       { key: "_stage", label: "단계", readonly: true, get: r => r.stage },
       { key: "_round", label: "경기", readonly: true, get: label },
-      { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id, get: r => r.session_id ? sessText(sessById[r.session_id], r.time_offset_min) : r.scheduled_at },
+      { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id || !isEditor(), get: r => r.session_id ? sessText(sessById[r.session_id], r.time_offset_min) : r.scheduled_at },
       teamCol(1), { key: "score1", label: "점수1", type: "int", get: r => r.score1 },
       { key: "score2", label: "점수2", type: "int", get: r => r.score2 }, teamCol(2),
       { key: "winner", label: "승자", readonly: true, get: r => r.winner, cellClass: r => (r.winner ? "win" : "") },
@@ -1797,9 +1799,10 @@
       { key: "note", label: "비고", get: r => r.note }
     ];
     const holder = el("div");
-    box.append(el("h3", "bk-sub", "경기 결과 입력"), el("p", "note", "일시는 '심판 일정' 표의 회차 시간에서 자동으로 들어옵니다(관리자가 바꾸면 같이 바뀜). 심판 칸에서 이름을 고를 때 '✔ 이 시간 가능'이 붙은 선생님이 그 시간에 체크한 분입니다."), lists, holder);
+    box.append(el("h3", "bk-sub", "경기 결과 입력"), el("p", "note", "일시는 '심판 일정' 표의 회차 시간에서 자동으로 들어옵니다(관리자가 바꾸면 같이 바뀜). 심판 칸에서 이름을 고를 때 '✔ 이 시간 가능'이 붙은 선생님이 그 시간에 체크한 분입니다." + (ME.role === "referee" ? " 심판 권한은 점수·경기 시간·심판·비고를 입력할 수 있습니다(조 편성·학교·일시는 지원단 편집자가 관리)." : "")), lists, holder);
     grid(holder, {
       columns, rows: shown, exportName: "대진·경기 결과(" + matchDiv + ")",
+      canSave: isEditor() || (ME.role === "referee" && ME.status === "approved"),
       filters: [
         { label: "단계", values: matchDiv === "중등부" ? ["64강", "32강", "본선", "4강 리그", "결선"] : ["32강", "본선", "4강 리그", "결선"], get: r => r.stage, initial: matchPick[0], onPick: v => { matchPick[0] = v; } },
         { label: "조·그룹", values: [...(matchDiv === "중등부" ? STAGE_GROUPS["64강"] : STAGE_GROUPS["32강"]), "장로", "바론"], get: r => r.grp || "", initial: matchPick[1], onPick: v => { matchPick[1] = v; } }
