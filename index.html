@@ -194,6 +194,10 @@
   .dday .label { color: var(--muted); font-size: 14px; }
   .dday .num { font-size: 44px; font-weight: 900; color: var(--neon); line-height: 1.2; }
   .dday .date { font-size: 14px; }
+  /* 예선 카드: 중등부 | 고등부 두 칸 */
+  .dday-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dday-half + .dday-half { border-left: 1px solid var(--line); }
+  .dday .sub { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 2px; }
   .note { color: var(--muted); font-size: 13px; margin-top: 8px; }
   .notice-line { background: rgba(243, 171, 140, .12); border: 1px solid rgba(243, 171, 140, .45); border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
   .stat .k { color: var(--muted); font-size: 13px; }
@@ -326,9 +330,12 @@
   .promo-video video { display: block; margin: 0 auto; width: auto; height: clamp(380px, calc(100vh - 300px), 600px); max-width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; background: #000; }
   @media (max-width: 760px) {
     .home-split { grid-template-columns: 1fr; }
-    #ddays { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    #ddays { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) minmax(0, 1fr); gap: 8px; }
+    #ddays .dday-split { gap: 4px; }
+    #ddays .dday .sub { font-size: 11px; }
+    #ddays .dday .opt { display: none; }
     #ddays .dday { padding: 12px 6px; }
-    #ddays .dday .num { font-size: 28px; }
+    #ddays .dday .num { font-size: 22px; white-space: nowrap; }
     #ddays .dday .label, #ddays .dday .date { font-size: 12px; }
     .promo-video h2 { white-space: normal; }
     .promo-video video { height: auto; max-height: 78vh; }
@@ -657,12 +664,11 @@
 
 <script>
 /* ---------- 대회 기본 정보 ---------- */
-// 홈 D-Day: 일정 탭과 같은 시각까지 표시 (2026-10-19 사용자 요청: 예선은 중등부·고등부 따로)
+// 홈 D-Day: 카드 3장, 일정 탭과 같은 시각까지 표시 (2026-10-19 사용자 요청: 예선 카드 안을 중등부·고등부 두 칸으로)
 const DDAYS = [
   { label: "모집 마감", date: "2026-10-19", time: "23:59" },
-  { label: "예선 시작 · 중등부", date: "2026-10-24", time: "14:00" },
-  { label: "예선 시작 · 고등부", date: "2026-10-25", time: "13:00" },
-  { label: "결선 (오프라인)", date: "2026-11-08", time: "11:00" }
+  { label: "예선 시작", split: [{ label: "중등부", date: "2026-10-24", time: "14:00" }, { label: "고등부", date: "2026-10-25", time: "13:00" }] },
+  { label: "결선", note: "(오프라인)", date: "2026-11-08", time: "11:00" }
 ];
 // 일정: 경기 회차는 교사용 '심판 일정' 표(public_schedule)를 그대로 보여 준다. 아래는 불러오기 전·실패 시 기본값.
 const TL_FIXED = [
@@ -865,7 +871,16 @@ rippleButton(document.querySelector(".btn.chatbtn"), 700);
 const ddWrap = document.getElementById("ddays");
 DDAYS.forEach(d => {
   const c = el("div", "card dday");
-  c.append(el("div", "label", d.label), el("div", "num", ddayText(daysUntil(d.date))), el("div", "date", fmtDate(d.date) + (d.time ? " " + d.time : "")));
+  const when = x => fmtDate(x.date) + (x.time ? " " + x.time : "");
+  const lab = el("div", "label", d.label);
+  if (d.note) lab.append(el("span", "opt", " " + d.note)); // 휴대폰에서는 숨김
+  c.append(lab);
+  if (d.split) {
+    // 한 카드 안에 두 칸 (예: 중등부 | 고등부)
+    const row = el("div", "dday-split");
+    d.split.forEach(x => { const s = el("div", "dday-half"); s.append(el("div", "sub", x.label), el("div", "num", ddayText(daysUntil(x.date))), el("div", "date", when(x))); row.append(s); });
+    c.append(row);
+  } else c.append(el("div", "num", ddayText(daysUntil(d.date))), el("div", "date", when(d)));
   ddWrap.append(c);
 });
 
