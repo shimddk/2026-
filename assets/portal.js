@@ -1146,14 +1146,24 @@
         const regions = [...new Set(rows.map(region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
         filters.push({ label: "지역", values: regions, get: region });
       }
-      if (current === "captains") {
-        // 팀장 연락처: 학교 가나다순(같은 학교는 원래 순서, 빈 줄 맨 아래), '순번'은 이 순서대로 화면에서 매김 → 새 학교가 들어와도 자동으로 제자리
+      if (current === "captains" || current === "advisors") {
+        // 팀장·지도교사 연락처: 학교 가나다순(같은 학교는 원래 순서, 빈 줄 맨 아래), '순번'은 이 순서대로 화면에서 매김 → 새 학교가 들어와도 자동으로 제자리
         const schoolOf = r => String(r.data["학교"] || "").trim();
         rows.sort((a, b) => (!schoolOf(a)) - (!schoolOf(b)) || schoolOf(a).localeCompare(schoolOf(b), "ko"));
         rows.forEach((r, i) => { r._no = schoolOf(r) ? i + 1 : ""; });
         const seq = { key: "_no", label: "순번", readonly: true, get: r => r._no };
         const at = columns.findIndex(c => c.key === "순번");
         if (at >= 0) columns[at] = seq; else columns.unshift(seq);
+        // 학교 칸은 글자 길이만큼만 (넓은 빈 칸 줄임)
+        const sc = columns.find(c => c.key === "학교");
+        if (sc) sc.cls = "col-fit";
+        // 디스코드 팀장 권한 부여 현황: O / X (고치기 권한자가 확인 후 바꿈)
+        const perm = columns.find(c => c.key === "권한 부여 현황");
+        if (perm) {
+          perm.options = ["", "O", "X"];
+          perm.cellClass = r => (r.data["권한 부여 현황"] === "X" ? "dupe" : "");
+          filters.push({ label: "권한 부여", values: ["O", "X"], get: r => r.data["권한 부여 현황"] || "" });
+        }
       }
       let badNote = 0;
       if (current.startsWith("roster_")) {
