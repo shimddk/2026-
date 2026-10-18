@@ -28,9 +28,9 @@
 <!-- 제작자: 원곡고등학교 교사 심승보 · © 2026 심승보. All rights reserved. 허락 없이 복제·수정·배포할 수 없습니다. -->
 <script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (e) {}</script>
 <style>
-  :root { --bg: #eef0f4; --card: #ffffff; --line: #d3d9e5; --text: #1b2134; --muted: #5a6381; --neon: #0a8db0; --maker-bg: rgba(255, 255, 255, .88); }
+  :root { --bg: #eef0f4; --card: #ffffff; --line: #d3d9e5; --text: #1b2134; --muted: #5a6381; --neon: #0a8db0; --maker-bg: rgba(255, 255, 255, .88); --warn-title: #c62828; }
   /* 홈에서 고른 다크 모드(남색)를 그대로 따름 */
-  :root[data-theme="dark"] { --bg: #0a0f24; --card: #161f42; --line: #283364; --text: #e9ecff; --muted: #9aa3cc; --neon: #35e0ff; --maker-bg: rgba(10, 15, 36, .82); }
+  :root[data-theme="dark"] { --bg: #0a0f24; --card: #161f42; --line: #283364; --text: #e9ecff; --muted: #9aa3cc; --neon: #35e0ff; --maker-bg: rgba(10, 15, 36, .82); --warn-title: #ffb4b4; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: "Nanum Gothic", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif; line-height: 1.7; }
   main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
@@ -43,6 +43,11 @@
   th { background: var(--card); }
   a { color: var(--neon); }
   .copyright { color: var(--muted); font-size: 12px; margin-top: 24px; }
+  /* 이용 주의 공지 (학교폭력·사이버폭력 예방) */
+  .warn-box { border: 1px solid rgba(224, 40, 58, .55); background: rgba(224, 40, 58, .07); border-radius: 12px; padding: 12px 16px; margin: 14px 0; }
+  .warn-box strong:first-child { color: var(--warn-title); }
+  .warn-box p, .warn-box li { margin: 6px 0; font-size: 15px; }
+  .warn-box ul { margin: 6px 0 0; padding-left: 20px; }
   /* 제작자 표시 (페이지 맨 아래 오른쪽에 붙박이, 스크롤을 따라다니지 않음) */
   .maker { width: fit-content; margin: -24px 12px 12px auto; font-size: 12px; color: var(--text);
     background: var(--maker-bg); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; white-space: nowrap; }
@@ -68,6 +73,15 @@
 
   <h2>1-1. 학생용 화면에 공개되는 정보</h2>
   <p>학생용 화면의 "전적 검색" 탭에는 <strong>2026년 10월 16일부터</strong> 참가팀의 <strong>학교 이름·소재 지역·라인(포지션)·학생 이름·리그 오브 레전드 아이디</strong>가 공개되어 있습니다(중복 신청 확인 중인 학교는 한 팀으로 확정된 뒤 공개). 팀장의 명단 확인·수정, 상대 팀 전적 확인과 공정한 경기 운영을 위한 것이며, 2026년 11월 9일 삭제와 함께 공개도 끝납니다. 공개를 원하지 않는 학생은 지도교사를 통해 지원단에 요청하면 비공개로 처리합니다. 대진표·경기 결과에는 학교 이름만, 경고 현황에는 학교 이름과 조치 내용·사유만 나옵니다(사유에는 학생 이름을 적지 않는 것을 원칙으로 합니다).</p>
+  <div class="warn-box" role="note">
+    <strong>⚠️ 이용 시 꼭 지켜 주세요 (학교폭력·사이버폭력 예방)</strong>
+    <p>전적 검색에 공개된 학교 이름·학생 이름·게임 아이디는 <strong>대회 참가와 경기 준비를 위해서만</strong> 사용해야 합니다.</p>
+    <ul>
+      <li>다른 학교 학생의 이름이나 게임 아이디를 이용해 놀리기, 비방·욕설, 사칭, 따돌림, 게임 안에서의 괴롭힘을 하거나, 화면을 캡처해 다른 곳에 퍼뜨리는 행동은 <strong>학교폭력(사이버폭력)</strong>에 해당할 수 있습니다.</li>
+      <li>이런 행동은 <strong>개인정보 보호법·정보통신망법 등 관련 법률 위반</strong>이 될 수 있으며, 대회 규정에 따른 경고·실격 등의 조치와 함께 소속 학교에 알려져 학교폭력 사안으로 처리될 수 있습니다.</li>
+      <li>피해를 입었거나 이런 일을 보았다면 지도교사나 대회 디스코드 질문방(지원단)에 바로 알려 주세요. 알린 사람의 정보는 보호됩니다.</li>
+    </ul>
+  </div>
   <p>이 홈페이지는 검색엔진에 노출되지 않도록 설정되어 있습니다(검색 결과 제외 표시).</p>
 
   <h2>1-2. 팀장 명단 확인·수정</h2>
