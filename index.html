@@ -33,6 +33,7 @@
   제작자의 허락 없이 복제·수정·배포하거나 다른 사이트에 사용할 수 없습니다.
 -->
 <link rel="author" href="https://2026-esports-schoolleague.vercel.app">
+<script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (e) {}</script>
 <style>
   @font-face {
     font-family: 'YeogiOttaeJalnan';
@@ -41,7 +42,7 @@
     font-display: swap;
   }
   :root {
-    /* 2026-10-18 연그레이 테마 (이전 진한 남색: bg #0a0f24 · bg2 #111833 · card #161f42 · line #283364 · text #e9ecff · muted #9aa3cc · neon #35e0ff · neon2 #b26bff · ok #3ddc97 · wait #ffb547) */
+    /* 라이트(기본, 연그레이) — 다크(남색)는 아래 :root[data-theme="dark"]. 헤더의 ☀️/🌙 버튼으로 전환, 브라우저에 기억 */
     --bg: #eef0f4;
     --bg2: #e4e8ef;
     --card: #ffffff;
@@ -52,14 +53,33 @@
     --neon2: #7b3fe4;
     --ok: #12905d;
     --wait: #b87100;
+    --glow1: #e9e2fb; --glow2: #dcedf5;
+    --header-bg: rgba(238, 240, 244, 0.9);
+    --on-accent: #fff;            /* 그라데이션 버튼·선택된 탭 글자 */
+    --card-shadow: 0 1px 3px rgba(20, 30, 60, .07), 0 4px 14px rgba(20, 30, 60, .05);
+    --maker-bg: rgba(255, 255, 255, .88);
+    --t-yellow: #9a6200; --t-red: #c62828; --t-purple: #6d3fd0; --t-blue: #2563c9;  /* 강조 글자색 */
+    --lg-a-head: #dcecf4; --lg-b-head: #e8e1f8;   /* 명단 표 라인별 머리칸 */
+    --rcard-bg: linear-gradient(160deg, #ffffff, #f2f4f9); --rcard-brief-bg: linear-gradient(160deg, #f7f3ff, #eef0f8);
+    color-scheme: light;
     --radius: 16px;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0f24; --bg2: #111833; --card: #161f42; --line: #283364; --text: #e9ecff; --muted: #9aa3cc;
+    --neon: #35e0ff; --neon2: #b26bff; --ok: #3ddc97; --wait: #ffb547;
+    --glow1: #2a1a5e; --glow2: #0d3a5c; --header-bg: rgba(10, 15, 36, 0.85); --on-accent: #0a0f24; --card-shadow: none;
+    --maker-bg: rgba(10, 15, 36, .82);
+    --t-yellow: #ffd88a; --t-red: #ffb4b4; --t-purple: #d3b0ff; --t-blue: #9cc4ff;
+    --lg-a-head: #13234a; --lg-b-head: #1d1b4d;
+    --rcard-bg: linear-gradient(160deg, #1b2655, #141c3d); --rcard-brief-bg: linear-gradient(160deg, #22204e, #161a3a);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
     margin: 0;
-    background: radial-gradient(1200px 600px at 80% -10%, #e9e2fb 0%, transparent 60%),
-                radial-gradient(900px 500px at -10% 10%, #dcedf5 0%, transparent 55%),
+    background: radial-gradient(1200px 600px at 80% -10%, var(--glow1) 0%, transparent 60%),
+                radial-gradient(900px 500px at -10% 10%, var(--glow2) 0%, transparent 55%),
                 var(--bg);
     color: var(--text);
     font-family: "Nanum Gothic", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
@@ -76,7 +96,7 @@
   /* 헤더 */
   header {
     position: sticky; top: 0; z-index: 10;
-    background: rgba(238, 240, 244, 0.9);
+    background: var(--header-bg);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
   }
@@ -90,7 +110,10 @@
   .head nav { grid-area: nav; }
   .visits { grid-area: visits; font-size: 13px; color: var(--muted); white-space: nowrap; }
   .visits b { color: var(--neon); font-weight: 700; }
-  .head .acct { grid-area: acct; }
+  .head .acct-wrap { grid-area: acct; display: flex; align-items: center; gap: 8px; }
+  .theme-btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .theme-btn:hover { border-color: var(--neon); }
+  @media (max-width: 480px) { .theme-btn { padding: 6px 9px; } .theme-label { display: none; } .logo { gap: 8px; white-space: nowrap; font-size: 15px; } }
   .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
   .logo-mark {
     width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
@@ -107,13 +130,13 @@
     font-size: clamp(15px, 0.6vw + 8px, 19px);
   }
   .tab:hover { color: var(--text); }
-  .tab[aria-selected="true"] { color: #fff; background: var(--neon); }
+  .tab[aria-selected="true"] { color: var(--on-accent); background: var(--neon); }
 
   main { padding: 32px 0 48px; }
   section[role="tabpanel"][hidden] { display: none; }
   h2 { font-size: clamp(28px, 1.4vw + 16px, 44px); margin: 0 0 8px; }
   .lead { color: var(--muted); margin: 0 0 24px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(20, 30, 60, .07), 0 4px 14px rgba(20, 30, 60, .05); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--card-shadow); }
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 
   /* 홈 */
@@ -136,7 +159,7 @@
   .btn.closed, .btn.closed:hover { background: var(--bg2); color: var(--muted); border: 1px solid var(--line); cursor: not-allowed; box-shadow: none; filter: none; }
   .btn {
     border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; cursor: pointer;
-    background: linear-gradient(135deg, var(--neon), var(--neon2)); color: #fff;
+    background: linear-gradient(135deg, var(--neon), var(--neon2)); color: var(--on-accent);
   }
   .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
   /* 질문 챗봇 버튼: 복숭아(#f3ab8c)→코랄→핑크 그라데이션, 나눔고딕, 글자 물결 모션(vibe-motion-ripple: 2.1초 ÷ 속도 1.25, 세기 65, 한 번) */
@@ -265,7 +288,7 @@
   .msg .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-bottom: 6px; }
   .tag.ok { background: rgba(61, 220, 151, .15); color: var(--ok); }
   .tag.wait { background: rgba(255, 181, 71, .15); color: var(--wait); }
-  .tag.ask { background: rgba(178, 107, 255, .18); color: #6d3fd0; }
+  .tag.ask { background: rgba(178, 107, 255, .18); color: var(--t-purple); }
   .msg .q { font-weight: 700; margin-bottom: 4px; }
   .tag.dq { background: rgba(53, 224, 255, .14); color: var(--neon); }
   .dq-a { white-space: pre-line; }
@@ -311,7 +334,7 @@
   /* 제작자 표시 (페이지 맨 아래 오른쪽에 붙박이, 스크롤을 따라다니지 않음) */
   .maker {
     width: fit-content; margin: -52px 12px 12px auto; position: relative; z-index: 1;
-    font-size: 12px; color: var(--text); background: rgba(255, 255, 255, .88); border: 1px solid var(--line);
+    font-size: 12px; color: var(--text); background: var(--maker-bg); border: 1px solid var(--line);
     border-radius: 999px; padding: 5px 12px; white-space: nowrap;
   }
   @media (max-width: 480px) { .maker { font-size: 11px; margin: -48px 8px 8px auto; padding: 4px 10px; } }
@@ -356,7 +379,7 @@
       <button class="tab" role="tab" id="tab-faq" aria-controls="faq" aria-selected="false" tabindex="-1">질문/FAQ</button>
     </nav>
     <div class="visits" id="visits" hidden aria-label="방문자 수"></div>
-    <div class="acct" id="acct"></div>
+    <div class="acct-wrap"><button class="theme-btn" id="themeBtn" type="button"></button><div class="acct" id="acct"></div></div>
   </div>
 </header>
 
@@ -768,6 +791,24 @@ function el(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
+
+// 라이트/다크 전환 (기본 라이트, 고른 모드는 이 브라우저에 기억)
+(function themeToggle() {
+  const b = document.getElementById("themeBtn");
+  if (!b) return;
+  const draw = () => {
+    const dark = document.documentElement.dataset.theme === "dark";
+    b.replaceChildren(dark ? "☀️" : "🌙", el("span", "theme-label", dark ? " 라이트" : " 다크")); // 휴대폰에서는 아이콘만
+    b.setAttribute("aria-label", dark ? "라이트 모드로 바꾸기" : "다크 모드로 바꾸기");
+  };
+  b.addEventListener("click", () => {
+    const dark = document.documentElement.dataset.theme !== "dark";
+    if (dark) document.documentElement.dataset.theme = "dark"; else delete document.documentElement.dataset.theme;
+    try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch (e) {}
+    draw();
+  });
+  draw();
+})();
 
 // 홈 버튼 물결 모션 (vibe-motion-ripple, loop 없음 → 처음 한 번, 마우스를 올리면 다시). 참가 신청 → 질문 챗봇 순서로
 function rippleButton(b, delay) {
