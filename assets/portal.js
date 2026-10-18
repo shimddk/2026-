@@ -889,11 +889,10 @@
 
   // 지원단 명단
   let STAFF = [];
-  const STAFF_COLS = [
-    ["seq", "순번", "int"], ["region", "지역"], ["school", "소속"], ["position", "직책"], ["name", "성명"],
-    ["title", "역할"], ["referee_ok", "심판가능", "bool"], ["phone", "연락처"],
-    ["pre_duty", "담당 업무"]
-  ].map(([k, label, type]) => ({ key: k, label, type, get: r => r[k] }));
+  // 열 순서(2026-10-19 사용자 요청): 순번 · 소속 · 성명 · 역할 및 담당 업무 · 담당 학교 · 심판가능 · 연락처
+  // 역할(title)은 담당 업무(pre_duty)에 합침(DB), 지역·직책은 화면에서만 숨김(position은 승인 화면 젠지 코치 판별에 씀)
+  const staffCol = ([k, label, type]) => ({ key: k, label, type, get: r => r[k] });
+  const STAFF_COLS = [["seq", "순번", "int"], ["school", "소속"], ["name", "성명"], ["pre_duty", "역할 및 담당 업무"]].map(staffCol);
   // 담당 학교: 관리자만 지정 (DB 트리거 staff_schools_guard가 한 번 더 막음)
   STAFF_COLS.push({
     key: "schools", label: "담당 학교", cls: "col-schools", get: r => (r.schools || []).map(schoolLabel).join(", "),
@@ -912,6 +911,7 @@
       td.append(wrap);
     }
   });
+  STAFF_COLS.push(...[["referee_ok", "심판가능", "bool"], ["phone", "연락처"]].map(staffCol));
 
   // 참가 학교 목록 (아이디 명단 기준, 부문별). 저장은 학교 이름만, 화면은 "(안산)원곡고등학교"
   const SCHOOL_REGION = {};
