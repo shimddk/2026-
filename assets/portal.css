@@ -272,7 +272,12 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 .rdlg-rowerr .nick-warn { color: var(--t-yellow); margin-top: 2px; }
 
 /* 지원단 명단: 담당 학교 */
-.dtable th.col-schools, .dtable td.col-schools { min-width: 460px; width: 40%; }
+.dtable th.col-schools, .dtable td.col-schools { min-width: 260px; }
+/* 지원단 명단: 표를 화면 폭에 맞추고, 내용 칸은 가장 긴 값에 딱 맞춤(width 1% = 최소 폭), 남는 폭은 담당 학교(칩 줄바꿈) */
+table.dtable:has(td.col-schools) { width: 100%; min-width: 0; }
+table.dtable th.st-fit, table.dtable td.st-fit { width: 1%; }
+table.dtable td.st-fit input.cell { field-sizing: content; min-width: 2ch; width: 100%; box-sizing: border-box; }
+table.dtable td.st-duty input.cell { max-width: none; }
 .staff-schools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .staff-schools .ss-count { font-weight: 700; color: var(--neon); margin-right: 2px; }
 .ss-body { max-height: 56vh; overflow-y: auto; margin: 10px 0; }
