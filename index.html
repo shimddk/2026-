@@ -61,6 +61,7 @@
     --t-yellow: #9a6200; --t-red: #c62828; --t-purple: #6d3fd0; --t-blue: #2563c9;  /* 강조 글자색 */
     --lg-a-head: #dcecf4; --lg-b-head: #e8e1f8;   /* 명단 표 라인별 머리칸 */
     --rcard-bg: linear-gradient(160deg, #ffffff, #f2f4f9); --rcard-brief-bg: linear-gradient(160deg, #f7f3ff, #eef0f8);
+    --hl-bg: #fff176; --hl-text: #1b2134; --hl-top: 18%; --hl-bottom: 92%;   /* 형광펜 (라이트는 글자 아래쪽만) */
     color-scheme: light;
     --radius: 16px;
   }
@@ -72,6 +73,7 @@
     --t-yellow: #ffd88a; --t-red: #ffb4b4; --t-purple: #d3b0ff; --t-blue: #9cc4ff;
     --lg-a-head: #13234a; --lg-b-head: #1d1b4d;
     --rcard-bg: linear-gradient(160deg, #1b2655, #141c3d); --rcard-brief-bg: linear-gradient(160deg, #22204e, #161a3a);
+    --hl-bg: #ffe14d; --hl-text: #14182b; --hl-top: 0%; --hl-bottom: 100%;   /* 다크는 진한 글자가 남색에 묻히지 않게 꽉 채움 */
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -113,6 +115,9 @@
   .head .acct-wrap { grid-area: acct; display: flex; align-items: center; gap: 8px; }
   .theme-btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
   .theme-btn:hover { border-color: var(--neon); }
+  /* 형광펜 강조 (글자 아래쪽 80%만 칠한 느낌). 다크에서도 형광 노랑 위 글자는 진하게 */
+  mark.hl { background: linear-gradient(transparent var(--hl-top), var(--hl-bg) var(--hl-top), var(--hl-bg) var(--hl-bottom), transparent var(--hl-bottom)); color: var(--hl-text); padding: 0 3px; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  mark.hl strong { color: inherit; }
   @media (max-width: 480px) { .theme-btn { padding: 6px 9px; } .theme-label { display: none; } .logo { gap: 8px; white-space: nowrap; font-size: 15px; } }
   .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
   .logo-mark {
@@ -477,7 +482,7 @@
   <!-- 대진표 -->
   <section id="bracket" role="tabpanel" aria-labelledby="tab-bracket" hidden>
     <h2>대진표</h2>
-    <p class="lead">중등부는 64강 조별리그 → 32강 조별리그(8개 조), 고등부는 32강 조별리그를 거쳐 16팀이 장로·바론 두 그룹 더블 엘리미네이션으로 겨룹니다. 첫 조별리그는 최대한 4팀씩 조를 짜고, 각 조 1·2위와 성적이 좋은 3위가 다음 단계에 오릅니다. 그룹 1·2위 4팀이 4강 리그를 치르고, 리그 1·2위는 결승, 3·4위는 3·4위전을 11/8 오프라인 결선에서 치릅니다. <strong>모든 경기는 단판(BO1)</strong>입니다.</p>
+    <p class="lead">중등부는 64강 조별리그 → 32강 조별리그(8개 조), 고등부는 32강 조별리그를 거쳐 16팀이 장로·바론 두 그룹 더블 엘리미네이션으로 겨룹니다. 첫 조별리그는 최대한 4팀씩 조를 짜고, 각 조 1·2위와 성적이 좋은 3위가 다음 단계에 오릅니다. 그룹 1·2위 4팀이 4강 리그를 치르고, 리그 1·2위는 결승, 3·4위는 3·4위전을 11/8 오프라인 결선에서 치릅니다. <mark class="hl"><strong>모든 경기는 단판(BO1)</strong>입니다.</mark></p>
     <p class="notice-line">📢 대진표는 <strong>10월 20일(화) 오후 7시(19:00)</strong>에 공개 예정입니다.</p>
     <div class="pending">대진표는 10월 20일(화) 19:00에 공개됩니다. 공개되면 이 화면에 팀 이름이 채워집니다.</div>
     <div class="bracket-flow" aria-label="대회 진행 순서">
