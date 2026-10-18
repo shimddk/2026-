@@ -207,7 +207,20 @@
     });
     sw.style.margin = "0";
     const done = teams.filter(t => statusOf(t)).length;
-    bar.append(s, sw, el("span", "rec-done", "팀장 확인 완료 " + done + " / " + teams.length + "팀"));
+    const doneEl = el("span", "rec-done", "팀장 확인 완료 " + done + " / " + teams.length + "팀");
+    bar.append(s, sw, doneEl);
+    // 교사 확인·취소 → 상태만 다시 받아 카드 다시 그림 (검색어·부문 유지)
+    async function teacherConfirm(t, on) {
+      if (!confirm(on ? t.school + " 명단을 교사 확인(문제없음)으로 표시할까요?\n학생 화면에도 '확인 완료'로 보이고, '명단 확인 현황'에 기록됩니다."
+                      : t.school + "의 교사 확인을 취소할까요? '미확인'으로 돌아갑니다.")) return;
+      const { data, error } = await sb.rpc("roster_teacher_confirm", { p_division: t.division, p_school: t.school, p_on: on });
+      if (error || !data || data.status !== "saved") { toast("처리하지 못했습니다" + (error ? ": " + error.message : data && data.status === "not_found" ? " (중복 신청 확인 중인 학교)" : ""), true); return; }
+      const { data: again } = await sb.rpc("public_roster_status");
+      rsTeams.splice(0, rsTeams.length, ...((again && again.teams) || []));
+      doneEl.textContent = "팀장 확인 완료 " + teams.filter(x => statusOf(x)).length + " / " + teams.length + "팀";
+      toast(on ? "교사 확인으로 표시했습니다" : "교사 확인을 취소했습니다");
+      draw();
+    }
     const list = el("div", "rec-grid");
     root.append(bar, list);
     s.addEventListener("input", draw);
@@ -247,7 +260,7 @@
         head.append(el("h3", "", t.school + (t.teamCount > 1 ? " · " + t.teamNo + "팀" : "")), el("span", "rec-meta", t.division + (t.region ? " · " + t.region : "")));
         if (t.teamCount > 1) head.append(el("span", "dupe-badge", "중복 신청 · 확인 필요"));
         const st = statusOf(t);
-        if (st) head.append(el("span", "ok-badge", "✔ 팀장 " + (st.status === "수정함" ? "수정 완료" : "확인 완료") + " (" + fmtTime(st.at) + ")"));
+        if (st) head.append(el("span", "ok-badge", (st.teacher ? "✔ 교사 확인 완료" : "✔ 팀장 " + (st.status === "수정함" ? "수정 완료" : "확인 완료")) + " (" + fmtTime(st.at) + ")"));
         const ul = el("ul", "rec-list");
         const hiddenNames = [];
         t.ids.forEach(r => {
@@ -284,6 +297,13 @@
           eb.type = "button";
           eb.addEventListener("click", () => openRosterEdit(t, untilText));
           btns.append(eb);
+        }
+        // 교사(고치기·관리자): 학생 문의를 받고 바로 '문제없음(교사 확인)'으로 표시하거나, 교사 확인만 취소
+        if (res.teacher && isEditor() && t.teamCount === 1 && (!st || st.teacher)) {
+          const tb = el("button", "btn ghost small teacher-ok", st ? "교사 확인 취소" : "✔ 교사 확인 (문제없음)");
+          tb.type = "button";
+          tb.addEventListener("click", () => teacherConfirm(t, !st));
+          btns.append(tb);
         }
         card.append(head, ul, ...(nickNote ? [nickNote] : []), btns, el("p", "note", "아이디를 누르면 그 선수의 전적(fow.lol)이, 멀티서치를 누르면 팀 전체 전적이 새 창에서 바로 열립니다. 휴대폰에서는 멀티서치가 OP.GG로 열립니다."));
         list.append(card);
@@ -2529,7 +2549,7 @@
         { key: "division", label: "부문", readonly: true, get: s => s.division },
         { key: "label", label: "학교", readonly: true, get: s => s.label },
         { key: "_state", label: "상태", readonly: true, get: stateOf, cellClass: s => stateOf(s) === "미확인" ? "dupe" : stateOf(s) === "중복 확인 중" ? "ph" : "win" },
-        { key: "_at", label: "마지막 확인·수정", readonly: true, get: s => stOf(s) ? fmtTime(stOf(s).updated_at) : "" },
+        { key: "_at", label: "마지막 확인·수정", readonly: true, get: s => stOf(s) ? fmtTime(stOf(s).updated_at) + (stOf(s).confirmed_by ? " · 교사 확인(" + stOf(s).confirmed_by + ")" : "") : "" },
         { key: "_n", label: "기록", readonly: true, get: s => chOf(s).length ? chOf(s).length + "건" : "" }
       ],
       rows: schools, exportName: "명단 확인 현황",
@@ -2539,7 +2559,7 @@
     // 수정 기록 (최근 순): 수정 전 → 후, 되돌리기
     const logBox = el("div", "card");
     logBox.append(el("h3", "", "수정 기록 (최근 순)"));
-    const edits = (changes || []).filter(c => c.kind !== "confirm");
+    const edits = (changes || []).filter(c => c.kind === "edit" || c.kind === "revert");
     if (!edits.length) logBox.append(el("p", "note", "아직 팀장이 수정한 기록이 없습니다."));
     edits.forEach(c => {
       const d = el("details", "score-editor");
