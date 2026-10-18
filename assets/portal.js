@@ -840,7 +840,8 @@
     if (built) return;
     built = true;
     const views = [
-      ["t-staff", "지원단 명단", "지원단 선생님 명단과 업무 분장입니다.", loadStaff],
+      // 지원단 명단은 심판 권한(젠지 코치)에 안 보임 (2026-10-18 사용자 요청)
+      ...(ME.role === "referee" ? [] : [["t-staff", "지원단 명단", "지원단 선생님 명단과 업무 분장입니다.", loadStaff]]),
       ["t-roster", SHEETS.roster.title, "학생 실명과 LOL 아이디가 들어 있습니다. 화면 밖으로 옮기지 마세요.", b => loadSheet(b, SHEETS.roster)],
       // 연락처 표는 심판 권한에 안 보임 (DB에서도 막음)
       ...(ME.role === "referee" ? [] : [["t-captains", SHEETS.captains.title, "", b => loadSheet(b, SHEETS.captains)],
