@@ -720,6 +720,7 @@
       bar.append(s);
     }
     filters.forEach((f, i) => {
+      if (f.hidden) return; // 고를 값이 없는 필터(예: 확인 필요 0건)는 안 보임
       const sel = el("select", "gfilter");
       sel.setAttribute("aria-label", f.label + " 필터");
       const all = el("option", "", f.label + ": 전체"); all.value = ""; sel.append(all);
@@ -1185,6 +1186,12 @@
     const isDupe = r => count[normSchool(r.data[schoolKey])] > 1;
     const note = r => String(r.data["확인 사항"] || "").trim();
     const status = r => (isDupe(r) || note(r) ? "확인 필요" : "정상");
+    // 확인이 필요한 줄이 하나도 없으면 '확인'·'확인 사항' 열과 필터를 숨겨 표를 왼쪽으로 당김 (생기면 다시 자동으로 나옴)
+    if (!rows.some(r => status(r) === "확인 필요")) {
+      const i = columns.findIndex(c => c.key === "확인 사항");
+      if (i >= 0) columns.splice(i, 1);
+      return { label: "확인", values: ["확인 필요", "정상"], get: status, hidden: true };
+    }
     columns.unshift({
       key: "_dupe", label: "확인", readonly: true,
       get: r => (isDupe(r) ? "중복 · 확인 필요" : note(r) ? "확인 필요" : ""),
