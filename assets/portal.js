@@ -613,6 +613,62 @@
   /* ---------- 표 그리기 (보기/고치기 공용) ---------- */
   // columns[i]: { key, label, get, type?, options?, readonly?, cls? (열 구분용), cellClass?(row) }
   // filters: [{ label, values: [...], get(row) }] → 검색창 옆 드롭다운
+  // 칩에 쓰는 짧은 학교 이름: 원곡고등학교 → 원곡고, 갈월중학교 → 갈월중
+  const shortSchool = s => String(s || "").trim().replace(/고등학교$/, "고").replace(/중학교$/, "중");
+  // 맨 위 '할 일' 안내판: 그룹마다 학교 이름 칩. 학교 칩을 누르면 표 검색에 그 학교를 넣어 바로 찾음
+  function todoBoard(title, groups, doneText, searchIn) {
+    const card = el("div", "todo-board");
+    const total = groups.reduce((n, g) => n + g.items.length, 0);
+    card.append(el("h3", "", title + (total ? " · " + total + "개 학교" : "")));
+    if (!total) { card.classList.add("ok"); card.append(el("p", "todo-done", "✔ " + doneText)); return card; }
+    groups.filter(g => g.items.length).forEach(g => {
+      const row = el("div", "todo-row");
+      row.append(el("span", "todo-label " + (g.cls || ""), g.label + " " + g.items.length));
+      g.items.forEach(it => {
+        const c = el("button", "todo-chip " + (g.cls || ""), it.text);
+        c.type = "button";
+        c.title = "표에서 이 학교 찾기";
+        c.addEventListener("click", () => {
+          const s = searchIn && searchIn.querySelector(".gsearch");
+          if (!s) return;
+          s.value = it.school; s.dispatchEvent(new Event("input"));
+          s.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        row.append(c);
+      });
+      card.append(row);
+    });
+    return card;
+  }
+  // 다른 선생님·팀장이 바꾼 내용을 30초마다 확인해 다시 그림 (탭을 떠났거나 칸을 고치는 중이면 건너뜀)
+  function autoRefresh(box, signature, reload, ms = 30000) {
+    const id = (box._refreshId || 0) + 1;
+    box._refreshId = id;
+    let last = null;
+    const sync = () => signature().then(s => { last = s; }).catch(() => {});
+    sync();
+    box._resync = sync; // 내가 저장한 뒤에 부르면 내 수정으로는 다시 그리지 않음 (필터·검색 유지)
+    const t = setInterval(async () => {
+      if (!box.isConnected || box._refreshId !== id) { clearInterval(t); return; }
+      if (document.hidden) return;
+      const a = document.activeElement;
+      if (a && box.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+      try {
+        const s = await signature();
+        if (last !== null && s !== last) { clearInterval(t); reload(); }
+        last = s;
+      } catch (e) { /* 다음 번에 다시 */ }
+    }, ms);
+  }
+  // 표의 바뀜 표시: 줄 수 + 가장 최근 수정 시각
+  async function tableSig(table, filter) {
+    let q = sb.from(table).select("updated_at", { count: "exact" });
+    q = filter(q);
+    const { data, count, error } = await q.order("updated_at", { ascending: false }).limit(1);
+    if (error) throw error;
+    return count + "|" + (data[0] ? data[0].updated_at : "");
+  }
+
   function grid(box, { columns, rows, onSave, onDelete, onAdd, exportName, filterable = true, filters = [], canSave }) {
     box.replaceChildren();
     // canSave: 편집자가 아니어도 칸을 고칠 수 있는 표 (예: 심판의 경기 결과 입력). 추가·삭제·내려받기는 그대로 편집자만
@@ -955,6 +1011,8 @@
       rows = r.data; scores = s.data;
       keys = (m.data && m.data.columns) || [...new Set(rows.flatMap(x => Object.keys(x.data)))];
       render();
+      const sheet = current;
+      autoRefresh(box, () => tableSig("sheet_rows", q => q.eq("sheet", sheet)), () => { if (current === sheet) load(); });
     }
 
     function compute() {
@@ -1010,13 +1068,20 @@
       });
       const filters = [addDupeColumn(columns, rows, "학교")];
       rankAndSort(r => filters[0].get(r) === "확인 필요");
+      // 맨 위 할 일: 중복 확인 → 티어 미입력(몇 명 들어왔는지)
+      const named = rows.filter(r => String(r.data["학교"] || "").trim());
+      const item = (r, extra) => ({ school: String(r.data["학교"]).trim(), text: shortSchool(r.data["학교"]) + (extra || "") });
+      summary.prepend(todoBoard("할 일 (" + divOf(current) + ")", [
+        { label: "중복 신청 확인", cls: "t-dupe", items: named.filter(r => r._todo === "확인 필요").map(r => item(r)) },
+        { label: "주전 티어 미입력", cls: "t-tier", items: named.filter(r => r._todo && r._todo !== "확인 필요").map(r => item(r, " " + r._n + "/5")) }
+      ], "모든 학교의 주전 5명 티어가 입력되었습니다.", inner));
       if (!keys.includes("순번")) columns.unshift({ key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? r._todo : r._rank, cellClass: r => (r._todo ? "dupe" : "") });
       columns.push({ key: "_avg", label: "평균(주전5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") });
       grid(inner, {
         columns, rows, filters, exportName: "팀별 티어 현황(" + divOf(current) + ")",
         onSave: async (r, c, v) => {
           // 바뀐 칸만 저장 (행 전체를 덮어쓰지 않음)
-          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) { r.data = { ...r.data, [c.key]: v }; render(); }
+          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) { r.data = { ...r.data, [c.key]: v }; render(); if (box._resync) box._resync(); }
         },
         onDelete: r => deleteSheetRow(r, current, load),
         onAdd: async () => {
@@ -2440,6 +2505,16 @@
     const counts = {};
     schools.forEach(s => { const k = stateOf(s); counts[k] = (counts[k] || 0) + 1; });
     box.append(el("p", "rec-done", ["확인 완료", "수정함", "미확인", "중복 확인 중"].map(k => k + " " + (counts[k] || 0)).join(" · ")));
+    // 맨 위 할 일: 팀장이 아직 확인하지 않은 학교(부문별) → 중복 신청 확정 대기
+    const holder = el("div");
+    const item = s => ({ school: s.label, text: shortSchool(s.label) });
+    box.append(todoBoard("할 일 · 팀장 명단 확인", [
+      { label: "중등부 미확인", cls: "t-dupe", items: schools.filter(s => s.division === "중등부" && stateOf(s) === "미확인").map(item) },
+      { label: "고등부 미확인", cls: "t-dupe", items: schools.filter(s => s.division === "고등부" && stateOf(s) === "미확인").map(item) },
+      { label: "중복 신청 확정 대기", cls: "t-wait", items: schools.filter(s => stateOf(s) === "중복 확인 중").map(item) }
+    ], "모든 학교 팀장이 명단을 확인했습니다.", holder));
+    autoRefresh(box, async () => (await tableSig("roster_status", q => q)) + "/" + (await tableSig("sheet_rows", q => q.in("sheet", ["roster_middle", "roster_high"]))),
+      () => loadRosterCheck(box));
 
     // 칸 이름 → 사람이 읽는 라인 이름
     const KEY_LABEL = k => k.replace(/^\d+\.\s*/, "").replace(/\(학생 이름\)( 및 라인)?/, " 이름").replace(/LOL 아이디/, "아이디").replace(/^선수(\d)$/, "주전$1 티어").replace(/^예비(\d)$/, "후보$1 티어");
@@ -2448,7 +2523,6 @@
       return keys.filter(k => String((before || {})[k] || "") !== String((after || {})[k] || ""))
         .map(k => KEY_LABEL(k) + ": " + ((before || {})[k] || "(빈칸)") + " → " + ((after || {})[k] || "(빈칸)"));
     }
-    const holder = el("div");
     box.append(holder);
     grid(holder, {
       columns: [
