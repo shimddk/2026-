@@ -168,6 +168,15 @@
       return;
     }
     if (res.teacher) root.append(el("p", "note", "교사용 화면: 학생용 공개 여부와 관계없이 보입니다."));
+    // 이용 주의 (학교폭력·사이버폭력 예방): 이름이 보이는 곳 바로 위에 짧게, 자세한 내용은 개인정보 처리방침
+    const guard = el("div", "rec-guard");
+    guard.setAttribute("role", "note");
+    guard.append(el("strong", "", "⚠️ 다른 학교 학생의 이름·아이디로 장난치지 마세요"),
+      el("p", "", "여기 공개된 학교·이름·게임 아이디는 대회 준비에만 쓸 수 있습니다. 놀리기·비방·사칭·괴롭힘이나 캡처해서 퍼뜨리는 행동은 학교폭력(사이버폭력)이 될 수 있고, 개인정보 관련 법 위반으로 대회 실격·학교 통보까지 이어질 수 있습니다. 피해를 보거나 목격하면 지도교사나 디스코드 질문방에 바로 알려 주세요."));
+    const more = el("a", "", "자세히 보기 (개인정보 처리방침)");
+    more.href = "privacy.html"; more.target = "_blank"; more.rel = "noopener";
+    guard.lastChild.append(" ", more);
+    root.append(guard);
     // 팀장 확인 상태·수정 기간
     const { data: rs } = await sb.rpc("public_roster_status");
     const rsTeams = (rs && rs.teams) || [];
