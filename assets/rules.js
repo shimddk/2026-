@@ -92,12 +92,8 @@
       if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
       if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
     });
-    const counter = el("div", "counter", "1 / " + cards.length);
-    track.addEventListener("scroll", () => {
-      const w = (track.firstElementChild?.offsetWidth || 1) + 16;
-      counter.textContent = Math.min(cards.length, Math.round(track.scrollLeft / w) + 1) + " / " + cards.length;
-    }, { passive: true });
-    wrap.append(prev, track, next, counter);
+    // 'n / 전체' 숫자는 한 화면에 카드가 여러 장 보이면 끝까지 넘겨도 마지막 번호가 안 나와서 없앰 (2026-10-19 사용자 요청)
+    wrap.append(prev, track, next);
     return wrap;
   }
 
