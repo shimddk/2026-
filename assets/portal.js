@@ -1146,6 +1146,15 @@
         const regions = [...new Set(rows.map(region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
         filters.push({ label: "지역", values: regions, get: region });
       }
+      if (current === "captains") {
+        // 팀장 연락처: 학교 가나다순(같은 학교는 원래 순서, 빈 줄 맨 아래), '순번'은 이 순서대로 화면에서 매김 → 새 학교가 들어와도 자동으로 제자리
+        const schoolOf = r => String(r.data["학교"] || "").trim();
+        rows.sort((a, b) => (!schoolOf(a)) - (!schoolOf(b)) || schoolOf(a).localeCompare(schoolOf(b), "ko"));
+        rows.forEach((r, i) => { r._no = schoolOf(r) ? i + 1 : ""; });
+        const seq = { key: "_no", label: "순번", readonly: true, get: r => r._no };
+        const at = columns.findIndex(c => c.key === "순번");
+        if (at >= 0) columns[at] = seq; else columns.unshift(seq);
+      }
       let badNote = 0;
       if (current.startsWith("roster_")) {
         // 팀장: 팀장 연락처 표에서 학교별 팀장 이름을 가져와 '팀장' 열과 선수 이름 칸 배지로 표시
