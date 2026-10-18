@@ -1405,10 +1405,20 @@
   //  티어 평균 순으로 줄 세워 조 수(G)만큼씩 시드(포트)를 자르고, 시드마다 조에 1팀씩 무작위로 넣되
   //  바로 위 시드 팀과의 순위 차이가 G ± 여유(중등 16±6 = 10~22위, 고등 8±3 = 5~11위) 안인 조합만 뽑는다.
   //  조건을 만족하는 조합을 못 찾으면 여유를 1씩 넓혀 다시 뽑는다(결과의 slack으로 알림). 포트 1 = 1번 자리.
-  function drawGroups(teams, groups) {
+  //  기권 예상 학교(risky, 2026-10-18): 3팀 조에는 넣지 않고 4팀 조에만, 한 조에 1개씩(4팀 조보다 많으면 최대 2개).
+  //  → 시도마다 4번 시드를 받을 조(4팀 조)를 먼저 무작위로 정해 두고 그 조건으로 짝짓는다.
+  function drawGroups(teams, groups, risky = new Set()) {
     const G = groups.length, base = Math.round(G * 6 / 16);
     const pots = [];
     for (let i = 0; i < teams.length; i += G) pots.push(teams.slice(i, i + G).map((t, j) => ({ t, rank: i + j + 1 })));
+    const n4 = pots.length >= 4 ? pots[3].length : 0;          // 4팀 조 수
+    const nRisky = teams.filter(t => risky.has(t)).length;
+    const cap = nRisky <= n4 ? 1 : 2;
+    const riskOk = !nRisky || nRisky <= n4 * 2;                 // 조건을 지킬 수 있는지
+    const check = result => {                                   // 결과가 기권 예상 조건을 지키는지
+      if (!nRisky) return true;
+      return groups.every(g => { const l = result[g].filter(Boolean), r = l.filter(t => risky.has(t)).length; return !r || (l.length === 4 && r <= cap); });
+    };
     // 왼쪽(팀) 모두를 오른쪽(조)에 하나씩 짝짓기 — 무작위 순서로 시도하고 막히면 되돌아감
     function match(left, right, ok, budget) {
       const used = new Set(), pick = new Map();
@@ -1425,25 +1435,34 @@
       }
       return go(0) ? pick : null;
     }
+    const useRisk = nRisky > 0 && riskOk;
     for (let slack = base; slack <= G; slack++) {
-      const result = Object.fromEntries(groups.map(g => [g, []]));
-      const rankIn = Object.fromEntries(groups.map(g => [g, []]));
-      let okAll = true;
-      for (let pi = 0; pi < pots.length && okAll; pi++) {
-        const pot = pots[pi];
-        const ok = (team, g) => pi === 0 || (rankIn[g][pi - 1] != null && Math.abs(team.rank - rankIn[g][pi - 1] - G) <= slack);
-        let pick = null;
-        for (let tries = 0; tries < 30 && !pick; tries++) pick = match(pot, groups, ok, { n: 5000 });
-        if (!pick) { okAll = false; break; }
-        pick.forEach((g, team) => { result[g][pi] = team.t; rankIn[g][pi] = team.rank; });
+      for (let att = 0; att < (useRisk ? 25 : 1); att++) {
+        const four = new Set(shuffle(groups.slice()).slice(0, n4));   // 이번 시도의 4팀 조
+        const result = Object.fromEntries(groups.map(g => [g, []]));
+        const rankIn = Object.fromEntries(groups.map(g => [g, []]));
+        const cnt = Object.fromEntries(groups.map(g => [g, 0]));
+        let okAll = true;
+        for (let pi = 0; pi < pots.length && okAll; pi++) {
+          const pot = pots[pi];
+          const ok = (team, g) => (pi === 0 || (rankIn[g][pi - 1] != null && Math.abs(team.rank - rankIn[g][pi - 1] - G) <= slack)) &&
+            (!useRisk || ((pi !== 3 || four.has(g)) && (!risky.has(team.t) || (four.has(g) && cnt[g] < cap))));
+          let pick = null;
+          for (let tries = 0; tries < 30 && !pick; tries++) pick = match(pot, groups, ok, { n: 5000 });
+          if (!pick) { okAll = false; break; }
+          pick.forEach((g, team) => { result[g][pi] = team.t; rankIn[g][pi] = team.rank; if (risky.has(team.t)) cnt[g]++; });
+        }
+        if (okAll) return { result, slack, base, G, nRisky, riskMet: check(result), cap };
       }
-      if (okAll) return { result, slack, base, G };
     }
     // 그래도 안 되면 예전 방식(시드만 지킴)
     const result = Object.fromEntries(groups.map(g => [g, []]));
     pots.forEach((pot, pi) => { const gs = shuffle(groups.slice()).slice(0, pot.length); shuffle(pot.slice()).forEach((x, i) => { result[gs[i]][pi] = x.t; }); });
-    return { result, slack: null, base, G };
+    return { result, slack: null, base, G, nRisky, riskMet: check(result), cap };
   }
+  const drawRiskText = d => !d.nRisky ? "" : d.riskMet
+    ? " · 기권 예상 " + d.nRisky + "팀: 모두 4팀 조, 한 조에 최대 " + d.cap + "팀"
+    : " · ⚠️ 기권 예상 " + d.nRisky + "팀 조건(4팀 조·한 조 최대 " + d.cap + "팀)을 맞추지 못했습니다";
   const drawRangeText = d => d.slack == null ? "순위 차이 조건을 맞추지 못해 시드만 지켜 무작위로 뽑았습니다"
     : "바로 위 시드 팀과의 순위 차이 " + (d.G - d.slack) + "~" + (d.G + d.slack) + "위" + (d.slack > d.base ? " (기본 " + (d.G - d.base) + "~" + (d.G + d.base) + "위로는 조합이 없어 넓힘)" : "");
 
@@ -1634,6 +1653,43 @@
     dlg.showModal();
   }
 
+  // 기권 예상 학교 (교사 전용 표 forfeit_watch, 관리자만 표시·해제): 조 편성 때 3팀 조 제외, 4팀 조에 고르게
+  async function loadRisky(div) {
+    const { data } = await sb.from("forfeit_watch").select("*").eq("division", div).order("created_at");
+    return data || [];
+  }
+  function riskEditor(div, teams, list, onChange) {
+    const box = el("div", "risk-box");
+    box.append(el("b", "", "⚠ 기권 예상 학교 " + list.length + "개"), el("span", "note", " 연락 두절 등 · 교사만 보임 · 3팀 조에는 넣지 않고 4팀 조에 한 조 1개씩(많으면 최대 2개)"));
+    const chips = el("div", "todo-row");
+    list.forEach(x => {
+      const c = el("span", "todo-chip t-dupe", shortSchool(x.school) + (x.note ? " · " + x.note : ""));
+      if (isOwner()) {
+        const del = el("button", "risk-del", "✕"); del.type = "button"; del.setAttribute("aria-label", x.school + " 기권 예상 해제");
+        del.addEventListener("click", async () => { if (await save(sb.from("forfeit_watch").delete().eq("id", x.id), "해제했습니다")) onChange(); });
+        c.append(del);
+      }
+      chips.append(c);
+    });
+    if (isOwner()) {
+      const sel = el("select");
+      sel.setAttribute("aria-label", "기권 예상 학교 추가");
+      const o0 = el("option", "", "+ 학교 추가"); o0.value = ""; sel.append(o0);
+      teams.filter(t => !list.some(x => normSchool(x.school) === normSchool(t))).sort((a, b) => a.localeCompare(b, "ko"))
+        .forEach(t => { const o = el("option", "", t); o.value = t; sel.append(o); });
+      sel.addEventListener("change", async () => {
+        if (!sel.value) return;
+        const note = prompt(sel.value + "을(를) 기권 예상으로 표시합니다. 사유(선택, 예: 연락 두절)", "연락 두절");
+        if (note === null) { sel.value = ""; return; }
+        if (await save(sb.from("forfeit_watch").insert({ division: div, school: sel.value, note: note.trim() || null }), "기권 예상으로 표시했습니다")) onChange();
+        else sel.value = "";
+      });
+      chips.append(sel);
+    }
+    box.append(chips);
+    return box;
+  }
+
   // 편성 대상: 확인 사항(중복 신청 등)이 없는 확정 팀만, 주전 평균 티어 순(티어 없는 팀은 맨 뒤)
   async function drawTeams(div, ros) {
     const strength = await teamStrength(div);
@@ -1649,15 +1705,19 @@
     const dlg = el("dialog", "rdlg");
     dlg.setAttribute("aria-label", div + " 자동 조 편성");
     const close = () => { dlg.close(); dlg.remove(); };
-    let drawn = drawGroups(teams, groups), result = drawn.result;
+    let riskList = await loadRisky(div);
+    const riskSet = () => new Set(teams.filter(t => riskList.some(x => normSchool(x.school) === normSchool(t))));
+    let drawn = drawGroups(teams, groups, riskSet()), result = drawn.result;
     const body = el("div");
     function draw() {
       body.replaceChildren();
+      const rs = riskSet();
+      body.append(riskEditor(div, teams, riskList, async () => { riskList = await loadRisky(div); drawn = drawGroups(teams, groups, riskSet()); result = drawn.result; draw(); }));
       const n4 = groups.filter(g => result[g].filter(Boolean).length === 4).length;
       const n3 = groups.filter(g => result[g].filter(Boolean).length === 3).length;
       const n2 = groups.filter(g => result[g].filter(Boolean).length <= 2).length;
       body.append(el("p", "note", div + " " + teams.length + "팀 → " + groups.length + "개 조 (4팀 조 " + n4 + " · 3팀 조 " + n3 + (n2 ? " · 2팀 이하 조 " + n2 : "") + ")" +
-        " · 포트 = 주전 평균 티어 순위 " + groups.length + "팀씩, 티어 없는 팀은 마지막 포트 · " + drawRangeText(drawn)));
+        " · 포트 = 주전 평균 티어 순위 " + groups.length + "팀씩, 티어 없는 팀은 마지막 포트 · " + drawRangeText(drawn) + drawRiskText(drawn)));
       if (pending.length) body.append(el("p", "rdlg-err", "중복 신청 확인 중이라 빠진 학교: " + pending.join(", ") + " — 확정 후 다시 편성하거나 직접 넣어 주세요."));
       if (teams.length > groups.length * 4) body.append(el("p", "rdlg-err", "팀이 " + groups.length * 4 + "팀보다 많아 " + (teams.length - groups.length * 4) + "팀이 들어가지 못했습니다. 조 수를 늘려야 합니다."));
       const wrap = el("div", "slot-grid");
@@ -1668,6 +1728,7 @@
           const t = result[g][i];
           const row = el("div", "slot-row");
           row.append(el("span", "slot-no", (i + 1) + "번"), el("span", "", t || "— (빈 자리)"));
+          if (t && rs.has(t)) row.append(el("small", "risk-tag", "⚠ 기권 예상"));
           c.append(row);
         }
         wrap.append(c);
@@ -1676,7 +1737,7 @@
     }
     const btns = el("div", "rdlg-btns");
     const again = el("button", "btn ghost", "다시 뽑기"); again.type = "button";
-    again.addEventListener("click", () => { drawn = drawGroups(teams, groups); result = drawn.result; draw(); });
+    again.addEventListener("click", () => { drawn = drawGroups(teams, groups, riskSet()); result = drawn.result; draw(); });
     const cancel = el("button", "btn ghost", "닫기"); cancel.type = "button"; cancel.addEventListener("click", close);
     const ok = el("button", "btn", "이대로 저장"); ok.type = "button";
     ok.addEventListener("click", async () => {
@@ -1711,6 +1772,8 @@
     const { ranked, teams, pending } = await drawTeams(div, ros || []);
     const groups = groupsFor(div, teams.length);
     const info = new Map(ranked.map((x, i) => [x.n, { rank: x.s == null ? null : i + 1, avg: x.s }]));
+    const riskList = await loadRisky(div);
+    const rs = new Set(teams.filter(t => riskList.some(x => normSchool(x.school) === normSchool(t))));
     box.replaceChildren();
     const sw = el("div", "div-switch");
     ["중등부", "고등부"].forEach(d => {
@@ -1725,14 +1788,14 @@
     const head = el("div", "slot-head");
     head.append(sw, again);
     const body = el("div");
-    box.append(head, el("p", "note", "⚠️ 미리 보기 전용입니다. 실제 조 편성·대진표·학생 화면에는 저장되지 않습니다. 실제 편성은 '대진·경기 결과' 탭의 '자동 조 편성'에서 합니다."), body);
+    box.append(head, el("p", "note", "⚠️ 미리 보기 전용입니다. 실제 조 편성·대진표·학생 화면에는 저장되지 않습니다. 실제 편성은 '대진·경기 결과' 탭의 '자동 조 편성'에서 합니다."), riskEditor(div, teams, riskList, () => loadDrawPreview(box)), body);
     function draw() {
-      const drawn = drawGroups(teams, groups), result = drawn.result;
+      const drawn = drawGroups(teams, groups, rs), result = drawn.result;
       body.replaceChildren();
       const size = g => result[g].filter(Boolean).length;
       const n4 = groups.filter(g => size(g) === 4).length, n3 = groups.filter(g => size(g) === 3).length, n2 = groups.filter(g => size(g) <= 2).length;
       body.append(el("p", "note", div + " 확정 " + teams.length + "팀 → " + stage + " " + groups.length + "개 조 (4팀 조 " + n4 + " · 3팀 조 " + n3 + (n2 ? " · 2팀 이하 조 " + n2 : "") + ")" +
-        " · 1~4시드 = 주전 평균 티어 순위로 " + groups.length + "팀씩, 시드마다 조는 무작위 · " + drawRangeText(drawn)));
+        " · 1~4시드 = 주전 평균 티어 순위로 " + groups.length + "팀씩, 시드마다 조는 무작위 · " + drawRangeText(drawn) + drawRiskText(drawn)));
       if (pending.length) body.append(el("p", "rdlg-err", "아직 확정되지 않아 빠진 학교(확인 사항 있음): " + pending.join(", ")));
       if (teams.length > groups.length * 4) body.append(el("p", "rdlg-err", "팀이 " + groups.length * 4 + "팀보다 많아 " + (teams.length - groups.length * 4) + "팀이 들어가지 못했습니다."));
       const wrap = el("div", "slot-grid");
@@ -1747,6 +1810,7 @@
           const row = el("div", "slot-row");
           row.append(el("span", "slot-no", (i + 1) + "시드"), el("span", t ? "" : "ph", t || "— (빈 자리)"));
           if (x) row.append(el("span", "slot-st", x.rank ? "티어 " + x.rank + "위 · " + x.avg.toFixed(2) : "티어 미입력"));
+          if (t && rs.has(t)) row.append(el("small", "risk-tag", "⚠ 기권 예상"));
           c.append(row);
         }
         wrap.append(c);
