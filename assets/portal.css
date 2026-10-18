@@ -4,18 +4,18 @@
 .acct { display: flex; align-items: center; gap: 8px; }
 .acct .who { font-size: 13px; color: var(--muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn.small { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
-.tab-teacher { color: #ffd88a; }
+.tab-teacher { color: #9a6200; }
 .tab-teacher[aria-selected="true"] { background: #ffb547; color: #0a0f24; }
 nav[role="tablist"].has-teacher { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
 .tab-break {
   flex-basis: 100%; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700;
-  color: #ffd88a; letter-spacing: .05em; margin-top: 2px;
+  color: #9a6200; letter-spacing: .05em; margin-top: 2px;
 }
 .tab-break::after { content: ""; flex: 1; height: 1px; background: rgba(255, 181, 71, .3); }
 
 /* 로그인 전 안내 창, 하단 링크 */
 #loginNotice { max-width: min(440px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--text); padding: 20px; }
-#loginNotice::backdrop { background: rgba(5, 8, 20, .7); }
+#loginNotice::backdrop { background: rgba(20, 25, 40, .45); }
 #loginNotice h3 { margin: 0 0 8px; }
 #loginNotice p { font-size: 14px; line-height: 1.6; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
@@ -44,7 +44,7 @@ table.dtable td.perm-x { background: #e0283a; color: #fff; font-weight: 700; }
 table.dtable td.perm-x select { color: #fff; font-weight: 700; }
 table.dtable input.cell:hover, table.dtable input.cell:focus, table.dtable select:focus { border-color: var(--line); background: var(--bg); }
 table.dtable select option { background: var(--bg2); }
-table.dtable .del { border: 1px solid var(--line); background: none; color: #ff8a8a; border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
+table.dtable .del { border: 1px solid var(--line); background: none; color: #c62828; border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
 table.dtable.ref td.c { text-align: center; }
 table.dtable.ref th small { display: block; color: var(--muted); font-weight: 400; }
 table.dtable tr.sum td { text-align: center; }
@@ -54,7 +54,7 @@ table.dtable tr.sum td.short .state { color: var(--wait); }
 tr.st-pending td { background: rgba(255, 181, 71, .07); }
 tr.st-blocked td { opacity: .55; }
 td.actions { display: flex; gap: 6px; }
-.btn.danger { color: #ff9b9b; border-color: rgba(255, 120, 120, .4); }
+.btn.danger { color: #c62828; border-color: rgba(255, 120, 120, .4); }
 .btn.danger:disabled { opacity: .35; cursor: not-allowed; }
 .pending-count { font-weight: 700; color: var(--wait); }
 details.audit { margin-top: 16px; }
@@ -68,14 +68,14 @@ table.dtable .del:disabled { opacity: .35; cursor: not-allowed; }
 
 /* 아이디 명단: 라인 묶음 구분 */
 .gfilter { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; }
-table.dtable th, table.dtable td { border-right: 1px solid rgba(40, 51, 100, .6); }
+table.dtable th, table.dtable td { border-right: 1px solid var(--line); }
 table.dtable .lg-start { border-left: 2px solid var(--neon); }
 table.dtable td.lg-a { background: rgba(53, 224, 255, .035); }
 table.dtable td.lg-b { background: rgba(178, 107, 255, .045); }
-table.dtable thead th.lg-a { background: #13234a; }
-table.dtable thead th.lg-b { background: #1d1b4d; }
+table.dtable thead th.lg-a { background: #dcecf4; }
+table.dtable thead th.lg-b { background: #e8e1f8; }
 table.dtable td.notag { background: rgba(255, 181, 71, .16); }
-table.dtable td.notag input { color: #ffd88a; }
+table.dtable td.notag input { color: #9a6200; }
 
 /* 전적 검색 */
 .rec-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
@@ -86,18 +86,18 @@ table.dtable td.notag input { color: #ffd88a; }
 .rec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .rec-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .rec-line { min-width: 52px; text-align: center; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 8px; background: rgba(53, 224, 255, .12); color: var(--neon); }
-.rec-line.sub { background: rgba(178, 107, 255, .15); color: #d3b0ff; }
+.rec-line.sub { background: rgba(178, 107, 255, .15); color: #6d3fd0; }
 .rec-name { min-width: 64px; color: var(--muted); font-size: 14px; }
 .rec-id { color: var(--text); text-decoration: none; border-bottom: 1px dashed var(--line); overflow-wrap: anywhere; }
 .rec-id:hover { color: var(--neon); border-color: var(--neon); }
-.rec-id.notag { color: #ffd88a; }
+.rec-id.notag { color: #9a6200; }
 .rec-warn { color: var(--wait); font-size: 11px; }
 .rec-card .btn { align-self: flex-start; text-decoration: none; }
 /* 부문별 배경 (디스코드 색과 같게): 중등부 보라 / 고등부 파랑 */
 .rec-card.div-mid { background: linear-gradient(180deg, rgba(150, 90, 255, .22), rgba(150, 90, 255, .08)); border-color: rgba(170, 120, 255, .55); }
 .rec-card.div-high { background: linear-gradient(180deg, rgba(60, 130, 255, .22), rgba(60, 130, 255, .08)); border-color: rgba(90, 150, 255, .55); }
-.rec-card.div-mid .rec-meta { color: #d3b0ff; }
-.rec-card.div-high .rec-meta { color: #9cc4ff; }
+.rec-card.div-mid .rec-meta { color: #6d3fd0; }
+.rec-card.div-high .rec-meta { color: #2563c9; }
 .rec-ask { margin-bottom: 12px; line-height: 1.6; }
 .pub-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); cursor: pointer; }
 
@@ -105,9 +105,9 @@ table.dtable td.notag input { color: #ffd88a; }
 .coach-sum, .coach-form, .coach-filter { margin-bottom: 16px; }
 .coach-sum h3, .coach-form h3, .coach-filter h3, .coach-day h3 { margin: 0 0 10px; font-size: 17px; }
 .coach-day { margin-bottom: 20px; }
-.tier-chip.spent { border-color: #ff8a8a; }
-.tier-chip.spent b { color: #ff9b9b; }
-td.spent-cell { color: #ff9b9b; font-weight: 700; }
+.tier-chip.spent { border-color: #c62828; }
+.tier-chip.spent b { color: #c62828; }
+td.spent-cell { color: #c62828; font-weight: 700; }
 tr.coach-cancel td { opacity: .45; text-decoration: line-through; }
 .coach-fields { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .coach-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
@@ -119,8 +119,8 @@ tr.coach-cancel td { opacity: .45; text-decoration: line-through; }
 .todo-board h3 { margin: 0 0 8px; font-size: 16px; }
 .todo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
 .todo-label { font-weight: 700; font-size: 13px; margin-right: 4px; min-width: 9.5em; }
-.todo-label.t-dupe { color: #ff9b9b; }
-.todo-label.t-tier { color: #ffd88a; }
+.todo-label.t-dupe { color: #c62828; }
+.todo-label.t-tier { color: #9a6200; }
 .todo-label.t-wait { color: var(--muted); }
 .todo-chip { border: 1px solid var(--line); background: var(--bg2); color: var(--text); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer; }
 .todo-chip.t-dupe { border-color: rgba(255, 120, 120, .6); }
@@ -134,12 +134,12 @@ table.dtable td.captain::before {
   content: "팀장"; display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px;
   font-size: 11px; font-weight: 700; background: #ffb547; color: #0a0f24; vertical-align: middle;
 }
-table.dtable td.cap-missing { color: #ffd88a; }
+table.dtable td.cap-missing { color: #9a6200; }
 
 /* 중복 신청 표시 */
-table.dtable td.dupe { color: #ffb4b4; font-weight: 700; background: rgba(255, 120, 120, .1); }
-.dupe-badge { font-size: 11px; font-weight: 700; color: #ffb4b4; background: rgba(255, 120, 120, .14); border-radius: 999px; padding: 2px 8px; }
-.note.sync-bad { color: #ffb4b4; font-weight: 700; }
+table.dtable td.dupe { color: #c62828; font-weight: 700; background: rgba(255, 120, 120, .1); }
+.dupe-badge { font-size: 11px; font-weight: 700; color: #c62828; background: rgba(255, 120, 120, .14); border-radius: 999px; padding: 2px 8px; }
+.note.sync-bad { color: #c62828; font-weight: 700; }
 
 /* 티어 현황 */
 .tier-summary { margin-bottom: 12px; }
@@ -170,10 +170,10 @@ section.teacher > .lead { font-size: 14px; margin: 0 0 12px; }
 .carousel { position: relative; }
 .carousel .track { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 12px; scrollbar-width: thin; }
 .rcard {
-  flex: 0 0 min(340px, 86%); scroll-snap-align: start; background: linear-gradient(160deg, #1b2655, #141c3d);
+  flex: 0 0 min(340px, 86%); scroll-snap-align: start; background: linear-gradient(160deg, #ffffff, #f2f4f9);
   border: 1px solid var(--line); border-radius: 18px; padding: 20px; min-height: 300px; display: flex; flex-direction: column;
 }
-.rcard.brief { background: linear-gradient(160deg, #22204e, #161a3a); }
+.rcard.brief { background: linear-gradient(160deg, #f7f3ff, #eef0f8); }
 .rhead { display: flex; align-items: center; gap: 10px; }
 .ricon { font-size: 30px; }
 .rno { font-size: 12px; font-weight: 700; color: var(--neon); border: 1px solid var(--neon); border-radius: 999px; padding: 2px 8px; }
@@ -194,7 +194,7 @@ section.teacher > .lead { font-size: 14px; margin: 0 0 12px; }
 @media (max-width: 820px) { .carousel .nav { display: none; } .acct .who { max-width: 120px; } }
 /* 경고 조치 */
 .warn-sum { margin-bottom: 16px; }
-table.dtable td.warn-lv { color: #ffd38a; font-weight: 700; }
+table.dtable td.warn-lv { color: #9a6200; font-weight: 700; }
 .warn-steps { margin: 8px 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
 /* 대진·경기 결과 (교사용) */
 .slot-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); margin-top: 8px; }
@@ -205,7 +205,7 @@ table.dtable td.warn-lv { color: #ffd38a; font-weight: 700; }
 .slot-st { color: var(--muted); font-size: 12px; }
 .slot-st.up { color: var(--neon); font-weight: 700; }
 input.cell.dupe { border-color: #ff7878; }
-.score-editor summary.dupe { color: #ffb4b4; font-weight: 700; }
+.score-editor summary.dupe { color: #c62828; font-weight: 700; }
 .bk-sub { margin: 20px 0 8px; }
 table.dtable td.ph { color: var(--muted); font-size: 13px; }
 table.dtable td.win { color: var(--neon); font-weight: 700; }
@@ -213,14 +213,14 @@ table.dtable td.lose { opacity: .6; }
 .rec-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 /* 팀장 명단 확인·수정 */
 .rec-done { font-size: 13px; color: var(--ok, #3ddc97); font-weight: 700; }
-.ok-badge { font-size: 12px; font-weight: 700; color: #3ddc97; background: rgba(61, 220, 151, .14); border-radius: 999px; padding: 2px 9px; }
+.ok-badge { font-size: 12px; font-weight: 700; color: var(--ok); background: rgba(61, 220, 151, .14); border-radius: 999px; padding: 2px 9px; }
 .btn.edit-roster { background: linear-gradient(90deg, #3ddc97, var(--neon)); color: #06122a; }
 .rdlg { width: min(820px, 96vw); max-height: 92vh; border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--text); padding: 18px; }
-.rdlg::backdrop { background: rgba(4, 7, 20, .72); }
+.rdlg::backdrop { background: rgba(20, 25, 40, .45); }
 .rdlg h3 { margin: 0 0 6px; }
 .rdlg-field { display: block; margin: 10px 0; font-size: 14px; color: var(--muted); }
 .rdlg-field input { display: block; margin-top: 4px; width: 140px; font-size: 20px; letter-spacing: .3em; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); }
-.rdlg-err { color: #ffb4b4; font-size: 13px; min-height: 1em; margin: 6px 0; }
+.rdlg-err { color: #c62828; font-size: 13px; min-height: 1em; margin: 6px 0; }
 .rdlg-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .rdlg-btns .btn:disabled { opacity: .45; cursor: not-allowed; }
 .rdlg-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
@@ -230,7 +230,7 @@ table.dtable td.lose { opacity: .6; }
 .rdlg-table td.rdlg-line { white-space: nowrap; width: 84px; }
 .rdlg-table td.rdlg-line select { margin-top: 4px; font-size: 12px; padding: 3px 4px; }
 .rdlg-table tr.bad td:nth-child(3) input { border-color: #ff7878; }
-.rdlg-rowerr { color: #ffb4b4; font-size: 12px; margin-top: 3px; }
+.rdlg-rowerr { color: #c62828; font-size: 12px; margin-top: 3px; }
 @media (max-width: 600px) {
   .rdlg { padding: 14px; }
   .rdlg-table { min-width: 0; }
@@ -244,14 +244,14 @@ table.dtable td.lose { opacity: .6; }
   .rdlg-table td:nth-child(3) { grid-column: 1 / -1; grid-row: 3; }
 }
 /* 닉네임 점검 */
-.rec-hidden { color: #ffb4b4; font-size: 13px; font-style: italic; }
-.rec-nick { margin: 0; font-size: 12px; color: #ffb4b4; background: rgba(255, 120, 120, .1); border-radius: 8px; padding: 6px 10px; }
+.rec-hidden { color: #c62828; font-size: 13px; font-style: italic; }
+.rec-nick { margin: 0; font-size: 12px; color: #c62828; background: rgba(255, 120, 120, .1); border-radius: 8px; padding: 6px 10px; }
 .rdlg-extras { margin: 8px 0; font-size: 13px; }
 .rdlg-extras ul { margin: 4px 0 0; padding-left: 18px; }
 table.dtable tr.nick-change td { background: rgba(255, 120, 120, .12); }
 table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
-.rdlg-rowerr .nick-need { color: #ff9a9a; font-weight: 700; margin-top: 2px; }
-.rdlg-rowerr .nick-warn { color: #ffd38a; margin-top: 2px; }
+.rdlg-rowerr .nick-need { color: #c62828; font-weight: 700; margin-top: 2px; }
+.rdlg-rowerr .nick-warn { color: #9a6200; margin-top: 2px; }
 
 /* 지원단 명단: 담당 학교 */
 .dtable th.col-schools, .dtable td.col-schools { min-width: 460px; width: 40%; }
@@ -261,7 +261,7 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 .ss-body h4 { margin: 12px 0 6px; font-size: 15px; }
 .ss-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 10px; }
 .ss-item { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 4px 6px; border-radius: 8px; cursor: pointer; }
-.ss-item:hover { background: rgba(255, 255, 255, .05); }
+.ss-item:hover { background: rgba(20, 30, 60, .05); }
 .ss-item small { width: 100%; padding-left: 22px; color: var(--muted); font-size: 12px; }
 .ss-item.taken { opacity: .75; }
 
@@ -283,8 +283,8 @@ table.dtable tr.nick-check td { background: rgba(255, 200, 100, .10); }
 
 /* 전적 검색(교사 화면): 닉네임 점검 표시 */
 .rec-list .nick-need, .rec-list .nick-warn { display: block; width: 100%; font-size: 12px; margin-top: 2px; }
-.rec-list .nick-need { color: #ff9a9a; font-weight: 700; }
-.rec-list .nick-warn { color: #ffd38a; }
+.rec-list .nick-need { color: #c62828; font-weight: 700; }
+.rec-list .nick-warn { color: #9a6200; }
 
 /* 진출 팀 배정 */
 .adv-list { margin: 10px 0; }
