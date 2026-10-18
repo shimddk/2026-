@@ -1198,7 +1198,11 @@
           };
         });
         // 학교 이름 가나다순, 지역 필터, 라인별(이름+아이디) 구분선, 태그 없는 아이디 강조
-        rows.sort((a, b) => String(a.data["학교 이름"] || "").localeCompare(String(b.data["학교 이름"] || ""), "ko"));
+        // 학교 이름이 빈 줄은 맨 아래. 번호는 이 순서대로 화면에서만 매김(저장 안 함 → 새 학교가 들어와도 자동으로 제자리)
+        const schoolOf = r => String(r.data["학교 이름"] || "").trim();
+        rows.sort((a, b) => (!schoolOf(a)) - (!schoolOf(b)) || schoolOf(a).localeCompare(schoolOf(b), "ko"));
+        rows.forEach((r, i) => { r._no = schoolOf(r) ? i + 1 : ""; });
+        columns.unshift({ key: "_no", label: "번호", readonly: true, get: r => r._no });
         const regions = [...new Set(rows.map(r => r.data["학교 소재 지역"]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
         if (isAll) filters.push({ label: "부문", values: ["중등부", "고등부"], get: r => (r.sheet === "roster_high" ? "고등부" : "중등부") });
         filters.push({ label: "지역", values: regions, get: r => r.data["학교 소재 지역"] });
