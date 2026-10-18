@@ -143,11 +143,11 @@
     (() => {
       // 교육이 끝나면(10/21 22:30) 안내가 저절로 바뀜 (열어 둔 페이지도)
       const p = el("p", "notice-line"), END = Date.parse("2026-10-21T22:30:00+09:00");
-      const draw = () => {
-        p.innerHTML = Date.now() >= END
-          ? "📢 <strong>팀장 대상 대회 교육</strong>은 10월 21일(수)에 진행했습니다. 교육 내용은 아래 카드에서 언제든 확인하세요."
-          : "📢 <strong>팀장 대상 대회 교육</strong>: 10월 21일(수) <strong>오후 8시(20:00) / 10시(22:00)</strong> 2회 진행 · 둘 중 한 번 참여 · 교육 시간 20분<br>팀장과 함께 <strong>팀원 최소 1명 이상</strong> 포함해서 참여해 주세요.";
-      };
+      // 문구 조각: 문자열 = 보통 글자, [글자] = 굵게, null = 줄바꿈 (innerHTML 없이 만듦)
+      const put = parts => p.replaceChildren(...parts.map(x => x === null ? el("br") : Array.isArray(x) ? el("strong", "", x[0]) : document.createTextNode(x)));
+      const draw = () => put(Date.now() >= END
+        ? ["📢 ", ["팀장 대상 대회 교육"], "은 10월 21일(수)에 진행했습니다. 교육 내용은 아래 카드에서 언제든 확인하세요."]
+        : ["📢 ", ["팀장 대상 대회 교육"], ": 10월 21일(수) ", ["오후 8시(20:00) / 10시(22:00)"], " 2회 진행 · 둘 중 한 번 참여 · 교육 시간 20분", null, "팀장과 함께 ", ["팀원 최소 1명 이상"], " 포함해서 참여해 주세요."]);
       draw();
       const left = END - Date.now();
       if (left > 0 && left < 2147483647) setTimeout(draw, left + 500);
