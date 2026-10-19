@@ -6,9 +6,9 @@
 .teacher-ai [hidden] { display: none !important; }
 @font-face { font-family: 'Teacher AI MaruBuri'; src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
 /* 첨부 inheritTheme=false: 말풍선의 복숭아색·무광 남색은 두 테마에서 동일. */
-.teacher-ai-toggle { --ai-peach: #f3ab8c; --ai-matte: #202635; display: flex; align-items: center; gap: 12px; max-width: 100%; margin-left: auto; padding: 19px 21px; border: 1px solid var(--ai-peach); border-radius: 25px 25px 6px 25px; background: var(--ai-matte); color: var(--ai-peach); box-shadow: var(--card-shadow); font-family: 'Teacher AI MaruBuri', serif; font-size: 20px; font-weight: 400; line-height: 1.65; cursor: pointer; text-align: left; }
-.teacher-ai-icon { display: inline-block; flex-shrink: 0; font-size: 27px; }
-.teacher-ai-lettering { min-width: 0; }
+.teacher-ai-toggle { --ai-peach: #f3ab8c; --ai-matte: #202635; display: flex; align-items: center; gap: 8px; width: max-content; max-width: 100%; margin-left: auto; padding: 12px 15px; border: 1px solid var(--ai-peach); border-radius: 25px 25px 6px 25px; background: var(--ai-matte); color: var(--ai-peach); box-shadow: var(--card-shadow); font-family: 'Teacher AI MaruBuri', serif; font-size: 14px; font-weight: 400; line-height: 1.65; cursor: pointer; text-align: left; }
+.teacher-ai-icon { display: inline-block; flex-shrink: 0; font-size: 21px; }
+.teacher-ai-lettering { min-width: 0; white-space: nowrap; }
 .teacher-ai-word { display: inline-block; white-space: nowrap; }
 .teacher-ai-char { display: inline-block; }
 .teacher-ai-panel { display: flex; flex-direction: column; max-height: min(660px, calc(100dvh - 180px)); margin-bottom: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--text); box-shadow: var(--card-shadow); overflow: hidden; }
@@ -27,7 +27,7 @@
 .teacher-ai-form .btn { flex-shrink: 0; white-space: nowrap; }
 .teacher-ai-status { color: var(--muted); font-size: 11px; margin: 8px 0 0; min-height: 1.5em; }
 .teacher-ai :focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
-@media (max-width: 600px) { .teacher-ai { right: 12px; width: calc(100% - 24px); } .teacher-ai-toggle { max-width: 310px; padding: 13px 16px; font-size: 17px; line-height: 1.6; } .teacher-ai-panel { padding: 14px; max-height: calc(100dvh - 180px); } .teacher-ai-form textarea { font-size: 16px; } }
+@media (max-width: 600px) { .teacher-ai { right: 12px; width: calc(100% - 24px); } .teacher-ai-toggle { max-width: 100%; padding: 11px 12px; font-size: clamp(11px, 3.2vw, 13px); line-height: 1.6; } .teacher-ai-panel { padding: 14px; max-height: calc(100dvh - 180px); } .teacher-ai-form textarea { font-size: 16px; } }
 .acct { display: flex; align-items: center; gap: 8px; }
 .acct .who { font-size: 13px; color: var(--muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn.small { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
