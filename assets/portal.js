@@ -1589,7 +1589,8 @@
     runners.sort((a, b) => b.rate - a.rate || byTime(a, b) || a.school.localeCompare(b.school, "ko"));
     thirds.sort((a, b) => b.wins - a.wins || byTime(a, b) || a.school.localeCompare(b.school, "ko"));
     const seats = SEATS[div], G = groups.length;
-    const promoteN = Math.max(0, seats - G), thirdN = Math.max(0, seats - (G - promoteN));
+    const promoteN = 0, thirdN = 0; // 2026-10-20 모집 완료: 조 1·2위만, 3위 추가 승급 없음
+    if (G !== seats) problems.push("확정 조 수(" + seats + "개)와 현재 조 수(" + G + "개)가 다릅니다. 조 편성을 확인해 주세요. 3위 추가 승급은 하지 않습니다.");
     if (G > seats) problems.push("조가 " + G + "개라 1위만으로도 자리(" + seats + ")를 넘습니다");
     if (thirdN > thirds.length) problems.push("올릴 3위가 " + thirdN + "팀 필요한데 후보가 " + thirds.length + "팀뿐입니다");
     // 자르는 선 바로 앞뒤가 같은 성적이거나 경기 시간이 비어 있으면 표시 → 관리자가 직접 고름
@@ -1677,10 +1678,7 @@
     }
     function draw() {
       body.replaceChildren();
-      body.append(el("p", "note", ad.groups.length === MAX_GROUPS[div]
-        ? div + " " + ad.stage + " " + ad.groups.length + "개 조가 모두 구성되어 각 조 1·2위만 진출합니다. 3위 승급은 없습니다. 조 1위는 1위 자리, 조 2위는 2위 자리로 배정합니다."
-        : div + " " + ad.stage + " " + ad.groups.length + "개 조 → 1위 자리 " + SEATS[div] + " = 조 1위 " + ad.firsts.length + " + 잘한 2위 " + ad.promoteN +
-        " / 2위 자리 " + SEATS[div] + " = 나머지 2위 " + (ad.runners.length - ad.promoteN) + " + 잘한 3위 " + ad.thirdN + " (3팀 조의 3위 제외). 기본 선택은 규칙대로이고, 동률이면 직접 바꿀 수 있습니다."));
+      body.append(el("p", "note", div + " " + ad.stage + " 각 조 1·2위만 진출합니다. 3위 승급은 없습니다. 조 1위는 1위 자리, 조 2위는 2위 자리로 배정합니다."));
       ad.problems.forEach(t => body.append(el("p", "rdlg-err", t)));
       if (ad.tieR || ad.tieT) body.append(el("p", "rdlg-err", "자르는 선에 같은 성적인 팀이 있습니다(" + [ad.tieR && "2위", ad.tieT && "3위"].filter(Boolean).join("·") + "). 규정에 따라 직접 골라 주세요."));
       if (ad.missing.length) body.append(el("p", "rdlg-err", "경기 시간이 비어 있는 팀: " + ad.missing.join(", ") + " — 경기 결과 표에 시간을 넣으면 더 정확합니다."));
@@ -1930,8 +1928,8 @@
       b.addEventListener("click", () => { matchDiv = d; reload(); });
       sw.append(b);
     });
-    box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 점수(이긴 팀 1, 진 팀 0)와 경기 시간(분:초)을 넣으면 조 순위가 계산됩니다. " +
-      "③ " + FIRST_STAGE[matchDiv] + "이 모두 끝나면 관리자가 '진출 팀 배정'을 눌러 " + (matchDiv === "중등부" ? "32강" : "본선") + " 자리를 채웁니다. 중등 16개 조·고등 8개 조가 모두 구성되면 각 조 1·2위만 진출하며 3위 승급은 없습니다(조 1위 → 1위 자리, 조 2위 → 2위 자리). 조 수가 적을 때만 잘한 2위를 1위 자리로, 성적 좋은 3위를 남은 2위 자리로 배정합니다(3팀 조의 3위 제외). ④ 그다음 단계는 점수를 넣으면 자동으로 이어집니다."));
+    box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 조별리그는 1·2경기 동시 시작, 3·4경기 +1시간, 5·6경기 +2시간입니다. 점수(이긴 팀 1, 진 팀 0)와 경기 시간(분:초)을 넣으면 조 순위가 계산됩니다. " +
+      "③ " + FIRST_STAGE[matchDiv] + "이 모두 끝나면 관리자가 '진출 팀 배정'을 눌러 " + (matchDiv === "중등부" ? "32강" : "본선") + " 자리를 채웁니다. 중등 16개 조·고등 8개 조가 모두 구성되면 각 조 1·2위만 진출하며 3위 승급은 없습니다(조 1위 → 1위 자리, 조 2위 → 2위 자리). 중등 64팀·고등 32팀 기준으로 3위 추가 승급은 없습니다. ④ 그다음 단계는 점수를 넣으면 자동으로 이어집니다."));
 
     // 1) 조 편성 + 조별 순위 (단계 고르기)
     const stages = matchDiv === "중등부" ? ["64강", "32강", "4강 리그"] : ["32강", "본선 진출", "4강 리그"];
@@ -1976,7 +1974,7 @@
     const usedGroups = new Set((slots || []).filter(s => s.stage === stage && s.school).map(s => s.grp));
     if (editable) sec.append(el("p", "note", usedGroups.size === MAX_GROUPS[matchDiv]
       ? usedGroups.size + "개 조가 모두 구성되어 각 조 1·2위만 진출합니다. 3위 승급은 없습니다."
-      : "첫 예선은 중등 16개 조·고등 8개 조가 모두 구성되면 각 조 1·2위만 진출합니다. 조 수가 적을 때만 성적 좋은 3위가 남는 자리를 채웁니다(3팀 조의 3위 제외)."));
+      : "첫 예선은 중등 64팀·16개 조, 고등 32팀·8개 조입니다. 각 조 1·2위만 진출하며 3위 추가 승급은 없습니다."));
     STAGE_GROUPS[stage].filter(g => !editable || !usedGroups.size || usedGroups.has(g)).forEach(g => {
       const card = el("div", "slot-card");
       card.append(el("h4", "", stage === "4강 리그" ? "4강 리그" : stage === "본선 진출" ? "본선 진출 자리 (1~8 = 1위 자리 A~H, 9~16 = 2위 자리 A~H)" : stage + " " + g + "조"));

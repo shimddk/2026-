@@ -249,6 +249,18 @@
   .bracket-flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 16px; }
   .bracket-flow .stage { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
   .bracket-flow .arrow { color: var(--neon); }
+  .bracket-guide { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+  .bracket-guide article { grid-column: span 2; padding: 20px; border: 1px solid var(--line); border-top: 4px solid var(--neon); border-radius: 15px; background: var(--card); box-shadow: var(--card-shadow); }
+  .bracket-guide article.prelim { grid-column: span 3; border-top-color: var(--neon2); }
+  .bracket-guide h3 { font-size: 18px; margin: 0 0 12px; }
+  .bracket-guide .guide-kicker { color: var(--muted); font-size: 12px; margin: 0 0 7px; }
+  .bracket-guide .guide-path { font-weight: 800; color: var(--neon); margin: 8px 0; font-size: 16px; }
+  .bracket-guide p { line-height: 1.65; margin: 8px 0 0; }
+  .bracket-key { padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); line-height: 1.8; }
+  .group .gm-time { flex-shrink: 0; color: var(--neon); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .group .gm-teams { flex: 1; min-width: 0; }
+  .group .group-times { color: var(--muted); font-size: 12px; margin: 8px 0; }
+  @media (max-width: 700px) { .bracket-guide { grid-template-columns: 1fr; } .bracket-guide article, .bracket-guide article.prelim { grid-column: auto; padding: 16px; } }
   .pending { border: 1px dashed var(--wait); color: var(--wait); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
 
   /* 일정 */
@@ -490,21 +502,23 @@
   <!-- 대진표 -->
   <section id="bracket" role="tabpanel" aria-labelledby="tab-bracket" hidden>
     <h2>대진표</h2>
-    <p class="lead">중등부는 64강 조별리그 → 32강 조별리그(8개 조), 고등부는 32강 조별리그를 거쳐 16팀이 장로·바론 두 그룹 더블 엘리미네이션으로 겨룹니다. 첫 조별리그는 최대한 4팀씩 조를 짜고, 중등부 16개 조·고등부 8개 조가 모두 구성되면 각 조 1·2위만 다음 단계에 오르고, 3위 승급은 없습니다. 조 수가 그보다 적을 때만 성적이 좋은 3위가 남는 진출 자리를 채웁니다(3팀 조의 3위 제외). 그룹 1·2위 4팀이 4강 리그를 치르고, 리그 1·2위는 결승, 3·4위는 3·4위전을 11/8 오프라인 결선에서 치릅니다. <mark class="hl"><strong>모든 경기는 단판(BO1)</strong>입니다.</mark></p>
+    <p class="lead"><mark class="hl"><strong>모든 경기는 단판(BO1)</strong>입니다.</mark></p>
+    <div class="bracket-guide" aria-label="부문별 진출 방식과 대회 진행 단계">
+      <article class="prelim"><p class="guide-kicker">중등부 · 64팀 확정</p><h3>① 중등부 조별리그</h3><p class="guide-path">64강 → 32강 → 본선 16팀</p><p>64강: <strong>16개 조 × 4팀</strong><br>32강: <strong>8개 조 × 4팀</strong><br>각 단계에서 <strong>조 1·2위만 진출</strong></p></article>
+      <article class="prelim"><p class="guide-kicker">고등부 · 32팀 확정</p><h3>① 고등부 조별리그</h3><p class="guide-path">32강 → 본선 16팀</p><p>32강: <strong>8개 조 × 4팀</strong><br>팀마다 3경기씩 진행<br><strong>조 1·2위만 본선 진출</strong></p></article>
+      <article><p class="guide-kicker">10/31(토)~11/1(일) · 부문별 진행</p><h3>② 본선</h3><p class="guide-path">장로 8팀 · 바론 8팀</p><p>두 그룹 <strong>더블 엘리미네이션</strong><br>각 그룹 1·2위 → <strong>4강 진출</strong></p></article>
+      <article><p class="guide-kicker">11/4(수) 18:00 · 부문별 진행</p><h3>③ 4강 리그</h3><p class="guide-path">4팀 풀리그</p><p>리그 1·2위 → <strong>결승</strong><br>리그 3·4위 → <strong>3·4위전</strong></p></article>
+      <article><p class="guide-kicker">11/8(일) · 오프라인</p><h3>④ 결선</h3><p class="guide-path">3·4위전 · 결승 · 시상</p><p>중등: 11:00 / 12:00<br>고등: 14:00 / 15:00</p></article>
+    </div>
+    <p class="bracket-key"><strong>조별리그는 각 조 1·2위만 진출합니다. 3위 승급은 없습니다.</strong><br>4팀이 한 조로, 팀마다 3경기를 치릅니다. 두 경기씩 동시에 진행하고 다음 두 경기는 1시간 뒤 시작합니다.</p>
     <p class="notice-line">📢 대진표는 <strong>10월 20일(화) 오후 7시(19:00)</strong>에 공개 예정입니다.</p>
     <div class="pending">대진표는 10월 20일(화) 19:00에 공개됩니다. 공개되면 이 화면에 팀 이름이 채워집니다.</div>
-    <div class="bracket-flow" aria-label="대회 진행 순서">
-      <span class="stage">조별리그 · 10/24(토)~25(일)<br><small>중등 64강→32강 · 고등 32강, 4팀 1조 중심</small></span><span class="arrow" aria-hidden="true">→</span>
-      <span class="stage">본선 · 10/31(토)~11/1(일)<br><small>더블 엘리미네이션 승자조·패자조</small></span><span class="arrow" aria-hidden="true">→</span>
-      <span class="stage">4강 리그 · 11/4(수)<br><small>4팀 풀리그</small></span><span class="arrow" aria-hidden="true">→</span>
-      <span class="stage">결선 · 11/8(일)<br><small>오프라인 3·4위전·결승</small></span>
-    </div>
     <div class="div-switch" id="divSwitch" role="group" aria-label="부문 선택">
       <button type="button" class="chip" data-div="중등부" aria-pressed="true">중등부</button>
       <button type="button" class="chip" data-div="고등부" aria-pressed="false">고등부</button>
     </div>
     <div id="groups"></div>
-    <p class="note">조 순위는 승수 → (2팀이 같으면) 맞대결 승자 순으로 정하고, 3팀 이상 같으면 지원단이 규정에 따라 정합니다. 첫 조별리그(중등 64강·고등 32강)는 조 수를 팀 수 ÷ 4로 맞춰 대부분 4팀 조이고, 남는 몇 조만 3팀 조(팀당 2경기)입니다. 중등부 61~64팀(16개 조)·고등부 29~32팀(8개 조)이면 각 조 1위는 '1위 자리', 2위는 '2위 자리'로 진출하며 3위 승급은 없습니다. 조 수가 그보다 적을 때만 성적이 좋은 2위를 '1위 자리'에 추가하고, 나머지 2위와 성적이 좋은 3위(3팀 조의 3위 제외)를 '2위 자리'에 배정합니다. 이때 조 간 비교는 2위 승률·3위 승수 → 시간 점수(빨리 이긴 경기·오래 버틴 진 경기일수록 높음) 순입니다. 조 편성은 모집 마감 후 티어 평균으로 나눈 시드에서 무작위로 배정하되, 같은 지역 학교가 한 조에서 최대한 만나지 않도록 조정합니다. 기존 시드·순위 차이·기권 예상 조건 때문에 지역 중복이 일부 남을 수 있습니다.</p>
+    <p class="note">조 순위: 승수 → 2팀 동률이면 맞대결 승자 → 3팀 이상 동률이면 지원단이 규정에 따라 결정합니다. 조 편성은 주전 평균 티어로 나눈 시드에서 무작위로 배정하고, 같은 지역은 최대한 분산합니다.</p>
   </section>
 
   <!-- 경기 규정 -->
@@ -694,7 +708,7 @@ const FAQ = [
   [2,"A","첫 경기는 언제인가요?","10/24(토)입니다. 중등부 64강 조별리그로 시작합니다(14:00·18:00 두 번에 나눠 진행, 어느 조가 언제인지는 조 편성 후 대진표에 나옵니다). 고등부 첫 경기는 10/25(일) 13:00 32강 조별리그입니다. 자세한 시간은 '일정' 탭을 보세요.","ok"],
   [3,"A","본선 일정은요?","본선은 장로·바론 두 그룹 더블 엘리미네이션입니다. 10/31(토) 승자조(고등부 13:00, 중등부 17:00), 11/1(일) 패자조(중등부 13:00, 고등부 17:00)로 진행하고, 11/4(수) 18:00에 4강 리그(4팀 풀리그)를 합니다.","ok"],
   [4,"A","결선은 언제인가요?","11/8(일) 오프라인입니다. 11:00 중등부 3·4위전, 12:00 중등부 결승 후 시상식, 점심 뒤 14:00 고등부 3·4위전, 15:00 고등부 결승 후 시상식 순서입니다.","ok"],
-  [5,"A","예선(조별리그)은 몇 시에 하나요?","중등부: 10/24(토) 64강 조별리그 14:00·18:00(조를 반씩 나눔), 10/25(일) 17:00 32강 조별리그. 고등부: 10/25(일) 13:00 32강 조별리그. 4팀 조는 팀당 3판, 3팀 조는 2판입니다.","ok"],
+  [5,"A","예선(조별리그)은 몇 시에 하나요?","중등부 64강(10/24): 앞 회차 14:00·15:00·16:00, 뒤 회차 18:00·19:00·20:00입니다. 중등부 32강(10/25)은 17:00·18:00·19:00, 고등부 32강(10/25)은 13:00·14:00·15:00입니다. 각 조에서 1·2경기, 3·4경기, 5·6경기를 두 경기씩 동시에 진행합니다. 4팀 1조이며 팀당 3경기, 모든 경기는 단판(BO1)입니다.","ok"],
   [6,"A","경기 시간 확정은 언제쯤 되나요?","경기 시간은 '일정' 탭에 안내된 대로 정해졌습니다. 조 편성과 대진표는 모집 마감(10/19) 이후 확정되어 '대진표' 탭과 공지사항으로 안내합니다.","ok"],
   [7,"A","경기 시간을 바꿀 수 있나요?","많은 학교가 동시에 경기하므로 조별리그 때는 조정이 쉽지 않습니다. 불가피한 상황에 대비해 후보 선수를 추가 신청하시기 바랍니다.","ok"],
   [8,"A","대진표는 언제 나오나요?","10월 20일(화) 오후 7시(19:00)에 '대진표' 탭에 공개됩니다. 공개 시각이 지나면 조 편성과 학교 이름을 바로 볼 수 있습니다.","ok"],
@@ -727,8 +741,8 @@ const FAQ = [
   [30,"C","선생님께 DM을 보내도 되나요?","개별 DM은 자제하고 질문방에 남겨 주세요. 긴급하면 @지원단 선생님을 호출합니다.","ok"],
   [31,"C","문의처는 어디인가요?","최대한 FAQ와 공지사항을 확인해 주시고, 급한 경우에만 디스코드 질문방을 참고해 주세요.","ok"],
   [32,"C","대회 안내 챗봇은 어디서 쓰나요?","지금 보고 있는 이 사이트의 '질문/FAQ' 탭이 대회 안내 챗봇입니다. 공식 FAQ와 디스코드 질문방의 선생님 답변(10분마다 갱신)으로 일정, 팀 구성, 신청, 경기 규칙, 코칭을 바로 물어볼 수 있습니다. 질문방에 남기기 전에 먼저 챗봇에 물어봐 주세요.","ok"],
-  [33,"D","예선(조별리그)은 어떤 방식인가요?","최대한 4팀이 한 조가 되게 조를 짜서(팀 수 ÷ 4) 조별리그를 하고, 모든 경기는 단판(BO1)입니다. 중등부 16개 조·고등부 8개 조가 모두 구성되면 각 조 1·2위만 진출하고 3위는 진출하지 않습니다. 조 수가 적을 때만 성적이 좋은 3위가 남는 자리를 채웁니다(3팀 조의 3위 제외). 중등부는 64강 → 32강(8개 조), 고등부는 32강을 거쳐 본선에 갑니다. 조 편성은 티어 평균으로 나눈 시드에서 무작위로 배정하되, 같은 지역 학교가 한 조에서 최대한 만나지 않도록 조정합니다.","ok"],
-  [34,"D","3위도 올라갈 수 있나요?","첫 예선에서 중등부 16개 조(61~64팀)·고등부 8개 조(29~32팀)가 모두 구성되면 각 조 1·2위만 진출하며 3위 승급은 없습니다. 참가 팀 수가 적어 중등부 15개 조 이하·고등부 7개 조 이하가 되면 성적이 좋은 3위가 남는 진출 자리를 채웁니다(3팀 조의 3위는 제외). 이때 3위끼리는 승수, 같으면 시간 점수(빨리 이긴 경기·오래 버틴 진 경기일수록 높음)로 비교하고, 성적이 좋은 2위는 1위 자리로 배정됩니다. 중등부 다음 단계인 32강 8개 조에서는 각 조 1·2위만 본선에 진출합니다.","ok"],
+  [33,"D","예선(조별리그)은 어떤 방식인가요?","중등부는 64팀으로 16개 조(4팀 1조)에서 시작해 각 조 1·2위 32팀이 32강 8개 조로 갑니다. 32강에서도 각 조 1·2위 16팀이 본선에 진출합니다. 고등부는 32팀으로 8개 조(4팀 1조)를 구성하고 각 조 1·2위 16팀이 본선에 진출합니다. 3위 승급은 없습니다. 각 조 6경기를 두 경기씩 1시간 간격으로 진행하며, 팀마다 3경기입니다. 모든 경기는 단판(BO1)입니다. 조 편성은 주전 평균 티어로 나눈 시드에서 무작위로 배정하되 같은 지역 학교는 최대한 분산합니다.","ok"],
+  [34,"D","3위도 올라갈 수 있나요?","아니요. 중등 64팀·고등 32팀 모집이 완료되어 모든 조별리그에서 각 조 1·2위만 다음 단계에 진출합니다. 3위 승급은 없습니다.","ok"],
   [35,"D","팀이 너무 많으면요?","내부 예선전을 진행할 예정입니다.","ok"],
   [36,"D","본선(16강)부터는 어떻게 하나요?","조별리그 1·2위 16팀이 장로·바론 두 그룹(각 8팀)으로 나뉘어 더블 엘리미네이션을 합니다. 그룹 1·2위 4팀이 11/4(수) 4강 리그(4팀 풀리그)를 치르고, 리그 1·2위는 11/8 결승, 3·4위는 3·4위전을 합니다. 모든 경기는 단판(BO1)입니다.","ok"],
   [37,"D","밴이 있나요?","모든 경기는 사용자 설정 토너먼트 드래프트 모드로 진행하며 게임 안에서 밴합니다.","ok"],
@@ -891,12 +905,18 @@ function mdLabel(iso) {
   return (d.getUTCMonth() + 1) + "/" + d.getUTCDate() + "(" + "일월화수목금토"[d.getUTCDay()] + ")";
 }
 function renderTimeline(sessions) {
+  const times = x => {
+    const start = String(x.start_time).slice(0, 5);
+    if (!x.label.includes("조별리그")) return start;
+    const [h, m] = start.split(":").map(Number);
+    return [0, 1, 2].map(n => String(h + n).padStart(2, "0") + ":" + String(m).padStart(2, "0")).join(" / ");
+  };
   const byDay = {};
   sessions.forEach(x => { (byDay[x.day] = byDay[x.day] || []).push(x); });
   const items = TL_FIXED.concat(Object.keys(byDay).map(day => ({
     date: day, start: day, when: mdLabel(day),
     what: "경기", lines: byDay[day].sort((p, q) => String(p.start_time).localeCompare(String(q.start_time)))
-      .map(x => String(x.start_time).slice(0, 5) + " " + x.label + (x.student_games ? " · 팀당 " + x.student_games : ""))
+      .map(x => times(x) + " " + x.label + (x.student_games ? " · 팀당 " + x.student_games : ""))
   }))).sort((p, q) => p.start.localeCompare(q.start));
   tl.replaceChildren();
   items.forEach(t => {
@@ -1005,10 +1025,13 @@ function bkGroupCard(ms, stage, g, title) {
   card.append(t);
   if (games.length) {
     const d = el("details");
-    d.append(el("summary", "", "경기 " + games.length + "개 · " + (games[0].scheduled_at || "")));
+    const times = [...new Set(games.map(m => m.scheduled_at).filter(Boolean))];
+    const timeRange = times.length > 1 ? times[0] + "~" + times[times.length - 1].split(" ").pop() : times[0] || "";
+    d.append(el("summary", "", "경기 " + games.length + "개 · " + timeRange));
+    if (stage === "64강" || stage === "32강") d.append(el("p", "group-times", "1·2경기 동시 시작 → 1시간 뒤 3·4경기 → 1시간 뒤 5·6경기"));
     games.forEach(m => {
       const line = el("div", "gm");
-      line.append(el("span", "", bkTeam(m, 1) + " vs " + bkTeam(m, 2)), el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
+      line.append(el("span", "gm-time", m.scheduled_at ? m.scheduled_at.split(" ").pop() : "—"), el("span", "gm-teams", bkTeam(m, 1) + " vs " + bkTeam(m, 2)), el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
       d.append(line);
     });
     card.append(d);
@@ -1028,10 +1051,8 @@ function renderBracket() {
     const usedGroups = new Set(BK.standings.filter(x => x.division === BK.div && x.stage === stage).map(x => x.grp));
     const maxGroups = BK.div === "중등부" ? 16 : 8;
     const target = stage === "64강" ? "32강" : "본선";
-    const sub = stage === "32강" && BK.div === "중등부" ? "8개 조 · 각 조 1·2위만 본선 진출"
-      : usedGroups.size === maxGroups ? maxGroups + "개 조 · 각 조 1·2위만 " + target + " 진출 · 3위 승급 없음"
-      : usedGroups.size ? usedGroups.size + "개 조 · 조 1·2위 + 성적 좋은 3위가 " + target + " 진출 (3팀 조의 3위 제외)"
-      : maxGroups + "개 조 구성 시 각 조 1·2위만 " + target + " 진출 · 조 수가 적을 때만 3위 추가 진출";
+    const sub = stage === "32강" && BK.div === "중등부" ? "8개 조 · 각 조 1·2위만 본선 진출 · 3위 승급 없음"
+      : maxGroups + "개 조 · 각 조 1·2위만 " + target + " 진출 · 3위 승급 없음";
     const h = el("h3", "bk-title", stage + " 조별리그");
     h.append(el("small", "", sub + (first && first.scheduled_at ? " · " + first.scheduled_at.split(" ")[0] : "")));
     root.append(h);
