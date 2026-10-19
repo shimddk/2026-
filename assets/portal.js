@@ -306,7 +306,7 @@
         const btns = el("div", "rec-btns");
         if (starters.length) btns.append(multiLink("주전 " + starters.length + "명 한 번에 (멀티서치)", starters, "btn small"));
         if (shownIds.length > starters.length) btns.append(multiLink("후보까지 " + shownIds.length + "명", shownIds.map(r => r.lol_id), "btn ghost small"));
-        const nickNote = !hiddenNames.length ? null : (el("p", "rec-nick","규정 제6조에 따라 " + hiddenNames.join(", ") + " 선수의 닉네임 변경이 필요합니다. 닉네임을 바꾼 뒤 팀장이 '우리 팀 명단 확인·수정'에서 새 아이디를 저장해 주세요."));
+        const nickNote = !hiddenNames.length ? null : (el("p", "rec-nick","규정 제6조에 따라 " + hiddenNames.join(", ") + " 선수의 닉네임 변경이 필요합니다. 닉네임을 바꾼 뒤 팀장이 '우리 팀 명단 확인·수정'에서 새 아이디를 저장해 주세요. 부적절한 닉네임 변경 요청에 응하지 않으면 주의 1회입니다."));
         if (editOpen && t.teamCount === 1) {
           const eb = el("button", "btn small edit-roster", "우리 팀 명단 확인·수정");
           eb.type = "button";
@@ -439,7 +439,7 @@
           // 형식 오류와 닉네임 안내를 함께 보여 줌
           const lines = [];
           if (msg) lines.push(el("div", "", msg));
-          if (r.needChange()) lines.push(el("div", "nick-need", "규정 제6조에 따라 이 닉네임은 변경이 필요합니다. 롤에서 닉네임을 바꾼 뒤 새 아이디를 적어 주세요."));
+          if (r.needChange()) lines.push(el("div", "nick-need", "규정 제6조에 따라 이 닉네임은 변경이 필요합니다. 롤에서 닉네임을 바꾼 뒤 새 아이디를 적어 주세요. 변경 요청에 응하지 않으면 주의 1회입니다."));
           else if (r.needCheck()) lines.push(el("div", "nick-warn", "선생님 확인이 필요한 닉네임입니다. 비하·욕설·성적 표현으로 읽힐 수 있다면 바꿔 주세요."));
           err.replaceChildren(...lines);
           tr.classList.toggle("bad", !!msg || r.needChange());
@@ -2420,7 +2420,7 @@
     ["주의", "지각 15분 (양 팀장 합의 시 15분까지는 주의 없음)"], ["세트 패배", "지각 20분 – 세트 몰수 및 실격"],
     ["경고", "욕설·폭언·비방, 판정 불복 (제3조)"], ["경고", "GG 외 전체 채팅·인장·이모티콘 (표현 허용 범위)"], ["경고", "퍼즈 2회 이상"],
     ["경고", "심판 지시 없는 게임 중단·무단 일시정지 (제5·8조)"], ["경고", "고의 접속 종료 (제8조)"],
-    ["경고", "등록하지 않은 계정 사용 (제6조)"], ["경고", "부적절한 닉네임·변경 요청 불응 (제6·10조)"],
+    ["경고", "등록하지 않은 계정 사용 (제6조)"], ["주의", "부적절한 닉네임·변경 요청 불응 (제6·10조)", 1],
     ["경고", "심판·운영사무국 지시 불이행 (제9조)"], ["경고", "스포츠맨십 위반·과도한 도발 (제3조)"],
     ["실격", "심판 허가 없는 경기구역 이탈 (제4조)"], ["실격", "담합·버그 악용 (제7조)"], ["실격", "대리 게임 (제10조)"],
     ["실격", "대회장 흡연 (제4조)"], ["주의", "기타 주의"], ["경고", "기타 경고"]
@@ -2685,7 +2685,7 @@
     // 닉네임 점검 (규정 제6조): 변경 요청 = 학생용에서 가리고 팀 카드에 안내 / 확인 필요 = 교사용에만
     const nick = el("div", "card");
     nick.append(el("h3", "", "닉네임 점검 (규정 제6조)"),
-      el("p", "note", "'변경 요청'은 학생용 전적 검색에서 아이디를 가리고 그 팀 카드에 닉네임 변경 안내를 띄웁니다. 팀장이 새 아이디를 저장하면 자동으로 풀립니다. '확인 필요'는 교사용에만 보입니다. 금지어 자동 점검에 걸린 아이디도 함께 보여 줍니다."));
+      el("p", "note", "'변경 요청'은 학생용 전적 검색에서 아이디를 가리고 그 팀 카드에 닉네임 변경 안내를 띄웁니다. 팀장이 새 아이디를 저장하면 자동으로 풀립니다. '확인 필요'는 교사용에만 보입니다. 금지어 자동 점검에 걸린 아이디도 함께 보여 줍니다. 부적절한 닉네임 변경 요청 불응은 주의 1회입니다."));
     const { data: scan, error: se } = await sb.rpc("nickname_scan");
     if (se) nick.append(el("p", "note", "불러오지 못했습니다."));
     else if (!scan.length) nick.append(el("p", "note", "걸린 아이디가 없습니다."));
