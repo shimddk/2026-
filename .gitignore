@@ -24,3 +24,7 @@ Thumbs.db
 .claude/
 supabase/
 .secrets/
+
+# Codex용 지침·메모 (공개 저장소에 올리지 않음)
+AGENTS.md
+Codex-시작-프롬프트.md
