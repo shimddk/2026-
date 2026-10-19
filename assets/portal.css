@@ -11,6 +11,14 @@
 .teacher-ai-lettering { min-width: 0; white-space: nowrap; }
 .teacher-ai-word { display: inline-block; white-space: nowrap; }
 .teacher-ai-char { display: inline-block; }
+.teacher-ai-usage-button { align-self: flex-end; margin-top: 8px; }
+.teacher-ai-usage { width: min(960px, calc(100% - 24px)); max-height: calc(100dvh - 48px); box-sizing: border-box; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); color: var(--text); box-shadow: var(--card-shadow); }
+.teacher-ai-usage::backdrop { background: var(--header-bg); }
+.teacher-ai-usage .teacher-ai-head { margin-bottom: 14px; }
+.teacher-ai-usage-scroll { overflow: auto; max-height: 60dvh; margin-top: 14px; }
+.teacher-ai-usage table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+.teacher-ai-usage th, .teacher-ai-usage td { padding: 10px; text-align: left; border-bottom: 1px solid var(--line); }
+.teacher-ai-usage th { position: sticky; top: 0; background: var(--bg2); color: var(--text); }
 .teacher-ai-panel { display: flex; flex-direction: column; max-height: min(660px, calc(100dvh - 180px)); margin-bottom: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--text); box-shadow: var(--card-shadow); overflow: hidden; }
 .teacher-ai-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .teacher-ai-head h2 { margin: 0; font-size: 18px; color: var(--text); }

@@ -2,7 +2,7 @@
    © 2026 심승보. All rights reserved. 허락 없이 복제·수정·배포할 수 없습니다. */
 (function () {
   window.createTeacherAI = function (sb) {
-    let identity = null, root = null, busy = false, remaining = 0, epoch = 0, parts = null;
+    let identity = null, root = null, busy = false, remaining = 0, epoch = 0, parts = null, usageDialog = null;
     const node = (tag, cls, text) => {
       const e = document.createElement(tag);
       if (cls) e.className = cls;
@@ -10,7 +10,7 @@
       return e;
     };
     function remove() {
-      epoch++; root?.remove(); root = null; parts = null; busy = false;
+      epoch++; usageDialog?.remove(); usageDialog = null; root?.remove(); root = null; parts = null; busy = false;
     }
     function update() {
       if (!parts) return;
@@ -70,6 +70,46 @@
         }
       }
     }
+    async function addUsageButton(panel) {
+      const version = epoch;
+      const { data, error } = await sb.rpc('teacher_ai_usage');
+      if (version !== epoch || !root || error || !data?.allowed) return;
+      const button = node('button', 'teacher-ai-example teacher-ai-usage-button', 'AI 사용 현황 · 본인 전용'); button.type = 'button';
+      panel.append(button);
+      button.addEventListener('click', async () => {
+        if (usageDialog) return;
+        button.disabled = true;
+        try {
+          const { data: report, error: failed } = await sb.rpc('teacher_ai_usage');
+          if (version !== epoch || !root) return;
+          if (failed) { parts.status.textContent = '사용 현황을 불러오지 못했습니다. 다시 눌러 주세요.'; return; }
+          if (!report?.allowed) { button.remove(); return; }
+          const dlg = node('dialog', 'teacher-ai-usage'); usageDialog = dlg;
+          dlg.setAttribute('aria-label', '본인 전용 AI 사용 현황');
+          const head = node('div', 'teacher-ai-head');
+          const close = node('button', 'btn small', '닫기'); close.type = 'button'; close.addEventListener('click', () => dlg.close());
+          head.append(node('h2', '', 'AI 사용 현황 · 본인 전용'), close);
+          dlg.append(head, node('p', 'teacher-ai-note', '한국 시간 ' + report.day + ' 기준 · 사용 교사 ' + report.teachers_used + '명 · 오늘 사용 ' + report.today + '회 · 전체 답변 완료 ' + report.completed + '회'));
+          dlg.append(node('p', 'teacher-ai-note', '오늘 사용은 진행 중 요청을 포함합니다. 실패는 하루 10회에서 차감하지 않습니다. 질문·답변 원문은 저장하지 않습니다.'));
+          const wrap = node('div', 'teacher-ai-usage-scroll'), table = node('table'), thead = node('thead'), tr = node('tr');
+          ['선생님', '소속', '오늘 사용', '전체 답변', '진행 중', '실패', '최근 요청'].forEach(label => { const th = node('th', '', label); th.scope = 'col'; tr.append(th); });
+          thead.append(tr); table.append(thead);
+          const tbody = node('tbody');
+          const format = t => t ? new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t)) : '사용 기록 없음';
+          (report.rows || []).forEach(row => {
+            const line = node('tr');
+            [row.name, row.school, row.today + '/10', row.completed + '회', row.pending, row.failed, format(row.last_used)].forEach(value => line.append(node('td', '', String(value ?? '—'))));
+            tbody.append(line);
+          });
+          table.append(tbody); wrap.append(table); dlg.append(wrap); document.body.append(dlg);
+          dlg.addEventListener('close', () => { dlg.remove(); if (usageDialog === dlg) usageDialog = null; if (root) button.focus(); });
+          dlg.addEventListener('keydown', e => e.stopPropagation());
+          dlg.showModal();
+        } catch {
+          if (version === epoch && parts) parts.status.textContent = '사용 현황을 불러오지 못했습니다. 다시 눌러 주세요.';
+        } finally { if (version === epoch) button.disabled = false; }
+      });
+    }
     function mount() {
       root = node('aside', 'teacher-ai'); root.id = 'teacherAI';
       root.setAttribute('aria-label', '지원단 교사용 AI');
@@ -125,6 +165,7 @@
       panel.append(head, quota, note, log, examples, form, statusLine); root.append(panel, toggle); document.body.append(root);
       ripple();
       parts = { panel, toggle, quota, input, send, log, status: statusLine };
+      addUsageButton(panel).catch(() => { /* 조회 실패 시 본인 전용 버튼을 표시하지 않는다. */ });
       const hide = () => { panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus(); };
       toggle.addEventListener('click', async () => {
         if (!panel.hidden) { hide(); return; }
