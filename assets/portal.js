@@ -513,6 +513,7 @@
 
   /* ---------- 로그인 상태 ---------- */
   const ME = { status: null, role: null, name: null, email: null };
+  const teacherAI = window.createTeacherAI ? window.createTeacherAI(sb) : null;
   const isEditor = () => ME.role === "editor" || ME.role === "owner";
   const isOwner = () => ME.role === "owner";
   const ROLE_LABEL = { viewer: "보기", editor: "보기·고치기", owner: "관리자", referee: "심판" };
@@ -560,7 +561,7 @@
 
   async function refresh() {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { Object.assign(ME, { status: null, role: null, name: null, email: null }); renderAcct(); removeTeacher(); renderRecord(); return; }
+    if (!session) { Object.assign(ME, { id: null, status: null, role: null, name: null, email: null, staffId: null }); teacherAI?.setIdentity(ME); renderAcct(); removeTeacher(); renderRecord(); return; }
     ME.email = session.user.email;
     ME.id = session.user.id;
     const { data, error } = await sb.rpc("touch_login");
@@ -570,6 +571,7 @@
     ME.name = row && row.staff_name ? row.staff_name : (session.user.user_metadata.full_name || session.user.email);
     ME.external = !!(row && row.external);
     ME.staffId = row && row.staff_id ? Number(row.staff_id) : null; // 심판 일정에서 본인 칸 판별
+    teacherAI?.setIdentity(ME);
     renderAcct();
     renderRecord();
     if (ME.status === "approved") buildTeacher();

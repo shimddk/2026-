@@ -1,6 +1,28 @@
 /* 2026 경기도 교육감배 미래형 이스포츠 스쿨리그 · 제작자: 원곡고등학교 교사 심승보
    © 2026 심승보. All rights reserved. 허락 없이 복제·수정·배포할 수 없습니다. */
 /* 계정 영역 */
+/* 지원단 AI: 기존 테마 변수를 사용하며 비로그인·외부인은 만들지 않는다. */
+.teacher-ai { position: fixed; right: 18px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 90; width: min(420px, calc(100vw - 32px)); font-size: 14px; }
+.teacher-ai [hidden] { display: none !important; }
+.teacher-ai-toggle { display: flex; align-items: center; gap: 9px; margin-left: auto; padding: 13px 17px; border: 1px solid var(--line); border-radius: 22px 22px 5px 22px; background: var(--card); color: var(--text); box-shadow: var(--card-shadow); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; text-align: left; }
+.teacher-ai-icon { font-size: 24px; }
+.teacher-ai-panel { display: flex; flex-direction: column; max-height: min(660px, calc(100dvh - 110px)); margin-bottom: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--text); box-shadow: var(--card-shadow); overflow: hidden; }
+.teacher-ai-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.teacher-ai-head h2 { margin: 0; font-size: 18px; color: var(--text); }
+.teacher-ai-close { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 28px; line-height: 1; padding: 3px 7px; cursor: pointer; }
+.teacher-ai-quota { color: var(--neon); font-size: 12px; margin: 8px 0; font-weight: 800; }
+.teacher-ai-note { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 0 0 10px; }
+.teacher-ai-log { overflow-y: auto; min-height: 100px; flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; padding: 8px 2px; overscroll-behavior: contain; }
+.teacher-ai-message { flex-shrink: 0; padding: 11px 13px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 13px 13px 13px 3px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.teacher-ai-message.mine { align-self: flex-end; background: var(--bg2); border-radius: 13px 13px 3px 13px; max-width: 94%; }
+.teacher-ai-examples { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.teacher-ai-example { background: var(--bg); color: var(--muted); border: 1px solid var(--line); border-radius: 16px; padding: 5px 9px; font: inherit; font-size: 11px; cursor: pointer; }
+.teacher-ai-form { display: flex; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.teacher-ai-form textarea { width: 100%; min-width: 0; resize: none; padding: 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); background: var(--bg); font: inherit; font-size: 14px; }
+.teacher-ai-form .btn { flex-shrink: 0; white-space: nowrap; }
+.teacher-ai-status { color: var(--muted); font-size: 11px; margin: 8px 0 0; min-height: 1.5em; }
+.teacher-ai :focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
+@media (max-width: 600px) { .teacher-ai { right: 12px; width: calc(100% - 24px); } .teacher-ai-toggle { max-width: 300px; } .teacher-ai-panel { padding: 14px; max-height: calc(100dvh - 120px); } .teacher-ai-form textarea { font-size: 16px; } }
 .acct { display: flex; align-items: center; gap: 8px; }
 .acct .who { font-size: 13px; color: var(--muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn.small { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
