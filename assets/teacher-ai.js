@@ -75,7 +75,33 @@
       root.setAttribute('aria-label', '지원단 교사용 AI');
       const toggle = node('button', 'teacher-ai-toggle'); toggle.type = 'button';
       toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', 'teacherAIPanel');
-      toggle.append(node('span', 'teacher-ai-icon', '💬'), node('span', '', '대회에 대해 궁금한 점을 질문해 보세요!'));
+      const phrase = '대회에 대해 궁금한 점을 질문해 보세요!';
+      toggle.setAttribute('aria-label', phrase);
+      const icon = node('span', 'teacher-ai-icon', '💬'); icon.setAttribute('aria-hidden', 'true');
+      const lettering = node('span', 'teacher-ai-lettering'); lettering.setAttribute('aria-hidden', 'true');
+      phrase.split(' ').forEach((word, i) => {
+        if (i) lettering.append(document.createTextNode(' '));
+        const group = node('span', 'teacher-ai-word');
+        Array.from(word).forEach(char => group.append(node('span', 'teacher-ai-char', char)));
+        lettering.append(group);
+      });
+      toggle.append(icon, lettering);
+      // 첨부 ripple 설정: 전체 1.4초, 세기 65, 반복 없음. 접근 시 한 번만 재생.
+      const ripple = () => {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        toggle.getAnimations({ subtree: true }).forEach(a => a.cancel());
+        const chars = [...lettering.querySelectorAll('.teacher-ai-char')];
+        chars.forEach((char, i) => char.animate([
+          { transform: 'translateY(0) scale(1)' },
+          { transform: 'translateY(-5px) scale(1.045)', offset: .28 },
+          { transform: 'translateY(2px) scale(.99)', offset: .52 },
+          { transform: 'translateY(-1px) scale(1.01)', offset: .74 },
+          { transform: 'translateY(0) scale(1)' }
+        ], { duration: 840, delay: i * 560 / Math.max(1, chars.length - 1), easing: 'cubic-bezier(.22,.8,.28,1)', iterations: 1 }));
+        icon.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.14)', offset: .3 }, { transform: 'scale(1)' }], { duration: 1400, iterations: 1 });
+      };
+      toggle.addEventListener('pointerenter', ripple);
+      toggle.addEventListener('focus', ripple);
       const panel = node('section', 'teacher-ai-panel'); panel.id = 'teacherAIPanel'; panel.hidden = true;
       panel.setAttribute('role', 'region'); panel.setAttribute('aria-labelledby', 'teacherAITitle');
       const head = node('div', 'teacher-ai-head');
@@ -97,6 +123,7 @@
         b.addEventListener('click', () => { input.value = q; input.focus(); }); examples.append(b);
       });
       panel.append(head, quota, note, log, examples, form, statusLine); root.append(panel, toggle); document.body.append(root);
+      ripple();
       parts = { panel, toggle, quota, input, send, log, status: statusLine };
       const hide = () => { panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus(); };
       toggle.addEventListener('click', async () => {
