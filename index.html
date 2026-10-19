@@ -504,7 +504,7 @@
       <button type="button" class="chip" data-div="고등부" aria-pressed="false">고등부</button>
     </div>
     <div id="groups"></div>
-    <p class="note">조 순위는 승수 → (2팀이 같으면) 맞대결 승자 순으로 정하고, 3팀 이상 같으면 지원단이 규정에 따라 정합니다. 첫 조별리그(중등 64강·고등 32강)는 조 수를 팀 수 ÷ 4로 맞춰 대부분 4팀 조이고, 남는 몇 조만 3팀 조(팀당 2경기)입니다. 중등부 61~64팀(16개 조)·고등부 29~32팀(8개 조)이면 각 조 1위는 '1위 자리', 2위는 '2위 자리'로 진출하며 3위 승급은 없습니다. 조 수가 그보다 적을 때만 성적이 좋은 2위를 '1위 자리'에 추가하고, 나머지 2위와 성적이 좋은 3위(3팀 조의 3위 제외)를 '2위 자리'에 배정합니다. 이때 조 간 비교는 2위 승률·3위 승수 → 시간 점수(빨리 이긴 경기·오래 버틴 진 경기일수록 높음) 순입니다. 조 편성은 모집 마감 후 티어 평균으로 나눈 시드에서 무작위로 배정합니다.</p>
+    <p class="note">조 순위는 승수 → (2팀이 같으면) 맞대결 승자 순으로 정하고, 3팀 이상 같으면 지원단이 규정에 따라 정합니다. 첫 조별리그(중등 64강·고등 32강)는 조 수를 팀 수 ÷ 4로 맞춰 대부분 4팀 조이고, 남는 몇 조만 3팀 조(팀당 2경기)입니다. 중등부 61~64팀(16개 조)·고등부 29~32팀(8개 조)이면 각 조 1위는 '1위 자리', 2위는 '2위 자리'로 진출하며 3위 승급은 없습니다. 조 수가 그보다 적을 때만 성적이 좋은 2위를 '1위 자리'에 추가하고, 나머지 2위와 성적이 좋은 3위(3팀 조의 3위 제외)를 '2위 자리'에 배정합니다. 이때 조 간 비교는 2위 승률·3위 승수 → 시간 점수(빨리 이긴 경기·오래 버틴 진 경기일수록 높음) 순입니다. 조 편성은 모집 마감 후 티어 평균으로 나눈 시드에서 무작위로 배정하되, 같은 지역 학교가 한 조에서 최대한 만나지 않도록 조정합니다. 기존 시드·순위 차이·기권 예상 조건 때문에 지역 중복이 일부 남을 수 있습니다.</p>
   </section>
 
   <!-- 경기 규정 -->
@@ -727,7 +727,7 @@ const FAQ = [
   [30,"C","선생님께 DM을 보내도 되나요?","개별 DM은 자제하고 질문방에 남겨 주세요. 긴급하면 @지원단 선생님을 호출합니다.","ok"],
   [31,"C","문의처는 어디인가요?","최대한 FAQ와 공지사항을 확인해 주시고, 급한 경우에만 디스코드 질문방을 참고해 주세요.","ok"],
   [32,"C","대회 안내 챗봇은 어디서 쓰나요?","지금 보고 있는 이 사이트의 '질문/FAQ' 탭이 대회 안내 챗봇입니다. 공식 FAQ와 디스코드 질문방의 선생님 답변(10분마다 갱신)으로 일정, 팀 구성, 신청, 경기 규칙, 코칭을 바로 물어볼 수 있습니다. 질문방에 남기기 전에 먼저 챗봇에 물어봐 주세요.","ok"],
-  [33,"D","예선(조별리그)은 어떤 방식인가요?","최대한 4팀이 한 조가 되게 조를 짜서(팀 수 ÷ 4) 조별리그를 하고, 모든 경기는 단판(BO1)입니다. 중등부 16개 조·고등부 8개 조가 모두 구성되면 각 조 1·2위만 진출하고 3위는 진출하지 않습니다. 조 수가 적을 때만 성적이 좋은 3위가 남는 자리를 채웁니다(3팀 조의 3위 제외). 중등부는 64강 → 32강(8개 조), 고등부는 32강을 거쳐 본선에 갑니다. 조 편성은 티어 평균으로 나눈 시드에서 무작위로 배정합니다.","ok"],
+  [33,"D","예선(조별리그)은 어떤 방식인가요?","최대한 4팀이 한 조가 되게 조를 짜서(팀 수 ÷ 4) 조별리그를 하고, 모든 경기는 단판(BO1)입니다. 중등부 16개 조·고등부 8개 조가 모두 구성되면 각 조 1·2위만 진출하고 3위는 진출하지 않습니다. 조 수가 적을 때만 성적이 좋은 3위가 남는 자리를 채웁니다(3팀 조의 3위 제외). 중등부는 64강 → 32강(8개 조), 고등부는 32강을 거쳐 본선에 갑니다. 조 편성은 티어 평균으로 나눈 시드에서 무작위로 배정하되, 같은 지역 학교가 한 조에서 최대한 만나지 않도록 조정합니다.","ok"],
   [34,"D","3위도 올라갈 수 있나요?","첫 예선에서 중등부 16개 조(61~64팀)·고등부 8개 조(29~32팀)가 모두 구성되면 각 조 1·2위만 진출하며 3위 승급은 없습니다. 참가 팀 수가 적어 중등부 15개 조 이하·고등부 7개 조 이하가 되면 성적이 좋은 3위가 남는 진출 자리를 채웁니다(3팀 조의 3위는 제외). 이때 3위끼리는 승수, 같으면 시간 점수(빨리 이긴 경기·오래 버틴 진 경기일수록 높음)로 비교하고, 성적이 좋은 2위는 1위 자리로 배정됩니다. 중등부 다음 단계인 32강 8개 조에서는 각 조 1·2위만 본선에 진출합니다.","ok"],
   [35,"D","팀이 너무 많으면요?","내부 예선전을 진행할 예정입니다.","ok"],
   [36,"D","본선(16강)부터는 어떻게 하나요?","조별리그 1·2위 16팀이 장로·바론 두 그룹(각 8팀)으로 나뉘어 더블 엘리미네이션을 합니다. 그룹 1·2위 4팀이 11/4(수) 4강 리그(4팀 풀리그)를 치르고, 리그 1·2위는 11/8 결승, 3·4위는 3·4위전을 합니다. 모든 경기는 단판(BO1)입니다.","ok"],
@@ -936,6 +936,8 @@ function bkSrc(src, here) {
   if (p[0] === "W" && /L4$/.test(p[1])) return BK_NAME[g] + " 2위";
   return (BK_NAME[g] && g !== here ? BK_NAME[g] + " " : "") + bkShort(p[1]) + (p[0] === "W" ? " 승자" : " 패자");
 }
+const BK_REGIONS = {};
+const bkSchool = s => s ? s + (BK_REGIONS[s] ? " (" + BK_REGIONS[s] + ")" : "") : "";
 function bkBox(m) {
   const box = el("div", "mbox");
   box.append(el("div", "mh", [m.round_label, m.scheduled_at].filter(Boolean).join(" · ")));
@@ -943,7 +945,7 @@ function bkBox(m) {
     const t = m["team" + n], s = m["score" + n], src = m["src" + n];
     const cls = !t ? " ph" : m.winner ? (m.winner === t ? " win" : " lose") : "";
     const row = el("div", "mt" + cls);
-    row.append(el("span", "", t || (String(src).startsWith("G:") ? bkTeam(m, n) : bkSrc(src, m.code.split("-")[0]))), el("b", "", s == null ? "" : String(s)));
+    row.append(el("span", "", bkSchool(t) || (String(src).startsWith("G:") ? bkTeam(m, n) : bkSrc(src, m.code.split("-")[0]))), el("b", "", s == null ? "" : String(s)));
     box.append(row);
   });
   return box;
@@ -956,7 +958,7 @@ function bkCol(title, list) {
 }
 function bkAdv(label, m) {
   const a = el("div", "adv", label);
-  a.append(el("b", "", (m && m.winner) || "미정"));
+  a.append(el("b", "", bkSchool(m && m.winner) || "미정"));
   return a;
 }
 // 학교가 정해지기 전 자리 이름: 중등 32강 1·3번 = 64강 1위 자리(조 1위 + 잘한 2위), 2·4번 = 2위 자리(나머지 2위 + 잘한 3위)
@@ -969,7 +971,7 @@ function bkSeedLabel(stage, g, seed) {
 }
 function bkTeam(m, n) {
   const t = m["team" + n], src = m["src" + n];
-  if (t) return t;
+  if (t) return bkSchool(t);
   const p = (src || "").split(":");
   return (p[0] === "G" && bkSeedLabel(p[1], p[2], Number(p[3]))) || bkSrc(src);
 }
@@ -996,7 +998,7 @@ function bkGroupCard(ms, stage, g, title) {
   rows.forEach(s => {
     const up = stage !== "4강 리그" && s.rank && s.rank <= 2;
     const tr = el("tr", up ? "up" : "");
-    tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), el("td", "sch", s.school), el("td", "", s.wins), el("td", "", s.losses));
+    tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), el("td", "sch", bkSchool(s.school)), el("td", "", s.wins), el("td", "", s.losses));
     tb.append(tr);
   });
   t.append(th, tb);
@@ -1110,7 +1112,9 @@ window.setBracketPublish = function (at) {
 window.setBracketPublish();
 
 // portal.js가 공개 함수 결과를 넘겨줌
-window.applyBracket = function (matches, standings) {
+window.applyBracket = function (matches, standings, regions) {
+  Object.keys(BK_REGIONS).forEach(k => delete BK_REGIONS[k]);
+  (regions || []).forEach(x => { if (x.school && x.region) BK_REGIONS[x.school] = String(x.region).trim().replace(/(시|군)$/, ""); });
   BK.matches = matches || [];
   BK.standings = standings || [];
   updatePending();

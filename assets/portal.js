@@ -58,10 +58,10 @@
   // 공개 시각(app_settings bracket_publish_at, 10/20 19:00) 전에는 학생에게 학교 이름이 안 옴 → 페이지를 열어 둔 채 그 시각이 되면 다시 불러옴
   let bracketTimer = null;
   function loadPublicBracket() {
-    Promise.all([sb.rpc("public_bracket"), sb.rpc("public_standings"), sb.rpc("public_schedule"), sb.rpc("public_bracket_publish_at")]).then(([m, s, sc, pa]) => {
+    Promise.all([sb.rpc("public_bracket"), sb.rpc("public_standings"), sb.rpc("public_schedule"), sb.rpc("public_bracket_publish_at"), sb.rpc("public_lineups").select("school,region")]).then(([m, s, sc, pa, regions]) => {
       const at = pa && !pa.error && pa.data ? Date.parse(pa.data) : null;
       if (window.setBracketPublish) window.setBracketPublish(at);
-      if (!m.error && m.data && m.data.length && window.applyBracket) window.applyBracket(m.data, s.error ? [] : s.data);
+      if (!m.error && m.data && m.data.length && window.applyBracket) window.applyBracket(m.data, s.error ? [] : s.data, regions.error ? [] : regions.data);
       if (!sc.error && window.applySchedule) window.applySchedule(sc.data);
       const left = at ? at - Date.now() : 0;
       if (!bracketTimer && left > 0 && left < 2147483647) bracketTimer = setTimeout(() => { bracketTimer = null; loadPublicBracket(); }, left + 3000);
@@ -1433,14 +1433,14 @@
   //  조건을 만족하는 조합을 못 찾으면 여유를 1씩 넓혀 다시 뽑는다(결과의 slack으로 알림). 포트 1 = 1번 자리.
   //  기권 예상 학교(risky, 2026-10-18): 3팀 조에는 넣지 않고 4팀 조에만, 한 조에 1개씩(4팀 조보다 많으면 최대 2개).
   //  → 시도마다 4번 시드를 받을 조(4팀 조)를 먼저 무작위로 정해 두고 그 조건으로 짝짓는다.
-  function drawGroups(teams, groups, risky = new Set()) {
+  function drawCandidate(teams, groups, risky = new Set()) {
     const G = groups.length, base = Math.round(G * 6 / 16);
     const pots = [];
     for (let i = 0; i < teams.length; i += G) pots.push(teams.slice(i, i + G).map((t, j) => ({ t, rank: i + j + 1 })));
     const n4 = pots.length >= 4 ? pots[3].length : 0;          // 4팀 조 수
     const nRisky = teams.filter(t => risky.has(t)).length;
     const cap = nRisky <= n4 ? 1 : 2;
-    const riskOk = !nRisky || nRisky <= n4 * 2;                 // 조건을 지킬 수 있는지
+    const riskOk = !nRisky || (nRisky <= n4 * 2 && pots.every(pot => pot.filter(x => risky.has(x.t)).length <= n4)); // 한 포트의 기권 예상 팀도 4팀 조 수 이하여야 가능
     const check = result => {                                   // 결과가 기권 예상 조건을 지키는지
       if (!nRisky) return true;
       return groups.every(g => { const l = result[g].filter(Boolean), r = l.filter(t => risky.has(t)).length; return !r || (l.length === 4 && r <= cap); });
@@ -1486,6 +1486,52 @@
     pots.forEach((pot, pi) => { const gs = shuffle(groups.slice()).slice(0, pot.length); shuffle(pot.slice()).forEach((x, i) => { result[gs[i]][pi] = x.t; }); });
     return { result, slack: null, base, G, nRisky, riskMet: check(result), cap };
   }
+  const cleanRegion = r => String(r || "").trim().replace(/(시|군)$/, "");
+  const teamRegion = (t, regions) => cleanRegion(regions[normSchool(t)] || regions[t]);
+  const drawSchoolLabel = (t, regions) => t ? t + (teamRegion(t, regions) ? " (" + teamRegion(t, regions) + ")" : "") : "";
+  const drawRegions = ros => Object.fromEntries((ros || []).filter(x => x.data["학교 이름"]).map(x => [normSchool(x.data["학교 이름"]), cleanRegion(x.data["학교 소재 지역"])]));
+  function regionPairs(result, regions) {
+    return Object.values(result).reduce((sum, list) => {
+      const counts = {};
+      list.filter(Boolean).forEach(t => { const r = teamRegion(t, regions); if (r) counts[r] = (counts[r] || 0) + 1; });
+      return sum + Object.values(counts).reduce((n, c) => n + c * (c - 1) / 2, 0);
+    }, 0);
+  }
+  // 같은 포트끼리만 교환하고 순위 차이·기권 예상 조건을 유지하면서 지역 중복을 줄인다.
+  function drawGroups(teams, groups, risky = new Set(), regions = {}) {
+    const ranks = new Map(teams.map((t, i) => [t, i + 1]));
+    const known = teams.filter(t => teamRegion(t, regions)).length;
+    let best;
+    const valid = (list, d) => {
+      const filled = list.filter(Boolean), risk = filled.filter(t => risky.has(t)).length;
+      if (d.riskMet && risk && (filled.length !== 4 || risk > d.cap)) return false;
+      return d.slack == null || list.every((t, i) => !t || i === 0 || !list[i - 1] || Math.abs(ranks.get(t) - ranks.get(list[i - 1]) - d.G) <= d.slack);
+    };
+    for (let attempt = 0; attempt < (known ? (risky.size > 6 ? 4 : 24) : 1); attempt++) {
+      const d = drawCandidate(teams, groups, risky);
+      let pairs = regionPairs(d.result, regions);
+      for (let pass = 0; pass < 8 && pairs; pass++) {
+        let improved = false;
+        for (const seed of shuffle([0, 1, 2, 3])) for (const a of shuffle(groups.slice())) for (const b of shuffle(groups.slice())) {
+          if (a === b || !d.result[a][seed] || !d.result[b][seed]) continue;
+          const aa = d.result[a].slice(), bb = d.result[b].slice();
+          [aa[seed], bb[seed]] = [bb[seed], aa[seed]];
+          if (!valid(aa, d) || !valid(bb, d)) continue;
+          const before = regionPairs({ a: d.result[a], b: d.result[b] }, regions), after = regionPairs({ a: aa, b: bb }, regions);
+          if (after < before) { d.result[a] = aa; d.result[b] = bb; pairs += after - before; improved = true; }
+        }
+        if (!improved) break;
+      }
+      d.regionPairs = pairs; d.regionUnknown = teams.length - known;
+      // 기존 기권·순위 차이 조건을 우선하고, 같은 조건 안에서 지역 중복이 적은 결과를 고른다.
+      const priority = x => [x.riskMet ? 0 : 1, x.slack == null ? 999 : x.slack, x.regionPairs];
+      const better = !best || priority(d).some((v, i, p) => v < priority(best)[i] && p.slice(0, i).every((w, j) => w === priority(best)[j]));
+      if (better) best = d;
+      if (best.regionPairs === 0 && best.riskMet && best.slack === best.base) break;
+    }
+    return best;
+  }
+  const drawRegionText = d => " · 같은 지역 대결 " + d.regionPairs + "쌍" + (d.regionPairs ? " (기존 시드·순위 차이·기권 조건 안에서 최대한 분산)" : " (지역 중복 없음)") + (d.regionUnknown ? " · 지역 미입력 " + d.regionUnknown + "팀 제외" : "");
   const drawRiskText = d => !d.nRisky ? "" : d.riskMet
     ? " · 기권 예상 " + d.nRisky + "팀: 모두 4팀 조, 한 조에 최대 " + d.cap + "팀"
     : " · ⚠️ 기권 예상 " + d.nRisky + "팀 조건(4팀 조·한 조 최대 " + d.cap + "팀)을 맞추지 못했습니다";
@@ -1569,18 +1615,20 @@
       twos: L.map((g, j) => ({ grp: "S", seed: j + 9, k: j % 2 === 1 ? key("장로", j >> 1) : key("바론", j >> 1) }))
     };
   }
-  function assignSeats(div, ones, twos) {
+  function assignSeats(div, ones, twos, regions = {}) {
     const { ones: s1, twos: s2 } = seatKeys(div);
     const W = [1000, 100, 10]; // 같은 조(고등: 같은 1R 경기) > 1라운드 상대 > 같은 절반(고등: 같은 그룹)
     const cost = (a, b) => {
       const seats = [...a.map((t, i) => [t, s1[i]]), ...b.map((t, i) => [t, s2[i]])];
-      let c = 0;
+      let c = 0, regional = 0;
       for (let i = 0; i < seats.length; i++) for (let j = i + 1; j < seats.length; j++) {
+        const region = teamRegion(seats[i][0].school, regions);
+        if (region && region === teamRegion(seats[j][0].school, regions) && seats[i][1].k[0] === seats[j][1].k[0]) regional++;
         if (seats[i][0].grp !== seats[j][0].grp) continue;
         const k = seats[i][1].k, l = seats[j][1].k;
         c += k[0] === l[0] ? W[0] : k[1] === l[1] ? W[1] : k[2] === l[2] ? W[2] : 0;
       }
-      return c;
+      return c * 1000 + regional; // 재대결 회피를 우선하고, 같은 조건이면 같은 지역 대결을 줄임
     };
     let best = null, bestC = Infinity;
     for (let r = 0; r < 60; r++) {
@@ -1597,12 +1645,12 @@
       if (c < bestC) { bestC = c; best = { a: a.slice(), b: b.slice() }; }
       if (bestC === 0) break;
     }
-    return { seats: [...best.a.map((t, i) => ({ ...s1[i], team: t })), ...best.b.map((t, i) => ({ ...s2[i], team: t }))], cost: bestC };
+    return { seats: [...best.a.map((t, i) => ({ ...s1[i], team: t })), ...best.b.map((t, i) => ({ ...s2[i], team: t }))], cost: Math.floor(bestC / 1000), regionPairs: bestC % 1000 };
   }
   const seatLabel = (div, seat) => div === "중등부" ? "32강 " + seat.grp + "조 " + seat.seed + "번 (" + (seat.seed % 2 ? "1위 자리" : "2위 자리") + ")"
     : (seat.seed <= 8 ? "1위 자리 " + "ABCDEFGH"[seat.seed - 1] : "2위 자리 " + "ABCDEFGH"[seat.seed - 9]);
 
-  async function openAdvance(div, slots, stand, matches, reload) {
+  async function openAdvance(div, slots, stand, matches, reload, regions = {}) {
     const ad = computeAdvance(div, slots, stand, matches);
     const target = div === "중등부" ? "32강" : "본선 진출";
     const dlg = el("dialog", "rdlg");
@@ -1620,7 +1668,7 @@
         const l = el("label", "slot-row" + (picked.has(x.school) ? " adv-on" : ""));
         const cb = el("input"); cb.type = "checkbox"; cb.checked = picked.has(x.school);
         cb.addEventListener("change", () => { cb.checked ? picked.add(x.school) : picked.delete(x.school); placed = null; draw(); });
-        l.append(cb, el("span", "", (i + 1) + ". " + x.school + " (" + x.grp + "조 " + x.size + "팀)"), el("span", "slot-st", line(x) + " · 시간 점수 " + timeLine(x)));
+        l.append(cb, el("span", "", (i + 1) + ". " + drawSchoolLabel(x.school, regions) + " (" + x.grp + "조 " + x.size + "팀)"), el("span", "slot-st", line(x) + " · 시간 점수 " + timeLine(x)));
         box.append(l);
       });
       return box;
@@ -1640,7 +1688,8 @@
       if (pickR.size !== ad.promoteN || pickT.size !== ad.thirdN) { body.append(el("p", "rdlg-err", "선택한 팀 수를 맞춰 주세요.")); return; }
       const ones = [...ad.firsts, ...ad.runners.filter(x => pickR.has(x.school))];
       const twos = [...ad.runners.filter(x => !pickR.has(x.school)), ...ad.thirds.filter(x => pickT.has(x.school))];
-      placed = placed || assignSeats(div, ones, twos);
+      placed = placed || assignSeats(div, ones, twos, regions);
+      body.append(el("p", "note", "같은 조 출신의 재대결 회피를 우선하고 같은 지역 대결을 최대한 줄였습니다. 같은 지역 " + (div === "중등부" ? "조별 대결 " : "본선 1라운드 대결 ") + placed.regionPairs + "쌍"));
       body.append(el("h4", "", "배정 결과 " + (placed.cost === 0 ? "· 같은 조 출신끼리 일찍 만나는 경우 없음" : placed.cost < 100 ? "· 같은 조 출신은 같은 절반에만 일부 (1라운드 재대결 없음)" : "· ⚠ 같은 조 출신이 일찍 만날 수 있음")));
       const wrap = el("div", "slot-grid");
       const groupsOut = {};
@@ -1650,7 +1699,7 @@
         c.append(el("h4", "", k));
         list.sort((a, b) => a.seed - b.seed).forEach(x => {
           const r = el("div", "slot-row");
-          r.append(el("span", "slot-no", div === "중등부" ? x.seed + "번" : "ABCDEFGH"[(x.seed - 1) % 8]), el("span", "", x.team.school), el("span", "slot-st", x.team.grp + "조 " + x.team.rank + "위"));
+          r.append(el("span", "slot-no", div === "중등부" ? x.seed + "번" : "ABCDEFGH"[(x.seed - 1) % 8]), el("span", "", drawSchoolLabel(x.team.school, regions)), el("span", "slot-st", x.team.grp + "조 " + x.team.rank + "위"));
           c.append(r);
         });
         wrap.append(c);
@@ -1726,28 +1775,28 @@
     const pending = ros.filter(x => String(x.data["확인 사항"] || "").trim()).map(x => x.data["학교 이름"]);
     const names = [...new Set(ros.filter(x => !String(x.data["확인 사항"] || "").trim()).map(x => String(x.data["학교 이름"] || "").trim()).filter(Boolean))];
     const ranked = names.map(n => ({ n, s: strength[normSchool(n)] })).sort((a, b) => (a.s == null) - (b.s == null) || (a.s ?? 0) - (b.s ?? 0) || a.n.localeCompare(b.n, "ko"));
-    return { ranked, teams: ranked.map(x => x.n), pending };
+    return { ranked, teams: ranked.map(x => x.n), pending, regions: drawRegions(ros) };
   }
   async function openDraw(div, slots, ros, reload) {
     const stage = FIRST_STAGE[div];
-    const { teams, pending } = await drawTeams(div, ros);
+    const { teams, pending, regions } = await drawTeams(div, ros);
     const groups = groupsFor(div, teams.length);
     const dlg = el("dialog", "rdlg");
     dlg.setAttribute("aria-label", div + " 자동 조 편성");
     const close = () => { dlg.close(); dlg.remove(); };
     let riskList = await loadRisky(div);
     const riskSet = () => new Set(teams.filter(t => riskList.some(x => normSchool(x.school) === normSchool(t))));
-    let drawn = drawGroups(teams, groups, riskSet()), result = drawn.result;
+    let drawn = drawGroups(teams, groups, riskSet(), regions), result = drawn.result;
     const body = el("div");
     function draw() {
       body.replaceChildren();
       const rs = riskSet();
-      body.append(riskEditor(div, teams, riskList, async () => { riskList = await loadRisky(div); drawn = drawGroups(teams, groups, riskSet()); result = drawn.result; draw(); }));
+      body.append(riskEditor(div, teams, riskList, async () => { riskList = await loadRisky(div); drawn = drawGroups(teams, groups, riskSet(), regions); result = drawn.result; draw(); }));
       const n4 = groups.filter(g => result[g].filter(Boolean).length === 4).length;
       const n3 = groups.filter(g => result[g].filter(Boolean).length === 3).length;
       const n2 = groups.filter(g => result[g].filter(Boolean).length <= 2).length;
       body.append(el("p", "note", div + " " + teams.length + "팀 → " + groups.length + "개 조 (4팀 조 " + n4 + " · 3팀 조 " + n3 + (n2 ? " · 2팀 이하 조 " + n2 : "") + ")" +
-        " · 포트 = 주전 평균 티어 순위 " + groups.length + "팀씩, 티어 없는 팀은 마지막 포트 · " + drawRangeText(drawn) + drawRiskText(drawn)));
+        " · 포트 = 주전 평균 티어 순위 " + groups.length + "팀씩, 티어 없는 팀은 마지막 포트 · " + drawRangeText(drawn) + drawRiskText(drawn) + drawRegionText(drawn)));
       if (pending.length) body.append(el("p", "rdlg-err", "중복 신청 확인 중이라 빠진 학교: " + pending.join(", ") + " — 확정 후 다시 편성하거나 직접 넣어 주세요."));
       if (teams.length > groups.length * 4) body.append(el("p", "rdlg-err", "팀이 " + groups.length * 4 + "팀보다 많아 " + (teams.length - groups.length * 4) + "팀이 들어가지 못했습니다. 조 수를 늘려야 합니다."));
       const wrap = el("div", "slot-grid");
@@ -1757,7 +1806,7 @@
         for (let i = 0; i < 4; i++) {
           const t = result[g][i];
           const row = el("div", "slot-row");
-          row.append(el("span", "slot-no", (i + 1) + "번"), el("span", "", t || "— (빈 자리)"));
+          row.append(el("span", "slot-no", (i + 1) + "번"), el("span", "", drawSchoolLabel(t, regions) || "— (빈 자리)"));
           if (t && rs.has(t)) row.append(el("small", "risk-tag", "⚠ 기권 예상"));
           c.append(row);
         }
@@ -1767,7 +1816,7 @@
     }
     const btns = el("div", "rdlg-btns");
     const again = el("button", "btn ghost", "다시 뽑기"); again.type = "button";
-    again.addEventListener("click", () => { drawn = drawGroups(teams, groups, riskSet()); result = drawn.result; draw(); });
+    again.addEventListener("click", () => { drawn = drawGroups(teams, groups, riskSet(), regions); result = drawn.result; draw(); });
     const cancel = el("button", "btn ghost", "닫기"); cancel.type = "button"; cancel.addEventListener("click", close);
     const ok = el("button", "btn", "이대로 저장"); ok.type = "button";
     ok.addEventListener("click", async () => {
@@ -1799,7 +1848,7 @@
     box.replaceChildren(el("p", "note", "불러오는 중…"));
     const div = previewDiv, stage = FIRST_STAGE[div];
     const { data: ros } = await sb.from("sheet_rows").select("data").eq("sheet", div === "중등부" ? "roster_middle" : "roster_high");
-    const { ranked, teams, pending } = await drawTeams(div, ros || []);
+    const { ranked, teams, pending, regions } = await drawTeams(div, ros || []);
     const groups = groupsFor(div, teams.length);
     const info = new Map(ranked.map((x, i) => [x.n, { rank: x.s == null ? null : i + 1, avg: x.s }]));
     const riskList = await loadRisky(div);
@@ -1820,12 +1869,12 @@
     const body = el("div");
     box.append(head, el("p", "note", "⚠️ 미리 보기 전용입니다. 실제 조 편성·대진표·학생 화면에는 저장되지 않습니다. 실제 편성은 '대진·경기 결과' 탭의 '자동 조 편성'에서 합니다."), riskEditor(div, teams, riskList, () => loadDrawPreview(box)), body);
     function draw() {
-      const drawn = drawGroups(teams, groups, rs), result = drawn.result;
+      const drawn = drawGroups(teams, groups, rs, regions), result = drawn.result;
       body.replaceChildren();
       const size = g => result[g].filter(Boolean).length;
       const n4 = groups.filter(g => size(g) === 4).length, n3 = groups.filter(g => size(g) === 3).length, n2 = groups.filter(g => size(g) <= 2).length;
       body.append(el("p", "note", div + " 확정 " + teams.length + "팀 → " + stage + " " + groups.length + "개 조 (4팀 조 " + n4 + " · 3팀 조 " + n3 + (n2 ? " · 2팀 이하 조 " + n2 : "") + ")" +
-        " · 1~4시드 = 주전 평균 티어 순위로 " + groups.length + "팀씩, 시드마다 조는 무작위 · " + drawRangeText(drawn) + drawRiskText(drawn)));
+        " · 1~4시드 = 주전 평균 티어 순위로 " + groups.length + "팀씩, 시드마다 조는 무작위 · " + drawRangeText(drawn) + drawRiskText(drawn) + drawRegionText(drawn)));
       if (pending.length) body.append(el("p", "rdlg-err", "아직 확정되지 않아 빠진 학교(확인 사항 있음): " + pending.join(", ")));
       if (teams.length > groups.length * 4) body.append(el("p", "rdlg-err", "팀이 " + groups.length * 4 + "팀보다 많아 " + (teams.length - groups.length * 4) + "팀이 들어가지 못했습니다."));
       const wrap = el("div", "slot-grid");
@@ -1838,7 +1887,7 @@
         for (let i = 0; i < 4; i++) {
           const t = result[g][i], x = t && info.get(t);
           const row = el("div", "slot-row");
-          row.append(el("span", "slot-no", (i + 1) + "시드"), el("span", t ? "" : "ph", t || "— (빈 자리)"));
+          row.append(el("span", "slot-no", (i + 1) + "시드"), el("span", t ? "" : "ph", drawSchoolLabel(t, regions) || "— (빈 자리)"));
           if (x) row.append(el("span", "slot-st", x.rank ? "티어 " + x.rank + "위 · " + x.avg.toFixed(2) : "티어 미입력"));
           if (t && rs.has(t)) row.append(el("small", "risk-tag", "⚠ 기권 예상"));
           c.append(row);
@@ -1868,6 +1917,7 @@
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
     loadPublicBracket();
     const reload = () => loadMatches(box);
+    const regions = drawRegions(ros);
     const sessById = Object.fromEntries((sessions || []).map(s => [s.id, s]));
 
     const sw = el("div", "div-switch");
@@ -1912,7 +1962,7 @@
     if (isOwner()) {
       const adv = el("button", "btn ghost small", "진출 팀 배정 (" + FIRST_STAGE[matchDiv] + " → " + (matchDiv === "중등부" ? "32강" : "본선") + ")");
       adv.type = "button";
-      adv.addEventListener("click", () => openAdvance(matchDiv, slots || [], stand || [], rows, reload));
+      adv.addEventListener("click", () => openAdvance(matchDiv, slots || [], stand || [], rows, reload, regions));
       head.append(adv);
     }
     sec.append(head, dl);
@@ -1940,7 +1990,8 @@
           i.setAttribute("aria-label", stage + " " + g + "조 " + s.seed + "번 학교");
           i.addEventListener("change", async () => { if (await save(sb.from("league_slots").update({ school: i.value.trim() || null }).eq("id", s.id))) reload(); });
           row.append(i);
-        } else row.append(el("span", s.school ? "" : "ph", s.school || "(" + (s.src ? srcText(s.src, rows) : seatLabel(matchDiv, s)) + ")"));
+          if (teamRegion(s.school, regions)) row.append(el("small", "slot-st", "(" + teamRegion(s.school, regions) + ")"));
+        } else row.append(el("span", s.school ? "" : "ph", drawSchoolLabel(s.school, regions) || "(" + (s.src ? srcText(s.src, rows) : seatLabel(matchDiv, s)) + ")"));
         row.append(el("span", "slot-st" + (x && x.rank && x.rank <= 2 ? " up" : ""), x ? (x.rank ? x.rank + "위 · " : "") + x.wins + "승 " + x.losses + "패" : ""));
         if (s.school && used[normSchool(s.school)] > 1) row.append(el("small", "rec-warn", "다른 조와 중복"));
         card.append(row);
@@ -1959,7 +2010,7 @@
           ["", "1", "2", "3", "4"].forEach(v => { const o = el("option", "", v ? v + "위" : "자동"); o.value = v; sel.append(o); });
           sel.value = s.final_rank ? String(s.final_rank) : "";
           sel.addEventListener("change", async () => { if (await save(sb.from("league_slots").update({ final_rank: sel.value ? Number(sel.value) : null }).eq("id", s.id))) reload(); });
-          l.append(el("span", "", s.school), sel);
+          l.append(el("span", "", drawSchoolLabel(s.school, regions)), sel);
           d.append(l);
         });
         card.append(d);
@@ -1997,8 +2048,8 @@
       { key: "_stage", label: "단계", readonly: true, get: r => r.stage },
       { key: "_round", label: "경기", readonly: true, get: label },
       { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id || !isEditor(), get: r => r.session_id ? sessText(sessById[r.session_id], r.time_offset_min) : r.scheduled_at },
-      teamCol(1), { key: "score1", label: "점수1", type: "int", get: r => r.score1 },
-      { key: "score2", label: "점수2", type: "int", get: r => r.score2 }, teamCol(2),
+      teamCol(1), { key: "_region1", label: "지역1", readonly: true, get: r => teamRegion(r.team1, regions) }, { key: "score1", label: "점수1", type: "int", get: r => r.score1 },
+      { key: "score2", label: "점수2", type: "int", get: r => r.score2 }, teamCol(2), { key: "_region2", label: "지역2", readonly: true, get: r => teamRegion(r.team2, regions) },
       { key: "winner", label: "승자", readonly: true, get: r => r.winner, cellClass: r => (r.winner ? "win" : "") },
       { key: "duration_sec", label: "경기 시간(분:초)", get: r => fmtDur(r.duration_sec) },
       { key: "referee", label: "심판", get: r => r.referee, list: r => (r.session_id ? "refs-" + r.session_id : "refs-all") },
