@@ -89,6 +89,10 @@ table.dtable select option { background: var(--bg2); }
 table.dtable .del { border: 1px solid var(--line); background: none; color: var(--t-red); border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
 table.dtable.ref td.c { text-align: center; }
 table.dtable.ref th small { display: block; color: var(--muted); font-weight: 400; }
+table.dtable.ref .ref-session-head { text-align: center; border-left: 2px solid var(--line); }
+table.dtable.ref .ref-role { text-align: center; min-width: 3.5em; }
+table.dtable.ref .ref-role-head th { position: static; background: var(--bg2); }
+table.dtable.ref .ref-role-head th:nth-child(3n + 1), table.dtable.ref tbody .ref-role:nth-child(3n) { border-left: 2px solid var(--line); }
 table.dtable tr.sum td { text-align: center; }
 table.dtable tr.sum td.ok .state { color: var(--ok); }
 table.dtable tr.sum td.short .state { color: var(--wait); }

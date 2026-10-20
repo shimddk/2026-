@@ -910,7 +910,11 @@ function renderTimeline(sessions) {
     return [0, 1, 2].map(n => String(h + n).padStart(2, "0") + ":" + String(m).padStart(2, "0")).join(" / ");
   };
   const byDay = {};
-  sessions.forEach(x => { (byDay[x.day] = byDay[x.day] || []).push(x); });
+  sessions.forEach(x => {
+    // 결선 당일은 고정 카드에 경기별 상세 시간이 있으므로 운영 회차와 중복 표시하지 않는다.
+    if (TL_FIXED.some(t => t.date === x.day && t.what === "결선 (오프라인)")) return;
+    (byDay[x.day] = byDay[x.day] || []).push(x);
+  });
   const items = TL_FIXED.concat(Object.keys(byDay).map(day => ({
     date: day, start: day, when: mdLabel(day),
     what: "경기", lines: byDay[day].sort((p, q) => String(p.start_time).localeCompare(String(q.start_time)))

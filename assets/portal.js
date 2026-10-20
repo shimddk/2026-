@@ -866,7 +866,7 @@
         ["t-advisors", SHEETS.advisors.title, "", b => loadSheet(b, SHEETS.advisors)]]),
       ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전·후보 상위 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
-      ["t-referee", "심판 일정", "경기 회차(날짜·시간)마다 심판으로 들어갈 수 있는 선생님을 체크합니다. 본인 줄만 체크할 수 있고, 회차 관리는 관리자만 합니다.", loadReferee],
+      ["t-referee", "심판 일정", "경기 회차(날짜·시간)마다 총괄·기록원·심판으로 참여 가능한 역할을 체크합니다. 본인 줄만 체크할 수 있고, 회차 관리는 관리자만 합니다.", loadReferee],
       ["t-warn", "경고 조치", "팀별 주의·경고 기록입니다. 최종 규정(주의 2회 = 경고 1회, 누적 경고 1회 진영 선택 제한 · 2회 밴카드 전체 제한 + 진영 선택 제한 · 3회 실격패)으로 조치를 보여 줍니다. 지원단 선생님은 누구나 기록할 수 있고, 삭제는 기록한 본인과 편집자만 가능합니다. 학생용 '경고 현황' 탭에는 자세한 내용·기록자 없이 공개됩니다.", loadWarnings]
     ];
     // 코칭 일정은 공개 '젠지 코칭' 탭에서 모두 보이고, 여기서는 고치기 권한자가 관리 (신청자·메모 포함)
@@ -2077,19 +2077,23 @@
 
   // 심판 일정: 경기 회차(날짜·시간)마다 가능한 선생님 체크. 본인 칸만 체크, 관리자는 회차 추가·수정·삭제와 모든 칸 수정
   async function loadReferee(box) {
-    const [staff, { data: sessions, error }, { data: avail }, { data: doneRows }] = await Promise.all([
+    const [staff, { data: sessions, error }, { data: avail, error: availError }, { data: doneRows, error: doneError }, { data: roleRows, error: roleError }] = await Promise.all([
       fetchStaff(),
       sb.from("ref_sessions").select("*").order("day").order("start_time").order("sort"),
       sb.from("ref_avail").select("*").eq("available", true),
-      sb.from("ref_done").select("*")
+      sb.from("ref_done").select("*"),
+      sb.from("ref_role_avail").select("*")
     ]);
     const done = new Set((doneRows || []).map(d => d.staff_id)); // '입력 완료'를 누른 선생님
     box.replaceChildren();
-    if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    if (error || availError || doneError || roleError) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
     const reload = () => loadReferee(box);
     const has = new Set((avail || []).map(a => a.session_id + "|" + a.staff_id));
+    const roles = ["총괄", "기록원", "심판"];
+    const roleHas = new Set((roleRows || []).map(a => a.session_id + "|" + a.staff_id + "|" + a.role));
+    const checked = (session, staff, role) => role === "심판" ? has.has(session + "|" + staff) : roleHas.has(session + "|" + staff + "|" + role);
     // 심판 명단: '심판가능' 선생님 + 이미 체크한 선생님 + 나 자신(관리자 포함, 긴급 시 투입)
-    const refs = staff.filter(s => s.referee_ok || (avail || []).some(a => a.staff_id === s.id) || s.id === ME.staffId);
+    const refs = staff.filter(s => s.referee_ok || (avail || []).some(a => a.staff_id === s.id) || (roleRows || []).some(a => a.staff_id === s.id) || s.id === ME.staffId);
     const canEdit = s => isOwner() || (ME.staffId && s.id === ME.staffId && !ME.external);
     const sessKey = s => s.day + " " + String(s.start_time).slice(0, 5);
     const sameTime = {};
@@ -2101,30 +2105,36 @@
       : ME.staffId ? "본인 줄(굵게 표시)만 체크할 수 있습니다. 체크하면 바로 저장됩니다. 가능한 회차를 다 체크했으면 맨 왼쪽 '입력 완료'를 눌러 주세요." : "계정이 지원단 이름과 연결되지 않아 체크할 수 없습니다. 관리자에게 연결을 요청하세요."));
     if (!(sessions || []).length) box.append(el("p", "note", "등록된 경기 회차가 없습니다."));
 
+    box.append(el("p", "note", "회차마다 총괄·기록원·심판을 각각 체크합니다. 기존 체크는 심판 칸에 그대로 유지됩니다."));
     const scroller = el("div", "gscroll");
     const table = el("table", "dtable ref");
     const thead = el("thead");
-    const hr = el("tr");
-    hr.append(el("th", "done-col", "입력 완료"), el("th", "", "선생님"));
+    const hr = el("tr"), roleHead = el("tr", "ref-role-head");
+    const doneHead=el("th", "done-col", "입력 완료"), teacherHead=el("th", "", "선생님");
+    doneHead.rowSpan=teacherHead.rowSpan=2; hr.append(doneHead, teacherHead);
     (sessions || []).forEach(s => {
-      const th = el("th");
+      const th = el("th", "ref-session-head"); th.colSpan = 3;
       th.append(el("div", "", Number(s.day.slice(5, 7)) + "/" + Number(s.day.slice(8, 10)) + "(" + wd(s.day) + ") " + String(s.start_time).slice(0, 5)), el("small", "", s.label));
       hr.append(th);
+      roles.forEach(role => roleHead.append(el("th", "ref-role", role)));
     });
-    thead.append(hr);
+    thead.append(hr, roleHead);
     const tb = el("tbody");
     const counts = {};
-    (sessions || []).forEach(s => { counts[s.id] = refs.filter(r => has.has(s.id + "|" + r.id)).length; });
+    (sessions || []).forEach(s => roles.forEach(role => { counts[s.id+"|"+role] = refs.filter(r => checked(s.id,r.id,role)).length; }));
     const foot = el("tr", "sum");
     function drawFoot() {
       const nDone = refs.filter(r => done.has(r.id)).length;
       foot.replaceChildren(el("td", "done-col " + (nDone >= refs.length ? "ok" : "short"), nDone + " / " + refs.length), el("th", "", "가능 / 필요"));
-      (sessions || []).forEach(s => {
-        const td = el("td", counts[s.id] >= s.needed ? "ok" : "short");
-        td.append(el("strong", "", counts[s.id] + " / " + s.needed), el("div", "state", counts[s.id] >= s.needed ? "충분" : "부족 " + (s.needed - counts[s.id]) + "명"));
+      (sessions || []).forEach(s => roles.forEach(role => {
+        const n = counts[s.id+"|"+role];
+        const td = el("td", role === "심판" ? (n >= s.needed ? "ok" : "short") : "");
+        if (role === "심판" && s.needed > 0) td.append(el("strong", "", n+" / "+s.needed), el("div", "state", n>=s.needed ? "충분" : "부족 "+(s.needed-n)+"명"));
+        else td.append(el("strong", "", n+"명"), el("div", "state", role === "심판" ? "필요 인원 미설정" : role));
         foot.append(td);
-      });
+      }));
     }
+
     refs.forEach(r => {
       const tr = el("tr", r.id === ME.staffId ? "me" : "");
       // 맨 왼쪽: 내가 가능한 회차를 다 체크했다는 표시
@@ -2147,31 +2157,37 @@
       } else dtd.textContent = done.has(r.id) ? "✔" : "";
       if (done.has(r.id)) tr.classList.add("is-done");
       tr.append(dtd, el("th", "", r.name + (r.school ? " (" + r.school + ")" : "")));
-      (sessions || []).forEach(s => {
-        const td = el("td", "c");
-        const on = has.has(s.id + "|" + r.id);
+      (sessions || []).forEach(s => roles.forEach(role => {
+        const td = el("td", "c ref-role");
+        const on = checked(s.id,r.id,role);
         if (canEdit(r)) {
-          const cb = el("input");
-          cb.type = "checkbox";
-          cb.checked = on;
-          cb.setAttribute("aria-label", r.name + " " + sessKey(s) + " " + s.label + " 가능");
+          const cb = el("input"); cb.type="checkbox"; cb.checked=on;
+          cb.setAttribute("aria-label", r.name+" "+sessKey(s)+" "+s.label+" "+role+" 가능");
           cb.addEventListener("change", async () => {
             if (cb.checked && sameTime[sessKey(s)] > 1) {
-              const other = (sessions || []).find(o => o.id !== s.id && sessKey(o) === sessKey(s) && has.has(o.id + "|" + r.id));
-              if (other && !confirm("같은 시간(" + sessKey(s) + ")에 '" + other.label + "'도 가능으로 체크되어 있습니다. 두 경기를 동시에 볼 수는 없으니 확인해 주세요. 그래도 체크할까요?")) { cb.checked = false; return; }
+              const other=(sessions || []).find(o => o.id!==s.id && sessKey(o)===sessKey(s) && roles.some(k=>checked(o.id,r.id,k)));
+              if (other && !confirm("같은 시간("+sessKey(s)+")에 '"+other.label+"'도 체크되어 있습니다. 그래도 체크할까요?")) { cb.checked=false; return; }
             }
-            const ok = cb.checked
-              ? await save(sb.from("ref_avail").upsert({ session_id: s.id, staff_id: r.id, available: true }))
-              : await save(sb.from("ref_avail").delete().eq("session_id", s.id).eq("staff_id", r.id));
-            if (!ok) { cb.checked = !cb.checked; return; }
-            if (cb.checked) has.add(s.id + "|" + r.id); else has.delete(s.id + "|" + r.id);
-            counts[s.id] += cb.checked ? 1 : -1;
-            drawFoot();
+            cb.disabled = true;
+            const tableName = role === "심판" ? "ref_avail" : "ref_role_avail";
+            let query;
+            if (cb.checked) {
+              const value = { session_id: s.id, staff_id: r.id, ...(role === "심판" ? { available: true } : { role }) };
+              query = sb.from(tableName).upsert(value, { onConflict: role === "심판" ? "session_id,staff_id" : "session_id,staff_id,role" });
+            } else {
+              query = sb.from(tableName).delete().eq("session_id", s.id).eq("staff_id", r.id);
+              if (role !== "심판") query = query.eq("role", role);
+            }
+            const ok = await save(query); cb.disabled = false;
+            if (!ok) { cb.checked=!cb.checked; return; }
+            const target=role === "심판" ? has : roleHas, key=s.id+"|"+r.id+(role === "심판" ? "" : "|"+role);
+            if (cb.checked) target.add(key); else target.delete(key);
+            counts[s.id+"|"+role]+=cb.checked?1:-1; drawFoot();
           });
           td.append(cb);
-        } else td.textContent = on ? "가능" : "";
+        } else td.textContent=on?"가능":"";
         tr.append(td);
-      });
+      }));
       tb.append(tr);
     });
     drawFoot();
@@ -2987,7 +3003,7 @@
 
     // 최근 수정 기록
     const { data: logs } = await sb.from("audit_log").select("table_name,action,actor_email,at").order("at", { ascending: false }).limit(30);
-    const TBL = { coaching_sessions: "젠지 코칭", team_warnings: "경고 조치", form_inbox: "신청 접수", tier_scores: "티어 기준표", app_settings: "사이트 설정", staff: "지원단 명단", sheet_rows: "명단·연락처·티어", matches: "대진·결과", ref_avail: "심판 일정", ref_sessions: "심판 회차", profiles: "로그인 승인" };
+    const TBL = { coaching_sessions: "젠지 코칭", team_warnings: "경고 조치", form_inbox: "신청 접수", tier_scores: "티어 기준표", app_settings: "사이트 설정", staff: "지원단 명단", sheet_rows: "명단·연락처·티어", matches: "대진·결과", ref_avail: "심판 일정", ref_role_avail: "총괄·기록원 일정", ref_sessions: "심판 회차", profiles: "로그인 승인" };
     const ACT = { INSERT: "추가", UPDATE: "수정", DELETE: "삭제" };
     const d = el("details", "audit");
     d.append(el("summary", "", "최근 수정 기록 " + (logs ? logs.length : 0) + "건"));
