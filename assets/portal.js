@@ -1091,12 +1091,14 @@
       chipBox.append(el("summary", "", (backup ? "변경 전 백업 · " : "") + "티어별 전체 등록 인원 (주전·후보 포함)"));
       const table = el("table", "dtable");
       const head = el("thead"), hr = el("tr");
-      ["티어", "전체", "중등부", "고등부"].forEach(t => hr.append(el("th", "", t))); head.append(hr); table.append(head);
+      ["티어", "전체 (비율)", "중등부", "고등부"].forEach(t => hr.append(el("th", "", t))); head.append(hr); table.append(head);
       const body = el("tbody");
-      const totals = [0,0,0];
-      report.counts.forEach(c => { const tr=el("tr"); [c.tier,c.total,c.middle,c.high].forEach(v => tr.append(el("td", "", String(v)))); body.append(tr); [c.total,c.middle,c.high].forEach((v,i)=>totals[i]+=v); });
-      const total=el("tr"); ["합계",...totals].forEach(v=>total.append(el("th", "", String(v)))); body.append(total); table.append(body);
+      const totals = report.counts.reduce((sum, c) => sum.map((n, i) => n + Number([c.total,c.middle,c.high][i])), [0,0,0]);
+      const withRatio = n => n + "명 (" + (totals[0] ? n / totals[0] * 100 : 0).toFixed(1) + "%)";
+      report.counts.forEach(c => { const tr=el("tr"); [c.tier,withRatio(c.total),c.middle,c.high].forEach(v => tr.append(el("td", "", String(v)))); body.append(tr); });
+      const total=el("tr"); ["합계",withRatio(totals[0]),totals[1],totals[2]].forEach(v=>total.append(el("th", "", String(v)))); body.append(total); table.append(body);
       const countScroll=el("div", "gscroll"); countScroll.append(table); chipBox.append(countScroll);
+      chipBox.append(el("p", "note", "비율은 주전·후보를 포함한 전체 등록 인원 기준이며, 소수점 첫째 자리까지 표시합니다."));
       summary.replaceChildren(chipBox, el("p", "note", "산정 1~5는 주전·후보 중 티어가 높은 5명입니다. 원래 선수 칸은 유지하며, 구분되지 않은 티어는 확인 대상으로 남깁니다."));
       if (isEditor() && !backup) summary.append(scoreEditor());
 
