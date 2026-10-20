@@ -2092,7 +2092,7 @@
     const has = new Set((avail || []).filter(a => a.available).map(a => a.session_id + "|" + a.staff_id));
     const attendance = new Map((avail || []).map(a => [a.session_id + "|" + a.staff_id, a.available]));
     const isFinal = s => s.day === "2026-11-08";
-    const rolesFor = s => isFinal(s) ? ["참석/불참"] : ["역할 / 가능 여부"];
+    const rolesFor = s => isFinal(s) ? ["참석/불참"] : ["역할"];
     const choices = new Map((assignments || []).map(x => [x.session_id + "|" + x.staff_id, x]));
     const roles = ["총괄", "기록원", "심판", "불가"];
     const roleHas = new Set((roleRows || []).map(a => a.session_id + "|" + a.staff_id + "|" + a.role));
@@ -2110,9 +2110,13 @@
       : ME.staffId ? "본인 줄(굵게 표시)만 체크할 수 있습니다. 체크하면 바로 저장됩니다. 가능한 회차를 다 체크했으면 맨 왼쪽 '입력 완료'를 눌러 주세요." : "계정이 지원단 이름과 연결되지 않아 체크할 수 없습니다. 관리자에게 연결을 요청하세요."));
     if (!(sessions || []).length) box.append(el("p", "note", "등록된 경기 회차가 없습니다."));
 
-    box.append(el("p", "note", "회차마다 역할을 선택하고 참여 가능 여부를 체크합니다. 불가는 체크박스 없이 저장됩니다. 기존 복수 역할은 새 역할을 고르기 전까지 보존됩니다. 11/8 결승전은 참석·불참만 선택합니다."));
+    box.append(el("p", "note", "회차마다 총괄·기록·심판 중 역할을 선택하면 바로 저장됩니다. 참여하지 못하는 회차는 -를 선택합니다. 기존 복수 역할은 새 역할을 고르기 전까지 보존됩니다. 11/8 결승전은 참석·불참만 선택합니다."));
     const scroller = el("div", "gscroll");
-    const table = el("table", "dtable ref");
+    const table = el("table", "dtable ref ref-equal");
+    table.setAttribute("style", "width:" + (290 + (sessions || []).length * 160) + "px");
+    const colgroup = el("colgroup");
+    ["ref-done-col", "ref-teacher-col", ...(sessions || []).map(() => "ref-session-col")].forEach(cls => colgroup.append(el("col", cls)));
+    table.append(colgroup);
     const thead = el("thead");
     const hr = el("tr"), roleHead = el("tr", "ref-role-head");
     const doneHead=el("th", "done-col", "입력 완료"), teacherHead=el("th", "", "선생님");
@@ -2139,7 +2143,7 @@
           foot.append(td); return;
         }
         const td = el("td", "c");
-        roles.forEach(k => td.append(el("div", "state", (k === "기록원" ? "기록" : k) + " " + counts[s.id+"|"+k] + "명")));
+        roles.forEach(k => td.append(el("div", "state", (k === "기록원" ? "기록" : k === "불가" ? "-" : k) + " " + counts[s.id+"|"+k] + "명")));
         if (s.needed > 0) td.append(el("div", "state", "필요 심판 " + s.needed + "명"));
         foot.append(td);
       }));
@@ -2189,34 +2193,29 @@
         }
         const key = s.id + "|" + r.id, choice = choices.get(key);
         const active = roles.filter(k => k !== "불가" && checked(s.id, r.id, k));
-        const selected = choice?.role || (active.length > 1 ? "legacy" : active[0] || (checked(s.id,r.id,"불가") ? "불가" : ""));
-        const available = choice ? choice.available : active.length > 0;
-        const label = k => k === "기록원" ? "기록" : k;
+        const selected = choice ? (choice.available ? choice.role : "불가") : (active.length > 1 ? "legacy" : active[0] || (checked(s.id,r.id,"불가") ? "불가" : ""));
+        const label = k => k === "기록원" ? "기록" : k === "불가" ? "-" : k;
         if (canEdit(r)) {
           const select = el("select"); select.setAttribute("aria-label", r.name + " " + sessKey(s) + " 역할");
           const empty = el("option", "", "역할 선택"); empty.value = ""; empty.disabled = true; select.append(empty);
           if (selected === "legacy") { const o = el("option", "", "기존: " + active.map(label).join("·")); o.value = "legacy"; o.disabled = true; select.append(o); }
           roles.forEach(k => { const o=el("option", "", label(k)); o.value=k; select.append(o); }); select.value=selected;
-          const cb = el("input"); cb.type="checkbox"; cb.checked=available;
-          cb.setAttribute("aria-label", r.name + " " + sessKey(s) + " 참여 가능");
           const saveChoice = async (nextRole, nextAvailable) => {
             if (nextAvailable && sameTime[sessKey(s)] > 1) {
               const other=(sessions || []).find(o=>o.id!==s.id && sessKey(o)===sessKey(s) && roles.filter(k=>k!=="불가").some(k=>checked(o.id,r.id,k)));
-              if (other && !confirm("같은 시간에 '"+other.label+"'도 참여 가능으로 표시되어 있습니다. 저장할까요?")) { select.value=selected; cb.checked=available; return; }
+              if (other && !confirm("같은 시간에 '"+other.label+"'도 참여 가능으로 표시되어 있습니다. 저장할까요?")) { select.value=selected; return; }
             }
-            select.disabled=cb.disabled=true;
+            select.disabled=true;
             const ok=await save(sb.rpc("set_ref_assignment", {p_session:s.id,p_staff:r.id,p_role:nextRole,p_available:nextAvailable}));
-            select.disabled=cb.disabled=false;
-            if (!ok) { select.value=selected; cb.checked=available; return; }
+            select.disabled=false;
+            if (!ok) { select.value=selected; return; }
             await reload();
           };
-          select.addEventListener("change",()=>saveChoice(select.value,select.value===selected && select.value!=="불가" ? available : false));
-          cb.addEventListener("change",()=>saveChoice(select.value,cb.checked));
+          select.addEventListener("change",()=>saveChoice(select.value,select.value!=="불가"));
           const wrap=el("div", "ref-choice"); wrap.append(select);
-          if (selected && selected!=="불가" && selected!=="legacy") { const l=el("label"); l.append(cb,document.createTextNode("참여 가능")); wrap.append(l); }
           if (selected==="legacy") wrap.append(el("small", "", "기존 복수 역할 · 새 역할 선택 시 정리"));
           td.append(wrap);
-        } else td.textContent = selected === "legacy" ? "기존: " + active.map(label).join("·") : selected === "불가" ? "불가" : selected ? label(selected) + (available ? " · 가능" : " · 불가능") : "미선택";
+        } else td.textContent = selected === "legacy" ? "기존: " + active.map(label).join("·") : selected ? label(selected) : "미선택";
         tr.append(td);
       }));
       tb.append(tr);

@@ -97,6 +97,12 @@ table.dtable.ref .ref-choice { display: flex; flex-direction: column; align-item
 table.dtable.ref .ref-choice select { min-width: 6em; border-color: var(--line); }
 table.dtable.ref .ref-choice label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 table.dtable.ref .ref-choice small { color: var(--muted); white-space: normal; max-width: 12em; }
+table.dtable.ref.ref-equal { table-layout: fixed; }
+table.dtable.ref.ref-equal col.ref-done-col { width: 90px; }
+table.dtable.ref.ref-equal col.ref-teacher-col { width: 200px; }
+table.dtable.ref.ref-equal col.ref-session-col { width: 160px; }
+table.dtable.ref.ref-equal .ref-session-head, table.dtable.ref.ref-equal .ref-session-head small, table.dtable.ref.ref-equal td.ref-role { white-space: normal; overflow-wrap: anywhere; }
+table.dtable.ref.ref-equal .ref-choice select, table.dtable.ref.ref-equal td.ref-role > select { width: 100%; box-sizing: border-box; min-width: 0; }
 table.dtable tr.sum td { text-align: center; }
 table.dtable tr.sum td.ok .state { color: var(--ok); }
 table.dtable tr.sum td.short .state { color: var(--wait); }
