@@ -65,8 +65,10 @@
     --hl-bg: #fff176; --hl-text: #1b2134; --hl-top: 18%; --hl-bottom: 92%;   /* 형광펜 (라이트는 글자 아래쪽만) */
     color-scheme: light;
     --radius: 16px;
+    --division-bg: #e1f7ff; --division-ink: #174864; --division-active: #693be8; --division-active-ink: #ffffff;
   }
   :root[data-theme="dark"] {
+    --division-bg: #193c55; --division-ink: #dff7ff; --division-active: #d6c5ff; --division-active-ink: #23134c;
     --bg: #0a0f24; --bg2: #111833; --card: #161f42; --line: #283364; --text: #e9ecff; --muted: #9aa3cc;
     --neon: #35e0ff; --neon2: #b26bff; --ok: #3ddc97; --wait: #ffb547;
     --glow1: #2a1a5e; --glow2: #0d3a5c; --header-bg: rgba(10, 15, 36, 0.85); --on-accent: #0a0f24; --card-shadow: none;
@@ -216,6 +218,10 @@
 
   /* 대진표 */
   .div-switch { display: flex; gap: 6px; margin-bottom: 16px; }
+  #divSwitch { gap: 12px; }
+  #divSwitch .chip { flex: 1; max-width: 240px; min-height: 60px; padding: 14px 28px; font-size: clamp(19px, 4.5vw, 24px); font-weight: 800; border: 2px solid var(--neon); border-radius: 14px; color: var(--division-ink); background: var(--division-bg); }
+  #divSwitch .chip[aria-pressed="true"] { color: var(--division-active-ink); background: var(--division-active); border-color: var(--division-active); box-shadow: 0 0 0 3px var(--glow2); }
+  #divSwitch .chip:hover, #divSwitch .chip:focus-visible { outline: 3px solid var(--neon); outline-offset: 3px; }
   .groups { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .group h3 { margin: 0 0 8px; font-size: 16px; color: var(--neon); }
   .group ol { margin: 0; padding-left: 20px; color: var(--muted); }
@@ -942,6 +948,12 @@ const BK_GROUPS = { "64강": "ABCDEFGHIJKLMNOP".split(""), "32강": "ABCDEFGH".s
 const BK_STAGES = { 중등부: ["64강", "32강"], 고등부: ["32강"] };
 // 출처를 사람이 읽는 말로: G:64강:A:1 → 64강 A조 1번, R:64강:A:1 → 64강 A조 1위, W:E-U1-1 → 승자조 1R 1경기 승자
 function bkShort(code) {
+  const round = /^(E|B)-(U|L)(\d)(?:-(\d+))?$/.exec(code);
+  if (round) {
+    const side = round[2] === "U" ? "승자조" : "패자조";
+    const final = round[2] === "U" ? round[3] === "3" : round[3] === "4";
+    return side + (final ? " 결승" : " " + round[3] + "R") + (round[4] ? " " + round[4] + "경기" : "");
+  }
   const m = BK.matches.find(x => x.code === code && x.division === BK.div);
   if (!m) return code;
   return m.round_label.replace("라운드", "R").replace(/ (\d)경기$/, "-$1");
@@ -957,13 +969,13 @@ function bkSrc(src, here) {
   const g = p[1].split("-")[0];
   if (p[0] === "W" && /U3$/.test(p[1])) return BK_NAME[g] + " 1위";
   if (p[0] === "W" && /L4$/.test(p[1])) return BK_NAME[g] + " 2위";
-  return (BK_NAME[g] && g !== here ? BK_NAME[g] + " " : "") + bkShort(p[1]) + (p[0] === "W" ? " 승자" : " 패자");
+  return (BK_NAME[g] ? BK_NAME[g] + " " : "") + bkShort(p[1]) + (p[0] === "W" ? " 승자" : " 패자");
 }
 const BK_REGIONS = {};
 const bkSchool = s => s ? s + (BK_REGIONS[s] ? " (" + BK_REGIONS[s] + ")" : "") : "";
 function bkBox(m) {
   const box = el("div", "mbox");
-  box.append(el("div", "mh", [m.round_label, m.scheduled_at].filter(Boolean).join(" · ")));
+  box.append(el("div", "mh", [(BK_NAME[m.code.split("-")[0]] ? BK_NAME[m.code.split("-")[0]] + " · " : "") + bkShort(m.code), m.scheduled_at].filter(Boolean).join(" · ")));
   [1, 2].forEach(n => {
     const t = m["team" + n], s = m["score" + n], src = m["src" + n];
     const cls = !t ? " ph" : m.winner ? (m.winner === t ? " win" : " lose") : "";
