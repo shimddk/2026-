@@ -523,7 +523,7 @@
   const teacherAI = window.createTeacherAI ? window.createTeacherAI(sb) : null;
   const isEditor = () => ME.role === "editor" || ME.role === "owner";
   const isOwner = () => ME.role === "owner";
-  const canPreviewPayment = () => ME.status === "approved" && isOwner() && !ME.external && !!ME.staffId && ["심승보", "차재홍", "강병화"].includes(ME.name);
+  const canPreviewPayment = () => ME.status === "approved" && !!ME.paymentAllowed;
   const ROLE_LABEL = { viewer: "보기", editor: "보기·고치기", owner: "관리자", referee: "심판" };
 
   function renderAcct() {
@@ -569,7 +569,7 @@
 
   async function refresh() {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { Object.assign(ME, { id: null, status: null, role: null, name: null, email: null, staffId: null }); teacherAI?.setIdentity(ME); renderAcct(); removeTeacher(); renderRecord(); return; }
+    if (!session) { Object.assign(ME, { id: null, status: null, role: null, name: null, email: null, staffId: null, paymentAllowed: false }); teacherAI?.setIdentity(ME); renderAcct(); removeTeacher(); renderRecord(); return; }
     ME.email = session.user.email;
     ME.id = session.user.id;
     const { data, error } = await sb.rpc("touch_login");
@@ -579,6 +579,8 @@
     ME.name = row && row.staff_name ? row.staff_name : (session.user.user_metadata.full_name || session.user.email);
     ME.external = !!(row && row.external);
     ME.staffId = row && row.staff_id ? Number(row.staff_id) : null; // 심판 일정에서 본인 칸 판별
+    ME.paymentAllowed = false;
+    if (ME.status === "approved") { const { data: payment } = await sb.rpc("payment_state"); ME.paymentAllowed = !!payment?.allowed; }
     teacherAI?.setIdentity(ME);
     renderAcct();
     renderRecord();
@@ -884,7 +886,7 @@
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     if (isOwner()) views.push(["t-drawpreview", "예상 조 편성", "지금까지 확정된 팀으로 조 편성을 미리 뽑아 봅니다(관리자 전용). 저장되지 않으며 실제 대진표와 학생 화면에는 아무 영향이 없습니다.", loadDrawPreview]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
-    if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "수당 지급 서류를 비공개로 제출합니다. 전체 서류 확인은 강병화 선생님만 가능합니다.", loadPaymentPreview]);
+    if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "심판가능 체크 교사의 수당 서류를 비공개로 제출합니다. 강병화·차재홍·임종철 선생님이 열람하며, 확인 처리는 강병화 선생님이 담당합니다.", loadPaymentPreview]);
     views.forEach(([id, label, lead, loader]) => {
       addTab(id, label, true);
       const body = addSection(id, label, lead);
@@ -917,8 +919,9 @@
         finally { b.disabled = false; }
       }); return b;
     };
+    if (state.submitter) {
     const submit = el("section", "card payment-preview");
-    submit.append(el("h3", "", "본인 제출"), el("p", "note", "PDF 파일당 최대 10MB입니다. 불필요한 개인정보는 가린 사본을 제출해 주세요. 서류는 본인과 확인 담당자 강병화 선생님만 열람합니다."));
+    submit.append(el("h3", "", "본인 제출"), el("p", "note", "PDF 파일당 최대 10MB입니다. 불필요한 개인정보는 가린 사본을 제출해 주세요. 서류는 본인과 강병화·차재홍·임종철 선생님만 열람합니다."));
     const form = el("form"), fields = el("fieldset", "payment-fields"), inputs = {};
     fields.append(el("legend", "", "제출 항목"));
     [["identity", "신분증 사본", "file"], ["bank", "통장 사본", "file"], ["email", "전자계약서 수신용 이메일 주소", "email"], ["phone", "핸드폰 번호", "tel"]].forEach(([key, title, type]) => {
@@ -959,8 +962,9 @@
       } catch (error) { status.textContent = error.message || "제출에 실패했습니다. 다시 시도해 주세요."; fields.disabled = button.disabled = false; }
     });
     submit.append(form); box.append(submit);
-    if (state.reviewer) {
-      const review = el("section", "card payment-preview"); review.append(el("h3", "", "제출 확인 · 강병화 담당"));
+    } else box.append(el("p", "note", "수당 서류 열람 전용 계정입니다. 아래에서 제출 현황과 파일을 확인할 수 있습니다."));
+    if (state.reader) {
+      const review = el("section", "card payment-preview"); review.append(el("h3", "", "제출 현황 · 확인 처리 담당: 강병화"));
       const { data: list, error } = await sb.rpc("payment_review_list");
       if (error) { review.append(el("p", "note", "제출 현황을 불러오지 못했습니다.")); box.append(review); return; }
       const wrap = el("div", "gscroll"), table = el("table", "dtable"), head = el("thead"), tr = el("tr");
@@ -971,7 +975,7 @@
         ["identity", "bank"].forEach(key => { const td = el("td"); td.append(p ? download(p[key + "_path"], key === "identity" ? "신분증 사본" : "통장 사본") : el("span", "", "미제출")); row.append(td); });
         row.append(el("td", "", p ? p.email : "—"), el("td", "", p ? p.phone : "—"));
         const td = el("td"); td.append(el("span", "", !p ? "미제출" : p.checked_at ? "확인 완료" : "확인 대기"));
-        if (p) { const check = el("button", "btn ghost small", p.checked_at ? "확인 취소" : "확인 완료"); check.type = "button";
+        if (p && state.reviewer) { const check = el("button", "btn ghost small", p.checked_at ? "확인 취소" : "확인 완료"); check.type = "button";
           check.addEventListener("click", async () => { check.disabled = true; if (await save(sb.rpc("payment_review", { p_user: item.user_id, p_revision: p.revision, p_checked: !p.checked_at }), "확인 상태를 저장했습니다")) loadPaymentPreview(box); else check.disabled = false; }); td.append(check); }
         row.append(td); body.append(row);
       }); table.append(head, body); wrap.append(table); review.append(wrap); box.append(review);
