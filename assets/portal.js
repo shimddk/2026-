@@ -2201,7 +2201,7 @@
             await reload();
           });
           td.append(cb);
-        } else td.textContent=on?"가능":"";
+        } else td.textContent=on?(role === "불가" ? "불가" : "가능"):"";
         tr.append(td);
       }));
       tb.append(tr);
