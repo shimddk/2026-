@@ -1086,7 +1086,7 @@ function bkSchoolFinder(ms) {
       ms.filter(m => !m.void && (m.team1 === school || m.team2 === school)).forEach(m => {
         const n = m.team1 === school ? 2 : 1, row = el("div", "school-game");
         const score = m.score1 != null && m.score2 != null ? " · " + (m.winner === school ? "승" : m.winner ? "패" : "진행 중") + " (" + m.score1 + ":" + m.score2 + ")" : "";
-        row.append(el("time", "", m.scheduled_at || "시간 미정"), el("span", "", "vs " + (m["team"+n] ? bkSchool(m["team"+n]) : "상대 미정") + score), el("small", "note", m.stage + (m.grp ? " · " + (BK_NAME[m.grp] || m.grp) + (BK_NAME[m.grp] ? " 그룹" : "조") : "") + ((m.round_label || "").includes("부전승") ? " · 부전승" : ""));
+        row.append(el("time", "", m.scheduled_at || "시간 미정"), el("span", "", "vs " + (m["team"+n] ? bkSchool(m["team"+n]) : "상대 미정") + score), el("small", "note", m.stage + (m.grp ? " · " + (BK_NAME[m.grp] || m.grp) + (BK_NAME[m.grp] ? " 그룹" : "조") : "") + ((m.round_label || "").includes("부전승") ? " · 부전승" : "")));
         card.append(row);
       });
       card.append(el("p", "note", "시간은 예정 시작 시각입니다. 다음 단계는 진출 시 배정되며, 확정 후 이곳에 표시됩니다."));
