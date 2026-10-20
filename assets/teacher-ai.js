@@ -33,7 +33,11 @@
       return true;
     }
     function message(text, mine = false) {
-      const row = node('div', 'teacher-ai-message' + (mine ? ' mine' : ''), text);
+      const row = node('div', 'teacher-ai-message' + (mine ? ' mine' : ''));
+      // HTML을 해석하지 않고 굵은 글씨 표시만 지원한다.
+      String(text).split(/(\*\*[^*\n]+\*\*)/g).forEach(part => {
+        row.append(!mine && part.startsWith('**') && part.endsWith('**') ? node('strong', '', part.slice(2, -2)) : document.createTextNode(part));
+      });
       parts.log.append(row);
       parts.log.scrollTop = parts.log.scrollHeight;
       return row;

@@ -864,7 +864,7 @@
       // 연락처 표는 심판 권한에 안 보임 (DB에서도 막음)
       ...(ME.role === "referee" ? [] : [["t-captains", SHEETS.captains.title, "", b => loadSheet(b, SHEETS.captains)],
         ["t-advisors", SHEETS.advisors.title, "", b => loadSheet(b, SHEETS.advisors)]]),
-      ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
+      ["t-tier", SHEETS.tier.title, "선수 티어를 고르면 주전·후보 상위 5명 평균과 순위가 자동으로 계산됩니다. 점수가 낮을수록 높은 티어입니다.", loadTier],
       ["t-matches", "대진·경기 결과", "여기 입력한 학교 이름·점수는 학생용 대진표에도 표시됩니다. 심판·비고는 교사용에만 보입니다.", loadMatches],
       ["t-referee", "심판 일정", "경기 회차(날짜·시간)마다 심판으로 들어갈 수 있는 선생님을 체크합니다. 본인 줄만 체크할 수 있고, 회차 관리는 관리자만 합니다.", loadReferee],
       ["t-warn", "경고 조치", "팀별 주의·경고 기록입니다. 최종 규정(주의 2회 = 경고 1회, 누적 경고 1회 진영 선택 제한 · 2회 밴카드 전체 제한 + 진영 선택 제한 · 3회 실격패)으로 조치를 보여 줍니다. 지원단 선생님은 누구나 기록할 수 있고, 삭제는 기록한 본인과 편집자만 가능합니다. 학생용 '경고 현황' 탭에는 자세한 내용·기록자 없이 공개됩니다.", loadWarnings]
@@ -1023,8 +1023,7 @@
     });
   }
 
-  // 팀별 티어 현황: 주전 5명 평균·순위 자동 계산 (원래 엑셀 수식을 대신함)
-  const STARTERS = ["선수1", "선수2", "선수3", "선수4", "선수5"];
+  // 팀별 티어 현황: 주전·후보 상위 5명 평균·순위 자동 계산 (원래 엑셀 수식을 대신함)
   async function loadTier(box) {
     box.replaceChildren();
     let current = "tier_middle";
@@ -1041,16 +1040,23 @@
     const inner = el("div");
     box.append(sw, summary, inner);
 
-    let rows = [], scores = [], keys = [], tierCountsOpen = false;
+    let rows = [], scores = [], keys = [], tierCountsOpen = true, report = null, backup = false, loadVersion = 0;
+    if (isEditor()) {
+      const source = el("select", "gfilter"); source.setAttribute("aria-label", "티어 자료 선택");
+      [["current", "현재 티어"], ["backup", "2026-10-20 변경 전 백업 (읽기 전용)"]].forEach(([v,t]) => { const o=el("option", "", t); o.value=v; source.append(o); });
+      source.addEventListener("change", () => { backup=source.value === "backup"; load(); }); sw.append(source);
+    }
     async function load() {
       inner.replaceChildren(el("p", "note", "불러오는 중…"));
-      const [m, r, s] = await Promise.all([
+      const version = ++loadVersion;
+      const [m, result] = await Promise.all([
         sb.from("sheet_columns").select("columns").eq("sheet", current).maybeSingle(),
-        sb.from("sheet_rows").select("id,row_no,data").eq("sheet", current).order("row_no"),
-        sb.from("tier_scores").select("*").eq("division", divOf(current)).order("sort")
+        sb.rpc("teacher_tier_report", { p_backup: backup })
       ]);
-      if (r.error || s.error) { inner.replaceChildren(el("p", "note", "불러오지 못했습니다.")); return; }
-      rows = r.data; scores = s.data;
+      if (version !== loadVersion) return;
+      if (result.error || !result.data) { inner.replaceChildren(el("p", "note", "불러오지 못했습니다.")); summary.replaceChildren(); return; }
+      report = result.data;
+      rows = report.rows.filter(r => r.sheet === current); scores = report.scores.filter(s => s.division === divOf(current));
       keys = (m.data && m.data.columns) || [...new Set(rows.flatMap(x => Object.keys(x.data)))];
       render();
       const sheet = current;
@@ -1058,16 +1064,17 @@
     }
 
     function compute() {
-      const map = new Map(scores.map(t => [t.tier, Number(t.score)]));
+      const teams = new Map(report.teams.filter(t => t.division === divOf(current)).map(t => [normSchool(t.school), t]));
       rows.forEach(r => {
-        const nums = STARTERS.map(k => map.get(r.data[k])).filter(v => typeof v === "number");
-        r._avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
-        r._n = nums.length;
+        const t = teams.get(normSchool(r.data["학교"]));
+        r._top = t?.top_five || []; r._avg = t?.average ?? null;
+        r._n = r._top.length; r._unknown = t?.unknown_count || 0;
       });
     }
-    // 순위: 확인이 필요하거나 주전 5명 티어가 다 들어오지 않은 팀은 빼고, 평균이 낮을수록(높은 티어) 1위, 같은 평균은 같은 순위
+
+    // 순위: 확인이 필요한 팀은 빼고, 상위 5명 평균이 낮을수록 1위. 같은 평균은 같은 순위.
     function rankAndSort(isCheck) {
-      rows.forEach(r => { r._todo = isCheck(r) ? "확인 필요" : r._n < 5 ? "티어 미입력 (" + r._n + "/5)" : ""; });
+      rows.forEach(r => { r._todo = isCheck(r) ? "확인 필요" : r._unknown ? "티어 확인 필요 (" + r._unknown + "명)" : r._n < 5 ? "티어 미입력 (" + r._n + "/5)" : ""; });
       const sorted = rows.filter(r => !r._todo).map(r => r._avg).sort((a, b) => a - b);
       rows.forEach(r => { r._rank = r._todo ? null : sorted.indexOf(r._avg) + 1; });
       // 할 일이 있는 팀을 맨 위(확인 필요 → 티어 미입력, 학교 이름순), 그 아래 순위순
@@ -1078,25 +1085,22 @@
 
     function render() {
       compute();
-      // 요약: 주전 티어별 인원
-      const counts = scores.map(t => [t.tier, rows.reduce((n, r) => n + STARTERS.filter(k => r.data[k] === t.tier).length, 0)]);
-      const done = rows.filter(r => r._n === 5).length;
-      // 티어별 인원은 접어 두고 화살표로 펼침 (표가 바로 보이도록)
       const chipBox = el("details", "score-editor tier-counts");
       chipBox.open = tierCountsOpen;
       chipBox.addEventListener("toggle", () => { tierCountsOpen = chipBox.open; });
-      chipBox.append(el("summary", "", "티어별 주전 인원 (" + divOf(current) + ") · 주전 5명 티어가 모두 입력된 팀 " + done + " / " + rows.length + "팀"));
-      const chips = el("div", "tier-chips");
-      counts.forEach(([t, n]) => {
-        const c = el("span", "tier-chip");
-        c.append(el("b", "", t), document.createTextNode(" " + n + "명"));
-        chips.append(c);
-      });
-      chipBox.append(chips);
-      summary.replaceChildren(chipBox);
-      if (isEditor()) summary.append(scoreEditor());
+      chipBox.append(el("summary", "", (backup ? "변경 전 백업 · " : "") + "티어별 전체 등록 인원 (주전·후보 포함)"));
+      const table = el("table", "dtable");
+      const head = el("thead"), hr = el("tr");
+      ["티어", "전체", "중등부", "고등부"].forEach(t => hr.append(el("th", "", t))); head.append(hr); table.append(head);
+      const body = el("tbody");
+      const totals = [0,0,0];
+      report.counts.forEach(c => { const tr=el("tr"); [c.tier,c.total,c.middle,c.high].forEach(v => tr.append(el("td", "", String(v)))); body.append(tr); [c.total,c.middle,c.high].forEach((v,i)=>totals[i]+=v); });
+      const total=el("tr"); ["합계",...totals].forEach(v=>total.append(el("th", "", String(v)))); body.append(total); table.append(body);
+      const countScroll=el("div", "gscroll"); countScroll.append(table); chipBox.append(countScroll);
+      summary.replaceChildren(chipBox, el("p", "note", "산정 1~5는 주전·후보 중 티어가 높은 5명입니다. 원래 선수 칸은 유지하며, 구분되지 않은 티어는 확인 대상으로 남깁니다."));
+      if (isEditor() && !backup) summary.append(scoreEditor());
 
-      const tierOptions = ["", ...scores.map(t => t.tier)];
+      const tierOptions = ["", ...scores.filter(t => !["브론즈,아이언", "아이언, 언랭"].includes(t.tier)).map(t => t.tier)];
       const playerCols = new Set(keys.filter(k => /^(선수|예비)\d/.test(k)));
       const columns = keys.map(k => {
         // '순번' 자리에 자동 순위를 보여 줌 (순번 값은 지우지 않고 화면에서만 뺌)
@@ -1108,6 +1112,7 @@
         }
         return col;
       });
+      columns.unshift(...[0,1,2,3,4].map(i => ({ key: "_top"+i, label: "산정 "+(i+1), readonly: true, get: r => { const t=r._top[i]; return t ? t.tier+" ("+t.line+")" : "미확인"; } })));
       const filters = [addDupeColumn(columns, rows, "학교")];
       rankAndSort(r => filters[0].get(r) === "확인 필요");
       // 맨 위 할 일: 중복 확인 → 티어 미입력(몇 명 들어왔는지)
@@ -1115,18 +1120,19 @@
       const item = (r, extra) => ({ school: String(r.data["학교"]).trim(), text: shortSchool(r.data["학교"]) + (extra || "") });
       summary.prepend(todoBoard("할 일 (" + divOf(current) + ")", [
         { label: "중복 신청 확인", cls: "t-dupe", items: named.filter(r => r._todo === "확인 필요").map(r => item(r)) },
-        { label: "주전 티어 미입력", cls: "t-tier", items: named.filter(r => r._todo && r._todo !== "확인 필요").map(r => item(r, " " + r._n + "/5")) }
-      ], "모든 학교의 주전 5명 티어가 입력되었습니다.", inner));
+        { label: "티어 확인 필요", cls: "t-tier", items: named.filter(r => r._todo && r._todo !== "확인 필요").map(r => item(r, r._unknown ? " · " + r._unknown + "명 확인" : " · " + r._n + "/5")) }
+      ], "모든 학교의 티어가 확인되었습니다.", inner));
       if (!keys.includes("순번")) columns.unshift({ key: "_rank", label: "순위", readonly: true, get: r => r._rank == null ? r._todo : r._rank, cellClass: r => (r._todo ? "dupe" : "") });
-      columns.push({ key: "_avg", label: "평균(주전5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") });
+      columns.push({ key: "_avg", label: "평균(상위5)", readonly: true, get: r => r._avg == null ? "미입력" : r._avg.toFixed(2) + (r._n < 5 ? " (" + r._n + "명)" : "") });
       grid(inner, {
-        columns, rows, filters, exportName: "팀별 티어 현황(" + divOf(current) + ")",
+        columns, rows, filters, canSave: !backup && isEditor(), exportName: "팀별 티어 현황(" + divOf(current) + ")",
         onSave: async (r, c, v) => {
+          if (backup) return;
           // 바뀐 칸만 저장 (행 전체를 덮어쓰지 않음)
-          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) { r.data = { ...r.data, [c.key]: v }; render(); if (box._resync) box._resync(); }
+          if (await save(sb.rpc("set_sheet_cell", { p_id: r.id, p_key: c.key, p_value: String(v ?? "") }))) { await load(); if (box._resync) box._resync(); }
         },
-        onDelete: r => deleteSheetRow(r, current, load),
-        onAdd: async () => {
+        onDelete: backup ? undefined : r => deleteSheetRow(r, current, load),
+        onAdd: backup ? undefined : async () => {
           const next = rows.reduce((mx, r) => Math.max(mx, r.row_no), 0) + 1;
           if (await save(sb.from("sheet_rows").insert({ sheet: current, row_no: next, data: {} }), "행을 추가했습니다")) load();
         }
@@ -1151,7 +1157,7 @@
         i.setAttribute("aria-label", s.tier + " 점수");
         i.addEventListener("change", async () => {
           const v = Number(i.value);
-          if (await save(sb.from("tier_scores").update({ score: v }).eq("division", s.division).eq("tier", s.tier))) { s.score = v; render(); }
+          if (await save(sb.from("tier_scores").update({ score: v }).eq("division", s.division).eq("tier", s.tier))) { await load(); }
         });
         td.append(i);
         const del = el("button", "del", "삭제");
@@ -1412,20 +1418,11 @@
       String(Math.floor(t / 60) % 24).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
   };
 
-  // 주전 평균 티어 점수 (낮을수록 강함, 티어 현황과 같은 계산)
+  // 상위 5명 평균 티어 점수 (낮을수록 강함, 티어 현황과 같은 계산)
   async function teamStrength(div) {
-    const sheet = div === "중등부" ? "tier_middle" : "tier_high";
-    const [{ data: rows }, { data: scores }] = await Promise.all([
-      sb.from("sheet_rows").select("data").eq("sheet", sheet),
-      sb.from("tier_scores").select("*").eq("division", div)
-    ]);
-    const map = new Map((scores || []).map(t => [t.tier, Number(t.score)]));
-    const out = {};
-    (rows || []).forEach(r => {
-      const nums = ["선수1", "선수2", "선수3", "선수4", "선수5"].map(k => map.get(r.data[k])).filter(v => typeof v === "number");
-      out[normSchool(r.data["학교"])] = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
-    });
-    return out;
+    const { data, error } = await sb.rpc("teacher_tier_report", { p_backup: false });
+    if (error || !data) throw new Error("티어 자료를 불러오지 못했습니다. 다시 시도해 주세요.");
+    return Object.fromEntries(data.teams.filter(t => t.division === div).map(t => [normSchool(t.school), t.average]));
   }
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
@@ -1769,7 +1766,7 @@
     return box;
   }
 
-  // 편성 대상: 확인 사항(중복 신청 등)이 없는 확정 팀만, 주전 평균 티어 순(티어 없는 팀은 맨 뒤)
+  // 편성 대상: 확인 사항(중복 신청 등)이 없는 확정 팀만, 상위 5명 평균 티어 순(티어 없는 팀은 맨 뒤)
   async function drawTeams(div, ros) {
     const strength = await teamStrength(div);
     const pending = ros.filter(x => String(x.data["확인 사항"] || "").trim()).map(x => x.data["학교 이름"]);
@@ -1796,7 +1793,7 @@
       const n3 = groups.filter(g => result[g].filter(Boolean).length === 3).length;
       const n2 = groups.filter(g => result[g].filter(Boolean).length <= 2).length;
       body.append(el("p", "note", div + " " + teams.length + "팀 → " + groups.length + "개 조 (4팀 조 " + n4 + " · 3팀 조 " + n3 + (n2 ? " · 2팀 이하 조 " + n2 : "") + ")" +
-        " · 포트 = 주전 평균 티어 순위 " + groups.length + "팀씩, 티어 없는 팀은 마지막 포트 · " + drawRangeText(drawn) + drawRiskText(drawn) + drawRegionText(drawn)));
+        " · 포트 = 상위 5명 평균 티어 순위 " + groups.length + "팀씩, 티어 없는 팀은 마지막 포트 · " + drawRangeText(drawn) + drawRiskText(drawn) + drawRegionText(drawn)));
       if (pending.length) body.append(el("p", "rdlg-err", "중복 신청 확인 중이라 빠진 학교: " + pending.join(", ") + " — 확정 후 다시 편성하거나 직접 넣어 주세요."));
       if (teams.length > groups.length * 4) body.append(el("p", "rdlg-err", "팀이 " + groups.length * 4 + "팀보다 많아 " + (teams.length - groups.length * 4) + "팀이 들어가지 못했습니다. 조 수를 늘려야 합니다."));
       const wrap = el("div", "slot-grid");
@@ -1874,7 +1871,7 @@
       const size = g => result[g].filter(Boolean).length;
       const n4 = groups.filter(g => size(g) === 4).length, n3 = groups.filter(g => size(g) === 3).length, n2 = groups.filter(g => size(g) <= 2).length;
       body.append(el("p", "note", div + " 확정 " + teams.length + "팀 → " + stage + " " + groups.length + "개 조 (4팀 조 " + n4 + " · 3팀 조 " + n3 + (n2 ? " · 2팀 이하 조 " + n2 : "") + ")" +
-        " · 1~4시드 = 주전 평균 티어 순위로 " + groups.length + "팀씩, 시드마다 조는 무작위 · " + drawRangeText(drawn) + drawRiskText(drawn) + drawRegionText(drawn)));
+        " · 1~4시드 = 상위 5명 평균 티어 순위로 " + groups.length + "팀씩, 시드마다 조는 무작위 · " + drawRangeText(drawn) + drawRiskText(drawn) + drawRegionText(drawn)));
       if (pending.length) body.append(el("p", "rdlg-err", "아직 확정되지 않아 빠진 학교(확인 사항 있음): " + pending.join(", ")));
       if (teams.length > groups.length * 4) body.append(el("p", "rdlg-err", "팀이 " + groups.length * 4 + "팀보다 많아 " + (teams.length - groups.length * 4) + "팀이 들어가지 못했습니다."));
       const wrap = el("div", "slot-grid");
