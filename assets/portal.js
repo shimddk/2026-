@@ -2080,7 +2080,7 @@
     const [staff, { data: sessions, error }, { data: avail, error: availError }, { data: doneRows, error: doneError }, { data: roleRows, error: roleError }] = await Promise.all([
       fetchStaff(),
       sb.from("ref_sessions").select("*").order("day").order("start_time").order("sort"),
-      sb.from("ref_avail").select("*").eq("available", true),
+      sb.from("ref_avail").select("*"),
       sb.from("ref_done").select("*"),
       sb.from("ref_role_avail").select("*")
     ]);
@@ -2088,7 +2088,10 @@
     box.replaceChildren();
     if (error || availError || doneError || roleError) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
     const reload = () => loadReferee(box);
-    const has = new Set((avail || []).map(a => a.session_id + "|" + a.staff_id));
+    const has = new Set((avail || []).filter(a => a.available).map(a => a.session_id + "|" + a.staff_id));
+    const attendance = new Map((avail || []).map(a => [a.session_id + "|" + a.staff_id, a.available]));
+    const isFinal = s => s.day === "2026-11-08";
+    const rolesFor = s => isFinal(s) ? ["참석/불참"] : roles;
     const roles = ["총괄", "기록원", "심판"];
     const roleHas = new Set((roleRows || []).map(a => a.session_id + "|" + a.staff_id + "|" + a.role));
     const checked = (session, staff, role) => role === "심판" ? has.has(session + "|" + staff) : roleHas.has(session + "|" + staff + "|" + role);
@@ -2105,7 +2108,7 @@
       : ME.staffId ? "본인 줄(굵게 표시)만 체크할 수 있습니다. 체크하면 바로 저장됩니다. 가능한 회차를 다 체크했으면 맨 왼쪽 '입력 완료'를 눌러 주세요." : "계정이 지원단 이름과 연결되지 않아 체크할 수 없습니다. 관리자에게 연결을 요청하세요."));
     if (!(sessions || []).length) box.append(el("p", "note", "등록된 경기 회차가 없습니다."));
 
-    box.append(el("p", "note", "회차마다 총괄·기록원·심판을 각각 체크합니다. 기존 체크는 심판 칸에 그대로 유지됩니다."));
+    box.append(el("p", "note", "회차마다 총괄·기록원·심판을 각각 체크합니다. 기존 체크는 심판 칸에 그대로 유지됩니다. 11/8 결승전은 참석·불참만 선택합니다."));
     const scroller = el("div", "gscroll");
     const table = el("table", "dtable ref");
     const thead = el("thead");
@@ -2113,10 +2116,10 @@
     const doneHead=el("th", "done-col", "입력 완료"), teacherHead=el("th", "", "선생님");
     doneHead.rowSpan=teacherHead.rowSpan=2; hr.append(doneHead, teacherHead);
     (sessions || []).forEach(s => {
-      const th = el("th", "ref-session-head"); th.colSpan = 3;
+      const th = el("th", "ref-session-head"); th.colSpan = rolesFor(s).length;
       th.append(el("div", "", Number(s.day.slice(5, 7)) + "/" + Number(s.day.slice(8, 10)) + "(" + wd(s.day) + ") " + String(s.start_time).slice(0, 5)), el("small", "", s.label));
       hr.append(th);
-      roles.forEach(role => roleHead.append(el("th", "ref-role", role)));
+      rolesFor(s).forEach(role => roleHead.append(el("th", "ref-role", role)));
     });
     thead.append(hr, roleHead);
     const tb = el("tbody");
@@ -2126,7 +2129,13 @@
     function drawFoot() {
       const nDone = refs.filter(r => done.has(r.id)).length;
       foot.replaceChildren(el("td", "done-col " + (nDone >= refs.length ? "ok" : "short"), nDone + " / " + refs.length), el("th", "", "가능 / 필요"));
-      (sessions || []).forEach(s => roles.forEach(role => {
+      (sessions || []).forEach(s => rolesFor(s).forEach(role => {
+        if (isFinal(s)) {
+          const n = refs.filter(r => attendance.get(s.id + "|" + r.id) === true).length;
+          const no = refs.filter(r => attendance.get(s.id + "|" + r.id) === false).length;
+          const td = el("td", "c"); td.append(el("strong", "", "참석 " + n + "명"), el("div", "state", "불참 " + no + "명 · 미선택 " + (refs.length - n - no) + "명"));
+          foot.append(td); return;
+        }
         const n = counts[s.id+"|"+role];
         const td = el("td", role === "심판" ? (n >= s.needed ? "ok" : "short") : "");
         if (role === "심판" && s.needed > 0) td.append(el("strong", "", n+" / "+s.needed), el("div", "state", n>=s.needed ? "충분" : "부족 "+(s.needed-n)+"명"));
@@ -2157,8 +2166,26 @@
       } else dtd.textContent = done.has(r.id) ? "✔" : "";
       if (done.has(r.id)) tr.classList.add("is-done");
       tr.append(dtd, el("th", "", r.name + (r.school ? " (" + r.school + ")" : "")));
-      (sessions || []).forEach(s => roles.forEach(role => {
+      (sessions || []).forEach(s => rolesFor(s).forEach(role => {
         const td = el("td", "c ref-role");
+        if (isFinal(s)) {
+          const key = s.id + "|" + r.id, value = attendance.get(key);
+          if (canEdit(r)) {
+            const select = el("select"); select.setAttribute("aria-label", r.name + " 11/8 결승전 참석 여부");
+            [["", "선택"], ["yes", "참석"], ["no", "불참"]].forEach(([v, text]) => { const o = el("option", "", text); o.value = v; if (!v) o.disabled = true; select.append(o); });
+            select.value = value === true ? "yes" : value === false ? "no" : "";
+            select.addEventListener("change", async () => {
+              const previous = attendance.get(key), next = select.value === "yes";
+              select.disabled = true;
+              const ok = await save(sb.from("ref_avail").upsert({ session_id: s.id, staff_id: r.id, available: next }, { onConflict: "session_id,staff_id" }));
+              select.disabled = false;
+              if (!ok) { select.value = previous === true ? "yes" : previous === false ? "no" : ""; return; }
+              attendance.set(key, next); if (next) has.add(key); else has.delete(key); drawFoot();
+            });
+            td.append(select);
+          } else td.textContent = value === true ? "참석" : value === false ? "불참" : "미선택";
+          tr.append(td); return;
+        }
         const on = checked(s.id,r.id,role);
         if (canEdit(r)) {
           const cb = el("input"); cb.type="checkbox"; cb.checked=on;
