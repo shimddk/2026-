@@ -884,7 +884,7 @@
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     if (isOwner()) views.push(["t-drawpreview", "예상 조 편성", "지금까지 확정된 팀으로 조 편성을 미리 뽑아 봅니다(관리자 전용). 저장되지 않으며 실제 대진표와 학생 화면에는 아무 영향이 없습니다.", loadDrawPreview]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
-    if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "수당 지급 서류 제출 화면 시안입니다.", loadPaymentPreview]);
+    if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "수당 지급 서류를 비공개로 제출합니다. 전체 서류 확인은 강병화 선생님만 가능합니다.", loadPaymentPreview]);
     views.forEach(([id, label, lead, loader]) => {
       addTab(id, label, true);
       const body = addSection(id, label, lead);
@@ -898,30 +898,84 @@
     }
   }
 
-  function loadPaymentPreview(box) {
+  async function loadPaymentPreview(box) {
     box.replaceChildren();
     if (!canPreviewPayment()) return;
-    box.append(el("p", "pending", "준비 중인 화면입니다. 아직 제출할 수 없습니다."));
+    const { data: state, error: stateError } = await sb.rpc("payment_state");
+    if (stateError || !state || !state.allowed) { box.append(el("p", "note", "서류 제출 권한을 확인하지 못했습니다. 다시 로그인해 주세요.")); return; }
+    const current = state.submission;
+    const download = (path, title) => {
+      const b = el("button", "btn ghost small", title + " 내려받기"); b.type = "button";
+      b.addEventListener("click", async () => {
+        b.disabled = true;
+        try {
+          const { data, error } = await sb.storage.from("payment-documents").download(path);
+          if (error || !data) throw new Error();
+          const url = URL.createObjectURL(data), a = el("a"); a.href = url; a.download = title + ".pdf";
+          document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch { toast("파일을 내려받지 못했습니다. 로그인과 접근 권한을 확인해 주세요.", true); }
+        finally { b.disabled = false; }
+      }); return b;
+    };
     const submit = el("section", "card payment-preview");
-    submit.append(el("h3", "", "본인 제출"), el("p", "note", "총괄·기록자·심판 참여 교사의 수당 지급 서류를 제출할 영역입니다. 현재는 화면 시안이며 입력하거나 파일을 선택할 수 없습니다."));
-    const fields = el("fieldset", "payment-fields"); fields.disabled = true;
+    submit.append(el("h3", "", "본인 제출"), el("p", "note", "PDF 파일당 최대 10MB입니다. 불필요한 개인정보는 가린 사본을 제출해 주세요. 서류는 본인과 확인 담당자 강병화 선생님만 열람합니다."));
+    const form = el("form"), fields = el("fieldset", "payment-fields"), inputs = {};
     fields.append(el("legend", "", "제출 항목"));
-    [["신분증 사본", "file"], ["통장 사본", "file"], ["전자계약서 수신용 이메일 주소", "email"], ["핸드폰 번호", "tel"]].forEach(([title, type]) => {
+    [["identity", "신분증 사본", "file"], ["bank", "통장 사본", "file"], ["email", "전자계약서 수신용 이메일 주소", "email"], ["phone", "핸드폰 번호", "tel"]].forEach(([key, title, type]) => {
       const label = el("label", "payment-field"), input = el("input");
-      input.type = type; input.disabled = true; input.autocomplete = "off";
+      input.type = type; input.autocomplete = "off"; input.required = type !== "file" || !current;
       if (type === "file") input.accept = ".pdf,application/pdf";
-      else input.placeholder = "제출 기능 연결 후 직접 입력";
-      label.append(el("span", "", title + (type === "file" ? " (PDF)" : "")), input); fields.append(label);
+      else { input.value = current ? current[key] : ""; input.placeholder = "직접 입력해 주세요"; input.maxLength = key === "email" ? 254 : 20; }
+      label.append(el("span", "", title + (type === "file" ? " (PDF)" : "")), input);
+      if (type === "file" && current) label.append(el("small", "note", "제출됨 · 새 파일을 선택하지 않으면 기존 파일을 유지합니다."), download(current[key + "_path"], title));
+      inputs[key] = input; fields.append(label);
     });
-    const button = el("button", "btn small", "서류 제출 (준비 중)"); button.type = "button"; button.disabled = true;
-    submit.append(fields, el("p", "note", "이메일 주소와 핸드폰 번호는 기존 명단에서 자동 입력하지 않습니다."), button);
-    const review = el("section", "card payment-preview");
-    review.append(el("h3", "", "제출 확인"), el("p", "note", "제출 여부와 확인 상태를 살펴볼 영역입니다. 확인 담당자는 추후 지정합니다."));
-    const wrap = el("div", "gscroll"), table = el("table", "dtable"), head = el("thead"), tr = el("tr");
-    ["성명", "역할", "신분증 사본", "통장 사본", "이메일", "핸드폰 번호", "확인 상태"].forEach(t => tr.append(el("th", "", t)));
-    head.append(tr); const body = el("tbody"), empty = el("tr"), td = el("td", "note", "제출 기능 연결 후 표시됩니다");
-    td.colSpan = 7; empty.append(td); body.append(empty); table.append(head, body); wrap.append(table); review.append(wrap);
-    box.append(submit, review);
+    const button = el("button", "btn small", current ? "수정 제출" : "서류 제출"); button.type = "submit";
+    const status = el("p", "note", current ? "제출 완료 · " + fmtTime(current.submitted_at) + (current.checked_at ? " · 담당자 확인 완료" : " · 담당자 확인 대기") : "아직 제출하지 않았습니다."); status.setAttribute("role", "status");
+    form.append(fields, el("p", "note", "이메일·휴대폰은 수당 지급과 전자계약을 위해 직접 입력합니다. 수정 제출하면 담당자 확인은 다시 대기 상태가 됩니다."), button, status);
+    form.addEventListener("submit", async e => {
+      e.preventDefault(); if (button.disabled || !form.reportValidity()) return;
+      fields.disabled = button.disabled = true; status.textContent = "서류를 저장하고 있습니다…";
+      try {
+        if (!/^01[016789][0-9]{7,8}$/.test(inputs.phone.value.replace(/[ -]/g, ""))) throw new Error("휴대폰 번호를 확인해 주세요.");
+        // Validate both files before transmitting either. Never retain original filenames.
+        for (const key of ["identity", "bank"]) {
+          const file = inputs[key].files[0];
+          if (!file && !current) throw new Error("신분증·통장 PDF를 모두 선택해 주세요.");
+          if (file && (!/\.pdf$/i.test(file.name) || file.size < 5 || file.size > 10485760 || (file.type && file.type !== "application/pdf") || new TextDecoder().decode(await file.slice(0, 5).arrayBuffer()) !== "%PDF-")) throw new Error("PDF 파일인지, 파일당 10MB 이하인지 확인해 주세요.");
+        }
+        const paths = {};
+        for (const key of ["identity", "bank"]) {
+          const file = inputs[key].files[0]; paths[key] = current ? current[key + "_path"] : null;
+          if (file) {
+            const path = ME.id + "/" + key + "/" + crypto.randomUUID() + ".pdf";
+            const { error } = await sb.storage.from("payment-documents").upload(path, file, { contentType: "application/pdf", upsert: false, cacheControl: "0" });
+            if (error) throw new Error("파일 업로드에 실패했습니다. 기존 제출 자료는 유지됩니다. 잠시 후 다시 시도해 주세요."); paths[key] = path;
+          }
+        }
+        const { error } = await sb.rpc("payment_submit", { p_email: inputs.email.value.trim(), p_phone: inputs.phone.value.trim(), p_identity: paths.identity, p_bank: paths.bank, p_revision: current ? current.revision : 0 });
+        if (error) throw new Error("제출을 완료하지 못했습니다. 이메일·휴대폰을 확인하고, 다른 화면에서 수정했다면 새로고침해 주세요.");
+        toast("서류가 제출되었습니다."); await loadPaymentPreview(box);
+      } catch (error) { status.textContent = error.message || "제출에 실패했습니다. 다시 시도해 주세요."; fields.disabled = button.disabled = false; }
+    });
+    submit.append(form); box.append(submit);
+    if (state.reviewer) {
+      const review = el("section", "card payment-preview"); review.append(el("h3", "", "제출 확인 · 강병화 담당"));
+      const { data: list, error } = await sb.rpc("payment_review_list");
+      if (error) { review.append(el("p", "note", "제출 현황을 불러오지 못했습니다.")); box.append(review); return; }
+      const wrap = el("div", "gscroll"), table = el("table", "dtable"), head = el("thead"), tr = el("tr");
+      ["성명", "역할", "신분증 사본", "통장 사본", "이메일", "핸드폰 번호", "확인 상태"].forEach(t => tr.append(el("th", "", t)));
+      head.append(tr); const body = el("tbody");
+      (list || []).forEach(item => {
+        const row = el("tr"), p = item.submission; row.append(el("td", "", item.name), el("td", "", item.duty || "—"));
+        ["identity", "bank"].forEach(key => { const td = el("td"); td.append(p ? download(p[key + "_path"], key === "identity" ? "신분증 사본" : "통장 사본") : el("span", "", "미제출")); row.append(td); });
+        row.append(el("td", "", p ? p.email : "—"), el("td", "", p ? p.phone : "—"));
+        const td = el("td"); td.append(el("span", "", !p ? "미제출" : p.checked_at ? "확인 완료" : "확인 대기"));
+        if (p) { const check = el("button", "btn ghost small", p.checked_at ? "확인 취소" : "확인 완료"); check.type = "button";
+          check.addEventListener("click", async () => { check.disabled = true; if (await save(sb.rpc("payment_review", { p_user: item.user_id, p_revision: p.revision, p_checked: !p.checked_at }), "확인 상태를 저장했습니다")) loadPaymentPreview(box); else check.disabled = false; }); td.append(check); }
+        row.append(td); body.append(row);
+      }); table.append(head, body); wrap.append(table); review.append(wrap); box.append(review);
+    }
   }
 
   // 지원단 명단
