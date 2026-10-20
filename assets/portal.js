@@ -2092,9 +2092,9 @@
     const attendance = new Map((avail || []).map(a => [a.session_id + "|" + a.staff_id, a.available]));
     const isFinal = s => s.day === "2026-11-08";
     const rolesFor = s => isFinal(s) ? ["참석/불참"] : roles;
-    const roles = ["총괄", "기록원", "심판"];
+    const roles = ["총괄", "기록원", "심판", "불가"];
     const roleHas = new Set((roleRows || []).map(a => a.session_id + "|" + a.staff_id + "|" + a.role));
-    const checked = (session, staff, role) => role === "심판" ? has.has(session + "|" + staff) : roleHas.has(session + "|" + staff + "|" + role);
+    const checked = (session, staff, role) => role === "불가" ? attendance.get(session + "|" + staff) === false : role === "심판" ? has.has(session + "|" + staff) : roleHas.has(session + "|" + staff + "|" + role);
     // 심판 명단: '심판가능' 선생님 + 이미 체크한 선생님 + 나 자신(관리자 포함, 긴급 시 투입)
     const refs = staff.filter(s => s.referee_ok || (avail || []).some(a => a.staff_id === s.id) || (roleRows || []).some(a => a.staff_id === s.id) || s.id === ME.staffId);
     const canEdit = s => isOwner() || (ME.staffId && s.id === ME.staffId && !ME.external);
@@ -2108,7 +2108,7 @@
       : ME.staffId ? "본인 줄(굵게 표시)만 체크할 수 있습니다. 체크하면 바로 저장됩니다. 가능한 회차를 다 체크했으면 맨 왼쪽 '입력 완료'를 눌러 주세요." : "계정이 지원단 이름과 연결되지 않아 체크할 수 없습니다. 관리자에게 연결을 요청하세요."));
     if (!(sessions || []).length) box.append(el("p", "note", "등록된 경기 회차가 없습니다."));
 
-    box.append(el("p", "note", "회차마다 총괄·기록원·심판을 각각 체크합니다. 기존 체크는 심판 칸에 그대로 유지됩니다. 11/8 결승전은 참석·불참만 선택합니다."));
+    box.append(el("p", "note", "회차마다 총괄·기록원·심판·불가를 체크합니다. 불가와 역할 체크는 함께 선택할 수 없습니다. 11/8 결승전은 참석·불참만 선택합니다."));
     const scroller = el("div", "gscroll");
     const table = el("table", "dtable ref");
     const thead = el("thead");
@@ -2119,7 +2119,7 @@
       const th = el("th", "ref-session-head"); th.colSpan = rolesFor(s).length;
       th.append(el("div", "", Number(s.day.slice(5, 7)) + "/" + Number(s.day.slice(8, 10)) + "(" + wd(s.day) + ") " + String(s.start_time).slice(0, 5)), el("small", "", s.label));
       hr.append(th);
-      rolesFor(s).forEach(role => roleHead.append(el("th", "ref-role", role)));
+      rolesFor(s).forEach((role, i) => roleHead.append(el("th", "ref-role" + (i === 0 ? " ref-group-start" : ""), role)));
     });
     thead.append(hr, roleHead);
     const tb = el("tbody");
@@ -2166,8 +2166,8 @@
       } else dtd.textContent = done.has(r.id) ? "✔" : "";
       if (done.has(r.id)) tr.classList.add("is-done");
       tr.append(dtd, el("th", "", r.name + (r.school ? " (" + r.school + ")" : "")));
-      (sessions || []).forEach(s => rolesFor(s).forEach(role => {
-        const td = el("td", "c ref-role");
+      (sessions || []).forEach(s => rolesFor(s).forEach((role, i) => {
+        const td = el("td", "c ref-role" + (i === 0 ? " ref-group-start" : ""));
         if (isFinal(s)) {
           const key = s.id + "|" + r.id, value = attendance.get(key);
           if (canEdit(r)) {
@@ -2189,27 +2189,16 @@
         const on = checked(s.id,r.id,role);
         if (canEdit(r)) {
           const cb = el("input"); cb.type="checkbox"; cb.checked=on;
-          cb.setAttribute("aria-label", r.name+" "+sessKey(s)+" "+s.label+" "+role+" 가능");
+          cb.setAttribute("aria-label", r.name+" "+sessKey(s)+" "+s.label+" "+role+(role === "불가" ? "" : " 가능"));
           cb.addEventListener("change", async () => {
-            if (cb.checked && sameTime[sessKey(s)] > 1) {
-              const other=(sessions || []).find(o => o.id!==s.id && sessKey(o)===sessKey(s) && roles.some(k=>checked(o.id,r.id,k)));
+            if (role !== "불가" && cb.checked && sameTime[sessKey(s)] > 1) {
+              const other=(sessions || []).find(o => o.id!==s.id && sessKey(o)===sessKey(s) && roles.filter(k => k !== "불가").some(k=>checked(o.id,r.id,k)));
               if (other && !confirm("같은 시간("+sessKey(s)+")에 '"+other.label+"'도 체크되어 있습니다. 그래도 체크할까요?")) { cb.checked=false; return; }
             }
             cb.disabled = true;
-            const tableName = role === "심판" ? "ref_avail" : "ref_role_avail";
-            let query;
-            if (cb.checked) {
-              const value = { session_id: s.id, staff_id: r.id, ...(role === "심판" ? { available: true } : { role }) };
-              query = sb.from(tableName).upsert(value, { onConflict: role === "심판" ? "session_id,staff_id" : "session_id,staff_id,role" });
-            } else {
-              query = sb.from(tableName).delete().eq("session_id", s.id).eq("staff_id", r.id);
-              if (role !== "심판") query = query.eq("role", role);
-            }
-            const ok = await save(query); cb.disabled = false;
+            const ok = await save(sb.rpc("set_ref_role", { p_session: s.id, p_staff: r.id, p_role: role, p_on: cb.checked })); cb.disabled = false;
             if (!ok) { cb.checked=!cb.checked; return; }
-            const target=role === "심판" ? has : roleHas, key=s.id+"|"+r.id+(role === "심판" ? "" : "|"+role);
-            if (cb.checked) target.add(key); else target.delete(key);
-            counts[s.id+"|"+role]+=cb.checked?1:-1; drawFoot();
+            await reload();
           });
           td.append(cb);
         } else td.textContent=on?"가능":"";
