@@ -93,6 +93,10 @@ table.dtable.ref .ref-session-head { text-align: center; border-left: 2px solid 
 table.dtable.ref .ref-role { text-align: center; min-width: 3.5em; }
 table.dtable.ref .ref-role-head th { position: static; background: var(--bg2); }
 table.dtable.ref .ref-group-start { border-left: 2px solid var(--line); }
+table.dtable.ref .ref-choice { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+table.dtable.ref .ref-choice select { min-width: 6em; border-color: var(--line); }
+table.dtable.ref .ref-choice label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+table.dtable.ref .ref-choice small { color: var(--muted); white-space: normal; max-width: 12em; }
 table.dtable tr.sum td { text-align: center; }
 table.dtable tr.sum td.ok .state { color: var(--ok); }
 table.dtable tr.sum td.short .state { color: var(--wait); }
