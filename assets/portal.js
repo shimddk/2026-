@@ -523,6 +523,7 @@
   const teacherAI = window.createTeacherAI ? window.createTeacherAI(sb) : null;
   const isEditor = () => ME.role === "editor" || ME.role === "owner";
   const isOwner = () => ME.role === "owner";
+  const canPreviewPayment = () => ME.status === "approved" && isOwner() && !ME.external && !!ME.staffId && ["심승보", "차재홍", "강병화"].includes(ME.name);
   const ROLE_LABEL = { viewer: "보기", editor: "보기·고치기", owner: "관리자", referee: "심판" };
 
   function renderAcct() {
@@ -883,6 +884,7 @@
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     if (isOwner()) views.push(["t-drawpreview", "예상 조 편성", "지금까지 확정된 팀으로 조 편성을 미리 뽑아 봅니다(관리자 전용). 저장되지 않으며 실제 대진표와 학생 화면에는 아무 영향이 없습니다.", loadDrawPreview]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
+    if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "수당 지급 서류 제출 화면 시안입니다.", loadPaymentPreview]);
     views.forEach(([id, label, lead, loader]) => {
       addTab(id, label, true);
       const body = addSection(id, label, lead);
@@ -894,6 +896,32 @@
       document.getElementById("tab-" + id)?.click();
       window.showTab(id);
     }
+  }
+
+  function loadPaymentPreview(box) {
+    box.replaceChildren();
+    if (!canPreviewPayment()) return;
+    box.append(el("p", "pending", "준비 중인 화면입니다. 아직 제출할 수 없습니다."));
+    const submit = el("section", "card payment-preview");
+    submit.append(el("h3", "", "본인 제출"), el("p", "note", "총괄·기록자·심판 참여 교사의 수당 지급 서류를 제출할 영역입니다. 현재는 화면 시안이며 입력하거나 파일을 선택할 수 없습니다."));
+    const fields = el("fieldset", "payment-fields"); fields.disabled = true;
+    fields.append(el("legend", "", "제출 항목"));
+    [["신분증 사본", "file"], ["통장 사본", "file"], ["전자계약서 수신용 이메일 주소", "email"], ["핸드폰 번호", "tel"]].forEach(([title, type]) => {
+      const label = el("label", "payment-field"), input = el("input");
+      input.type = type; input.disabled = true; input.autocomplete = "off";
+      if (type === "file") input.accept = ".pdf,application/pdf";
+      else input.placeholder = "제출 기능 연결 후 직접 입력";
+      label.append(el("span", "", title + (type === "file" ? " (PDF)" : "")), input); fields.append(label);
+    });
+    const button = el("button", "btn small", "서류 제출 (준비 중)"); button.type = "button"; button.disabled = true;
+    submit.append(fields, el("p", "note", "이메일 주소와 핸드폰 번호는 기존 명단에서 자동 입력하지 않습니다."), button);
+    const review = el("section", "card payment-preview");
+    review.append(el("h3", "", "제출 확인"), el("p", "note", "제출 여부와 확인 상태를 살펴볼 영역입니다. 확인 담당자는 추후 지정합니다."));
+    const wrap = el("div", "gscroll"), table = el("table", "dtable"), head = el("thead"), tr = el("tr");
+    ["성명", "역할", "신분증 사본", "통장 사본", "이메일", "핸드폰 번호", "확인 상태"].forEach(t => tr.append(el("th", "", t)));
+    head.append(tr); const body = el("tbody"), empty = el("tr"), td = el("td", "note", "제출 기능 연결 후 표시됩니다");
+    td.colSpan = 7; empty.append(td); body.append(empty); table.append(head, body); wrap.append(table); review.append(wrap);
+    box.append(submit, review);
   }
 
   // 지원단 명단
