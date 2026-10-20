@@ -1952,6 +1952,31 @@
       ssw.append(b);
     });
     head.append(ssw);
+    if (isOwner() && (stage === "64강" || stage === "32강")) {
+      const withdraw = el("button", "btn ghost small", "조별 기권 처리");
+      withdraw.type = "button";
+      withdraw.addEventListener("click", () => {
+        const dlg = el("dialog", "score-editor"), select = el("select"), cancel = el("button", "btn ghost small", "취소"), apply = el("button", "btn small", "남은 경기 부전승 처리");
+        const candidates = (slots || []).filter(s => s.stage === stage && s.school).sort((a,b) => a.school.localeCompare(b.school,"ko"));
+        const first = el("option", "", "기권 학교 선택"); first.value = ""; select.append(first);
+        candidates.forEach(s => { const o = el("option", "", s.grp + "조 · " + s.school); o.value = s.school; select.append(o); });
+        const info = el("p", "note", "완료된 결과는 유지합니다. 진행 중인 경기가 있다면 먼저 결과를 입력해 주세요. 기권 학교의 이 단계 미완료 경기만 상대 팀 1:0 부전승으로 처리합니다. 경기 시간은 기록하지 않습니다.");
+        cancel.type = apply.type = "button";
+        cancel.addEventListener("click", () => dlg.close());
+        apply.addEventListener("click", async () => {
+          if (!select.value) return;
+          const pending = rows.filter(m => m.stage === stage && !m.winner && m.team1 && m.team2 && [m.team1,m.team2].includes(select.value));
+          if (!pending.length) { toast("처리할 미완료 경기가 없습니다."); return; }
+          if (!confirm(select.value + "의 " + stage + " 미완료 " + pending.length + "경기를 상대 팀 부전승으로 처리할까요?\n이미 끝난 경기와 조 편성은 유지됩니다. 처리 전 기록은 DB에 백업됩니다.")) return;
+          apply.disabled = true;
+          if (await save(sb.rpc("withdraw_group_team", { p_div: matchDiv, p_stage: stage, p_school: select.value, p_expected: pending.map(m => m.id) }), "기권 처리했습니다")) { dlg.close(); reload(); }
+          else apply.disabled = false;
+        });
+        dlg.append(el("h3", "", "조별 기권 처리 · " + stage), info, select, cancel, apply);
+        dlg.addEventListener("close", () => dlg.remove()); document.body.append(dlg); dlg.showModal();
+      });
+      head.append(withdraw);
+    }
     if (editable && isOwner()) {
       const auto = el("button", "btn small", "자동 조 편성");
       auto.type = "button";
