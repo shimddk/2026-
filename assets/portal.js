@@ -187,6 +187,11 @@
     const { data: rs } = await sb.rpc("public_roster_status");
     const rsTeams = (rs && rs.teams) || [];
     const editOpen = !!(rs && rs.open);
+    clearTimeout(root._rosterDeadlineTimer);
+    if (editOpen && rs.until) {
+      const remaining = new Date(rs.until).getTime() - Date.now();
+      if (remaining >= 0 && remaining < 2147483000) root._rosterDeadlineTimer = setTimeout(() => renderRecord(), remaining + 20);
+    }
     const untilText = rs && rs.until ? new Date(rs.until).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }) : "";
     const statusOf = t => rsTeams.find(x => x.division === t.division && normSchool(x.school) === normSchool(t.school));
     // 구글폼 내용 그대로라 틀린 곳이 있을 수 있음 → 팀장이 직접 확인·수정
@@ -2956,7 +2961,7 @@
     box.append(pub);
     // 팀장 명단 수정 받기 (마감 시각이 지나면 자동으로 닫힘)
     const { data: re } = await sb.from("app_settings").select("value").eq("key", "roster_edit").maybeSingle();
-    const rv = (re && re.value) || { open: false, until: "2026-10-20T23:59:59+09:00" };
+    const rv = (re && re.value) || { open: false, until: "2026-10-23T23:59:59.999999+09:00" };
     const rl = el("label", "pub-toggle");
     const rcb = el("input"); rcb.type = "checkbox"; rcb.checked = !!rv.open;
     const rtxt = el("span", "");
