@@ -265,6 +265,20 @@
   .group .gm-time { flex-shrink: 0; color: var(--neon); font-weight: 800; font-variant-numeric: tabular-nums; }
   .group .gm-teams { flex: 1; min-width: 0; }
   .group .group-times { color: var(--muted); font-size: 12px; margin: 8px 0; }
+  .groups { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); align-items: start; }
+  .group { min-width: 0; }
+  .stand { table-layout: fixed; }
+  .stand th:first-child { width: 38px; }
+  .stand th:nth-child(3), .stand th:nth-child(4) { width: 28px; }
+  .stand td.sch { overflow-wrap: anywhere; }
+  .group .gm { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: start; border-top: 1px solid var(--line); padding: 8px 0; }
+  .group .gm-teams, .mbox .mt span { overflow-wrap: anywhere; min-width: 0; }
+  .school-finder { margin: 18px 0; border: 2px solid var(--neon); }
+  .school-finder input { width: 100%; padding: 12px; font: inherit; color: var(--text); background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; }
+  .school-results { display: grid; gap: 12px; margin-top: 12px; }
+  .school-game { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 6px 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .school-game time { color: var(--neon); font-weight: 800; }
+  .school-game span { min-width: 0; overflow-wrap: anywhere; }
   @media (max-width: 700px) { .bracket-guide { grid-template-columns: 1fr; } .bracket-guide article, .bracket-guide article.prelim { grid-column: auto; padding: 16px; } }
   .pending { border: 1px dashed var(--wait); color: var(--wait); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
 
@@ -1039,7 +1053,7 @@ function bkGroupCard(ms, stage, g, title) {
   t.append(th, tb);
   card.append(t);
   if (games.length) {
-    const d = el("details");
+    const d = el("details"); d.open = true;
     const times = [...new Set(games.map(m => m.scheduled_at).filter(Boolean))];
     const timeRange = times.length > 1 ? times[0] + "~" + times[times.length - 1].split(" ").pop() : times[0] || "";
     d.append(el("summary", "", "경기 " + games.length + "개 · " + timeRange));
@@ -1054,12 +1068,40 @@ function bkGroupCard(ms, stage, g, title) {
   }
   return card;
 }
+function bkSchoolFinder(ms) {
+  const box = el("section", "card school-finder"), input = el("input"), results = el("div", "school-results");
+  box.append(el("h3", "", "🔎 우리 학교 경기 찾기"));
+  input.type = "search"; input.placeholder = "학교 이름을 입력하세요"; input.setAttribute("aria-label", "대진표 학교 검색");
+  results.setAttribute("aria-live", "polite");
+  const schools = [...new Set(ms.flatMap(m => [m.team1, m.team2]).filter(Boolean))].sort((a,b) => a.localeCompare(b,"ko"));
+  const normalize = s => String(s || "").replace(/\s/g, "").toLowerCase();
+  const show = () => {
+    results.replaceChildren();
+    const q = normalize(input.value);
+    if (!q) { results.append(el("p", "note", "학교를 검색하면 상대 학교·경기 시간·결과를 바로 볼 수 있습니다.")); return; }
+    const found = schools.filter(s => normalize(s).includes(q));
+    if (!found.length) { results.append(el("p", "note", "검색된 학교가 없습니다. 선택한 부문과 학교 이름을 확인해 주세요. 대진 공개 전에는 학교가 표시되지 않습니다.")); return; }
+    found.forEach(school => {
+      const card = el("article"); card.append(el("h4", "", school + " · " + BK.div));
+      ms.filter(m => !m.void && (m.team1 === school || m.team2 === school)).forEach(m => {
+        const n = m.team1 === school ? 2 : 1, row = el("div", "school-game");
+        const score = m.score1 != null && m.score2 != null ? " · " + (m.winner === school ? "승" : m.winner ? "패" : "진행 중") + " (" + m.score1 + ":" + m.score2 + ")" : "";
+        row.append(el("time", "", m.scheduled_at || "시간 미정"), el("span", "", "vs " + (m["team"+n] ? bkSchool(m["team"+n]) : "상대 미정") + score), el("small", "note", m.stage + (m.grp ? " · " + (BK_NAME[m.grp] || m.grp) + (BK_NAME[m.grp] ? " 그룹" : "조") : "") + ((m.round_label || "").includes("부전승") ? " · 부전승" : ""));
+        card.append(row);
+      });
+      card.append(el("p", "note", "시간은 예정 시작 시각입니다. 다음 단계는 진출 시 배정되며, 확정 후 이곳에 표시됩니다."));
+      results.append(card);
+    });
+  };
+  input.addEventListener("input", show); box.append(input, results); show(); return box;
+}
 function renderBracket() {
   document.querySelectorAll("#divSwitch .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.div === BK.div));
   const root = document.getElementById("groups");
   const ms = BK.matches.filter(m => m.division === BK.div);
   const by = code => ms.find(m => m.code === code);
   root.replaceChildren();
+  root.append(bkSchoolFinder(ms));
 
   // 1) 조별리그 (중등 64강 → 32강, 고등 32강)
   BK_STAGES[BK.div].forEach(stage => {
