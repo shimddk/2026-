@@ -2279,7 +2279,89 @@
     }); td.append(select);
   }
 
+  function renderConfirmedRefRota(box, state, reload) {
+    const people = state.people || [], sessions = state.sessions || [], entries = state.entries || [];
+    const name = id => people.find(p => p.id === id)?.name || "미연결";
+    const personColor = (node, id) => node.style.setProperty("--ref-hue", String((Number(id) * 137.508) % 360));
+    let picked = people.some(p => p.id === ME.staffId) ? ME.staffId : null;
+    const section = el("div", "ref-confirmed"), chooser = el("div", "ref-person-list"), mine = el("div"), overview = el("div", "ref-rota-grid");
+    section.append(el("h3", "bk-sub", "확정 심판 배정표"), el("p", "note", "이름을 누르면 담당 회차와 경기가 같은 색으로 표시됩니다. 아래 참여 가능 응답과는 별개의 확정 배정입니다. 11/8 참석 응답은 기존 표에서 확인하세요."), chooser, mine, overview);
+    const refresh = el("button", "btn ghost small", "배정 새로고침"); refresh.type = "button";
+    refresh.addEventListener("click", reload); section.insertBefore(refresh, chooser);
+    const label = s => s.day.slice(5).replace("-", "/") + " " + s.time + " · " + s.division + " " + s.label;
+    const gamesFor = e => (state.matches || []).filter(m => m.session_id === sessions.find(s => s.key === e.session)?.session_id && m.division === sessions.find(s => s.key === e.session)?.division && (e.match_codes || []).includes(m.code));
+    function appendGames(holder, e) {
+      const games = gamesFor(e);
+      if (!games.length) {
+        if (e.role === "심판") holder.append(el("p", "note", "세부 경기는 배정 관리자가 지정할 예정입니다."));
+        return;
+      }
+      const list = el("ul", "ref-game-list");
+      games.forEach(m => list.append(el("li", "", (m.time || "시간 미정") + " · " + (m.grp ? m.grp + " · " : "") + m.code + " · " + (m.team1 || "진출팀 미정") + " vs " + (m.team2 || "진출팀 미정"))));
+      holder.append(list);
+    }
+    function draw() {
+      chooser.replaceChildren(); mine.replaceChildren(); overview.replaceChildren();
+      const all = el("button", "btn ghost small", "전체 보기"); all.type = "button"; all.setAttribute("aria-pressed", String(picked === null));
+      all.addEventListener("click", () => { picked = null; draw(); }); chooser.append(all);
+      people.forEach(p => {
+        const b = el("button", "ref-person", p.name + (p.id === ME.staffId ? " (나)" : "")); b.type = "button";
+        personColor(b, p.id); b.setAttribute("aria-pressed", String(picked === p.id));
+        b.addEventListener("click", () => { picked = p.id; draw(); }); chooser.append(b);
+      });
+      if (picked !== null) {
+        const own = entries.filter(e => e.active && e.staff_id === picked);
+        mine.append(el("h4", "", name(picked) + " 담당 일정 · " + own.length + "건"));
+        if (!own.length) mine.append(el("p", "note", "현재 확정된 배정이 없습니다."));
+        const cards = el("div", "ref-my-rota");
+        sessions.forEach(s => own.filter(e => e.session === s.key).forEach(e => {
+          const c = el("article", "ref-duty ref-picked"); personColor(c, picked);
+          c.append(el("h4", "", label(s)), el("strong", "", e.role + " · " + e.target)); appendGames(c, e); cards.append(c);
+        })); mine.append(cards);
+      }
+      sessions.forEach(s => {
+        const card = el("article", "ref-session-card"); card.append(el("h4", "", label(s)));
+        entries.filter(e => e.session === s.key && e.active).forEach(e => {
+          const b = el("button", "ref-duty" + (picked === e.staff_id ? " ref-picked" : "")); b.type = "button";
+          personColor(b, e.staff_id); b.setAttribute("aria-pressed", String(picked === e.staff_id));
+          b.append(el("strong", "", name(e.staff_id)), el("span", "", e.role + " · " + e.target));
+          b.addEventListener("click", () => { picked = e.staff_id; draw(); mine.scrollIntoView({ behavior: "smooth", block: "start" }); }); card.append(b);
+        }); overview.append(card);
+      });
+    }
+    draw(); box.append(section);
+    if (!state.can_manage) return;
+    const manage = el("details", "ref-rota-manage"); manage.append(el("summary", "", "확정 배정 관리 · 서류용 기록 보기"), el("p", "note", "서류용 취소선과 예비 기록은 보존됩니다. ‘실제 배정’을 켠 항목만 일반 심판에게 표시됩니다. 세부 경기는 이 회차의 경기 중에서 선택하세요. 저장하면 다른 선생님의 확정 배정표에 반영됩니다."));
+    sessions.forEach(s => {
+      const group = el("details"); group.append(el("summary", "", label(s)));
+      entries.filter(e => e.session === s.key).forEach(e => {
+        const form = el("form", "ref-edit-entry");
+        const source = el("p", "note", "원본 " + e.key + " · " + e.source_text + (e.source_strike ? " · 서류용 취소선" : "") + (e.exception ? " · 실제 배정 예외 적용" : ""));
+        const teacherLabel = el("label", "", e.role + " 담당자"), teacher = el("select");
+        people.forEach(p => { const o = el("option", "", p.name); o.value = p.id; teacher.append(o); }); teacher.value = e.staff_id; teacherLabel.append(teacher);
+        const activeLabel = el("label", "ref-check", ""), active = el("input"); active.type = "checkbox"; active.checked = e.active; activeLabel.append(active, document.createTextNode("실제 배정"));
+        const targetLabel = el("label", "", "담당 설명"), target = el("input"); target.type = "text"; target.maxLength = 100; target.value = e.target; targetLabel.append(target);
+        const gameDetails = el("details", "ref-edit-games"); gameDetails.append(el("summary", "", "세부 경기 선택"));
+        const checks = [];
+        (state.matches || []).filter(m => m.session_id === s.session_id && m.division === s.division).forEach(m => {
+          const l = el("label", "ref-check"), c = el("input"); c.type = "checkbox"; c.value = m.code; c.checked = (e.match_codes || []).includes(m.code); checks.push(c);
+          l.append(c, document.createTextNode((m.time || "") + " · " + m.code + " · " + (m.team1 || "미정") + " vs " + (m.team2 || "미정"))); gameDetails.append(l);
+        });
+        const submit = el("button", "btn small", "이 배정 저장"); submit.type = "submit";
+        form.append(source, teacherLabel, activeLabel, targetLabel, gameDetails, submit);
+        form.addEventListener("submit", async event => {
+          event.preventDefault(); submit.disabled = true;
+          const codes = checks.filter(c => c.checked).map(c => c.value);
+          const targetText = codes.length ? target.value.replace(" · 세부 경기 지정 전", "") : target.value;
+          const ok = await save(sb.rpc("set_ref_rota_entry", { p_key: e.key, p_staff: Number(teacher.value), p_active: active.checked, p_codes: codes, p_target: targetText, p_revision: state.revision }), "확정 배정을 저장했습니다");
+          submit.disabled = false; if (ok) reload();
+        }); group.append(form);
+      }); manage.append(group);
+    }); section.append(manage);
+  }
+
   async function loadReferee(box) {
+    const root = box;
     const [staff, { data: sessions, error }, { data: avail, error: availError }, { data: doneRows, error: doneError }, { data: roleRows, error: roleError }, { data: assignments, error: assignmentError }] = await Promise.all([
       fetchStaff(),
       sb.from("ref_sessions").select("*").order("day").order("start_time").order("sort"),
@@ -2291,7 +2373,12 @@
     const done = new Set((doneRows || []).map(d => d.staff_id)); // '입력 완료'를 누른 선생님
     box.replaceChildren();
     if (error || availError || doneError || roleError || assignmentError) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
-    const reload = () => loadReferee(box);
+    const reload = () => loadReferee(root);
+    const rota = await sb.rpc("ref_rota_state");
+    if (rota.error) box.append(el("p", "note", "확정 배정표를 불러오지 못했습니다. 새로고침하거나 관리자에게 확인해 주세요."));
+    else renderConfirmedRefRota(box, rota.data, reload);
+    const availability = el("details", "ref-availability"), availabilityBody = el("div");
+    availability.append(el("summary", "", "기존 참여 가능 응답 · 11/8 참석 여부"), availabilityBody); box.append(availability); box = availabilityBody;
     const has = new Set((avail || []).filter(a => a.available).map(a => a.session_id + "|" + a.staff_id));
     const attendance = new Map((avail || []).map(a => [a.session_id + "|" + a.staff_id, a.available]));
     const isFinal = s => s.day === "2026-11-08";

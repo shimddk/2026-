@@ -374,3 +374,26 @@ table.dtable td.st-duty input.cell { max-width: none; }
 .adv-list { margin: 10px 0; }
 .adv-list h4 { margin: 0 0 6px; }
 .adv-list .slot-row.adv-on { background: rgba(53, 224, 255, .08); border-radius: 8px; }
+/* 확정 심판 배정: 개인 색상은 staff id로 정하며 두 테마의 바탕·글자 변수와 혼합한다. */
+.ref-confirmed{margin-bottom:24px}
+.ref-person-list{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.ref-person,.ref-duty{--ref-color:hsl(var(--ref-hue) 72% 45%);border:2px solid var(--ref-color);border-radius:12px;background:color-mix(in srgb,var(--ref-color) 12%,var(--card));color:var(--text)}
+.ref-person{padding:8px 12px;font:inherit;cursor:pointer}
+.ref-person[aria-pressed="true"],.ref-picked{background:color-mix(in srgb,var(--ref-color) 28%,var(--card));outline:3px solid var(--ref-color);outline-offset:2px}
+.ref-rota-grid,.ref-my-rota{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin:16px 0}
+.ref-session-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.ref-session-card h4,.ref-duty h4{margin:0 0 12px;line-height:1.6}
+.ref-duty{display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;text-align:left;font:inherit;overflow-wrap:anywhere}
+button.ref-duty{cursor:pointer}
+.ref-game-list{padding-left:20px;margin:8px 0;font-size:13px;line-height:1.8}
+.ref-game-list li+li{margin-top:6px}
+.ref-rota-manage,.ref-availability{padding:16px;border:1px solid var(--line);border-radius:12px;margin:20px 0}
+.ref-rota-manage summary,.ref-availability>summary{cursor:pointer;font-weight:700;line-height:1.7}
+.ref-rota-manage>details{margin-top:16px}
+.ref-edit-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
+.ref-edit-entry>p,.ref-edit-games{grid-column:1/-1}
+.ref-edit-entry label:not(.ref-check){display:flex;flex-direction:column;gap:6px;min-width:0}
+.ref-edit-entry input[type="text"],.ref-edit-entry select{box-sizing:border-box;width:100%;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font:inherit}
+.ref-check{display:flex;align-items:center;gap:8px;line-height:1.7;padding:6px 0}
+.ref-check input{flex-shrink:0}
+@media(max-width:600px){.ref-edit-entry{grid-template-columns:1fr}.ref-person{padding:8px;font-size:13px}.ref-rota-manage,.ref-availability{padding:10px}}
