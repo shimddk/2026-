@@ -949,7 +949,7 @@
     // 젠지 코치(심판 권한)도 보기 가능 (2026-10-18 사용자 요청), 고치기는 편집자만
     if (isEditor() || ME.role === "referee") views.push(["t-coaching", "젠지 코칭 관리", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다. 담당 코치·상태를 바꾸면 공개 '젠지 코칭' 탭에도 바로 반영됩니다(신청자·메모는 공개 안 됨)." + (isEditor() ? "" : " 심판 권한은 보기만 할 수 있습니다(배정·상태는 GGA 시트에서 10분마다 자동 반영)."), loadCoaching]);
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
-    if (isOwner()) views.push(["t-drawpreview", "예상 조 편성", "지금까지 확정된 팀으로 조 편성을 미리 뽑아 봅니다(관리자 전용). 저장되지 않으며 실제 대진표와 학생 화면에는 아무 영향이 없습니다.", loadDrawPreview]);
+    // 2026-10-21: 예상 조 편성은 관리자 포함 모두에게 숨김. 미리보기 함수와 기존 데이터는 보존.
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
     if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "심판가능 체크 교사의 수당 서류를 비공개로 제출합니다.", loadPaymentPreview]);
     if(teacherTabState.can_manage) views.push(["t-tab-settings","탭 표시 관리","다른 교사에게 보이는 교사용 탭을 설정합니다.",loadTeacherTabSettings]);
