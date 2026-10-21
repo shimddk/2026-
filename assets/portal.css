@@ -383,7 +383,8 @@ table.dtable td.st-duty input.cell { max-width: none; }
 .ref-picked{background:color-mix(in srgb,var(--ref-color) 28%,var(--card));outline:3px solid var(--ref-color);outline-offset:2px}
 .ref-person-tag{align-self:flex-start;display:inline-block;padding:4px 8px;border-radius:6px;background:var(--ref-color);color:var(--ref-ink);font-size:13px;font-weight:700}
 .ref-duty{border-left-width:8px}
-.ref-role-guide{margin-top:28px}
+.ref-thanks{margin:0 0 20px;padding:14px 16px;border-left:4px solid var(--neon);border-radius:8px;background:var(--card);color:var(--text);font-size:15px;font-weight:700;line-height:1.8;overflow-wrap:anywhere}
+.ref-role-guide{margin:0 0 28px}
 .ref-role-guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px}
 .ref-role-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text)}
 .ref-role-card h4{margin:0 0 12px;color:var(--neon);line-height:1.6}

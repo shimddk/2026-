@@ -2348,7 +2348,10 @@
       const card = el("article", "ref-role-card"), list = el("ol");
       card.append(el("h4", "", title)); items.forEach(text => list.append(el("li", "", text))); card.append(list); guideGrid.append(card);
     });
-    guidance.append(guideGrid); section.append(guidance); box.append(section);
+    guidance.append(guideGrid);
+    section.insertBefore(guidance, section.children[0]);
+    section.insertBefore(el("p", "ref-thanks", "학생들의 멋진 경기를 위해 함께해 주시는 심판 선생님들, 진심으로 감사드립니다!"), guidance);
+    box.append(section);
     if (!state.can_manage) return;
     const manage = el("details", "ref-rota-manage"); manage.append(el("summary", "", "확정 배정 관리 · 서류용 기록 보기"), el("p", "note", "서류용 취소선과 예비 기록은 보존됩니다. ‘실제 배정’을 켠 항목만 일반 심판에게 표시됩니다. 세부 경기는 이 회차의 경기 중에서 선택하세요. 저장하면 다른 선생님의 확정 배정표에 반영됩니다."));
     sessions.forEach(s => {
