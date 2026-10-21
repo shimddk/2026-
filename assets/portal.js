@@ -2088,7 +2088,7 @@
       b.addEventListener("click", () => { matchDiv = d; reload(); });
       sw.append(b);
     });
-    box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 조별리그는 1·2경기 동시 시작, 3·4경기 +1시간, 5·6경기 +2시간입니다. 점수(이긴 팀 1, 진 팀 0)와 경기 시간(분:초)을 넣으면 조 순위가 계산됩니다. " +
+    box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 조별리그는 1·2경기 동시 시작, 3·4경기 +1시간, 5·6경기 +2시간입니다. 승자와 경기 시간(분:초)을 입력하면 조 순위가 계산됩니다. " +
       "③ 각 조 1·2위만 진출하며 3위 승급은 없습니다. 중등 64강 → 32강만 관리자가 '진출 팀 배정'을 눌러 미리보기 후 저장합니다. ④ 중등·고등 32강 → 본선은 A조1위 vs B조2위처럼 고정 대진으로 자동 연결됩니다. 장로: A1-B2·C1-D2·E1-F2·G1-H2, 바론: B1-A2·D1-C2·F1-E2·H1-G2. 본선 이후도 점수를 넣으면 자동으로 이어집니다."));
 
     // 1) 조 편성 + 조별 순위 (단계 고르기)
@@ -2234,15 +2234,15 @@
       { key: "_stage", label: "단계", readonly: true, get: r => r.stage },
       { key: "_round", label: "경기", readonly: true, get: label },
       { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id || !isEditor(), get: r => r.session_id ? sessText(sessById[r.session_id], r.time_offset_min) : r.scheduled_at },
-      teamCol(1), { key: "_region1", label: "지역1", readonly: true, get: r => teamRegion(r.team1, regions) }, { key: "score1", label: "점수1", type: "int", get: r => r.score1 },
-      { key: "score2", label: "점수2", type: "int", get: r => r.score2 }, teamCol(2), { key: "_region2", label: "지역2", readonly: true, get: r => teamRegion(r.team2, regions) },
-      { key: "winner", label: "승자", readonly: true, get: r => r.winner, cellClass: r => (r.winner ? "win" : "") },
+      teamCol(1), { key: "_region1", label: "지역1", readonly: true, get: r => teamRegion(r.team1, regions) },
+      teamCol(2), { key: "_region2", label: "지역2", readonly: true, get: r => teamRegion(r.team2, regions) },
+      { key: "winner", label: "승자", get: r => r.winner, cellClass: r => (r.winner ? "win" : ""), cell: (td,r) => matchWinnerCell(td,r,reload) },
       { key: "duration_sec", label: "경기 시간(분:초)", get: r => fmtDur(r.duration_sec) },
       { key: "referee", label: "심판", get: r => r.referee, list: r => (r.session_id ? "refs-" + r.session_id : "refs-all") },
       { key: "note", label: "비고", get: r => r.note }
     ];
     const holder = el("div");
-    box.append(el("h3", "bk-sub", "경기 결과 입력"), el("p", "note", "일시는 '심판 일정' 표의 회차 시간에서 자동으로 들어옵니다(관리자가 바꾸면 같이 바뀜). 심판 칸에서 이름을 고를 때 '✔ 이 시간 가능'이 붙은 선생님이 그 시간에 체크한 분입니다." + (ME.role === "referee" ? " 심판 권한은 점수·경기 시간·심판·비고를 입력할 수 있습니다(조 편성·학교·일시는 지원단 편집자가 관리)." : "")), lists, holder);
+    box.append(el("h3", "bk-sub", "경기 결과 입력"), el("p", "note", "승자 칸에서 해당 경기의 두 학교 중 하나를 선택하면 조 순위와 전체 대진표에 반영됩니다. 일시는 심판 회차에서 자동으로 들어옵니다. '✔ 이 시간 가능'은 해당 회차에 참여 가능한 심판입니다." + (ME.role === "referee" ? " 심판 권한은 승자·경기 시간·심판·비고를 입력할 수 있습니다." : "")), lists, holder);
     grid(holder, {
       columns, rows: shown, exportName: "대진·경기 결과(" + matchDiv + ")",
       canSave: isEditor() || (ME.role === "referee" && ME.status === "approved"),
@@ -2265,6 +2265,20 @@
   }
 
   // 심판 일정: 경기 회차(날짜·시간)마다 가능한 선생님 체크. 본인 칸만 체크, 관리자는 회차 추가·수정·삭제와 모든 칸 수정
+  function matchWinnerCell(td,r,reload) {
+    if (ME.status !== "approved" || !(isEditor() || ME.role === "referee")) { td.textContent=r.winner || ""; return; }
+    const select=el("select","cell"); select.setAttribute("aria-label",(r.round_label || "경기")+" 승자");
+    const empty=el("option","",r.team1 && r.team2 ? "승자 선택" : "대진 확정 후 선택"); empty.value=""; empty.disabled=true; select.append(empty);
+    [r.team1,r.team2].filter(Boolean).forEach(team=>{const option=el("option","",team);option.value=team;select.append(option);});
+    select.value=r.winner || ""; select.disabled=!r.team1 || !r.team2;
+    select.addEventListener("change",async()=>{
+      if(![r.team1,r.team2].includes(select.value)) {select.value=r.winner || "";return;}
+      select.disabled=true;
+      const ok=await save(sb.rpc("select_match_winner",{p_match:r.id,p_winner:select.value,p_team1:r.team1,p_team2:r.team2,p_previous:r.winner || null}),"승자를 저장했습니다");
+      if(ok) reload(); else {select.value=r.winner || "";select.disabled=false;}
+    }); td.append(select);
+  }
+
   async function loadReferee(box) {
     const [staff, { data: sessions, error }, { data: avail, error: availError }, { data: doneRows, error: doneError }, { data: roleRows, error: roleError }, { data: assignments, error: assignmentError }] = await Promise.all([
       fetchStaff(),
