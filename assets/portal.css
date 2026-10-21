@@ -114,6 +114,8 @@ td.actions { display: flex; gap: 6px; }
 .btn.danger:disabled { opacity: .35; cursor: not-allowed; }
 .pending-count { font-weight: 700; color: var(--wait); }
 details.audit { margin-top: 16px; }
+.roster-history > summary { cursor: pointer; color: var(--text); font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.roster-history[open] > summary { margin-bottom: 16px; }
 details.audit li { font-size: 13px; color: var(--muted); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ok); color: #0a0f24; padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 50; }
 .toast.bad { background: #ff8a8a; }

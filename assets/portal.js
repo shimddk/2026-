@@ -2872,9 +2872,9 @@
     });
 
     // 수정 기록 (최근 순): 수정 전 → 후, 되돌리기
-    const logBox = el("div", "card");
-    logBox.append(el("h3", "", "수정 기록 (최근 순)"));
     const edits = (changes || []).filter(c => c.kind === "edit" || c.kind === "revert");
+    const logBox = el("details", "card roster-history");
+    logBox.append(el("summary", "", "수정 기록 (최근 순) · " + edits.length + "건 · 접기/펴기"));
     if (!edits.length) logBox.append(el("p", "note", "아직 팀장이 수정한 기록이 없습니다."));
     edits.forEach(c => {
       const d = el("details", "score-editor");
