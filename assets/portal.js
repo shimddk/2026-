@@ -1746,6 +1746,7 @@
     : (seat.seed <= 8 ? "1위 자리 " + "ABCDEFGH"[seat.seed - 1] : "2위 자리 " + "ABCDEFGH"[seat.seed - 9]);
 
   async function openAdvance(div, slots, stand, matches, reload, regions = {}, stage = FIRST_STAGE[div]) {
+    if (div !== "중등부" || stage !== "64강") { toast("32강 → 본선은 조 순위에 따라 고정 대진으로 자동 연결됩니다"); return; }
     const ad = computeAdvance(div, slots, stand, matches, stage);
     const target = stage === "64강" ? "32강" : "본선 진출";
     const toGroups = target === "32강";
@@ -2024,10 +2025,10 @@
       sw.append(b);
     });
     box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 조별리그는 1·2경기 동시 시작, 3·4경기 +1시간, 5·6경기 +2시간입니다. 점수(이긴 팀 1, 진 팀 0)와 경기 시간(분:초)을 넣으면 조 순위가 계산됩니다. " +
-      "③ 각 조 1·2위만 진출하며 3위 승급은 없습니다. 중등 64강 → 32강, 중등·고등 32강 → 본선은 관리자가 해당 '진출 팀 배정'을 눌러 미리보기 후 저장합니다. 조 1위·2위 자리를 구분하고 같은 조 재대결을 우선 피하며, 같은 지역 대결을 최대한 줄입니다. ④ 본선 이후는 점수를 넣으면 자동으로 이어집니다."));
+      "③ 각 조 1·2위만 진출하며 3위 승급은 없습니다. 중등 64강 → 32강만 관리자가 '진출 팀 배정'을 눌러 미리보기 후 저장합니다. ④ 중등·고등 32강 → 본선은 A조1위 vs B조2위처럼 고정 대진으로 자동 연결됩니다. 장로: A1-B2·C1-D2·E1-F2·G1-H2, 바론: B1-A2·D1-C2·F1-E2·H1-G2. 본선 이후도 점수를 넣으면 자동으로 이어집니다."));
 
     // 1) 조 편성 + 조별 순위 (단계 고르기)
-    const stages = matchDiv === "중등부" ? ["64강", "32강", "본선 진출", "4강 리그"] : ["32강", "본선 진출", "4강 리그"];
+    const stages = matchDiv === "중등부" ? ["64강", "32강", "4강 리그"] : ["32강", "4강 리그"];
     if (!stages.includes(slotStage[matchDiv])) slotStage[matchDiv] = stages[0];
     const stage = slotStage[matchDiv];
     const editable = stage === FIRST_STAGE[matchDiv]; // 첫 단계만 직접 편성, 나머지는 앞 단계 결과로 자동
@@ -2079,7 +2080,7 @@
       auto.addEventListener("click", () => openDraw(matchDiv, slots || [], ros || [], reload));
       head.append(auto);
     }
-    if (isOwner()) for (const sourceStage of (matchDiv === "중등부" ? ["64강", "32강"] : ["32강"])) {
+    if (isOwner()) for (const sourceStage of (matchDiv === "중등부" ? ["64강"] : [])) {
       const adv = el("button", "btn ghost small", "진출 팀 배정 (" + sourceStage + " → " + (sourceStage === "64강" ? "32강" : "본선") + ")");
       adv.type = "button";
       adv.addEventListener("click", () => openAdvance(matchDiv, slots || [], stand || [], rows, reload, regions, sourceStage));
