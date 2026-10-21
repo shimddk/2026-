@@ -377,9 +377,18 @@ table.dtable td.st-duty input.cell { max-width: none; }
 /* 확정 심판 배정: 개인 색상은 staff id로 정하며 두 테마의 바탕·글자 변수와 혼합한다. */
 .ref-confirmed{margin-bottom:24px}
 .ref-person-list{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
-.ref-person,.ref-duty{--ref-color:hsl(var(--ref-hue) 72% 45%);border:2px solid var(--ref-color);border-radius:12px;background:color-mix(in srgb,var(--ref-color) 12%,var(--card));color:var(--text)}
-.ref-person{padding:8px 12px;font:inherit;cursor:pointer}
-.ref-person[aria-pressed="true"],.ref-picked{background:color-mix(in srgb,var(--ref-color) 28%,var(--card));outline:3px solid var(--ref-color);outline-offset:2px}
+.ref-person,.ref-duty{border:2px solid var(--ref-color);border-radius:12px;background:color-mix(in srgb,var(--ref-color) 12%,var(--card));color:var(--text)}
+.ref-person{padding:8px 12px;font:inherit;font-weight:700;cursor:pointer;background:var(--ref-color);color:var(--ref-ink)}
+.ref-person[aria-pressed="true"]{outline:3px solid var(--text);outline-offset:3px;text-decoration:underline;text-underline-offset:4px}
+.ref-picked{background:color-mix(in srgb,var(--ref-color) 28%,var(--card));outline:3px solid var(--ref-color);outline-offset:2px}
+.ref-person-tag{align-self:flex-start;display:inline-block;padding:4px 8px;border-radius:6px;background:var(--ref-color);color:var(--ref-ink);font-size:13px;font-weight:700}
+.ref-duty{border-left-width:8px}
+.ref-role-guide{margin-top:28px}
+.ref-role-guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px}
+.ref-role-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text)}
+.ref-role-card h4{margin:0 0 12px;color:var(--neon);line-height:1.6}
+.ref-role-card ol{margin:0;padding-left:22px;line-height:1.8;font-size:14px}
+.ref-role-card li+li{margin-top:8px}
 .ref-rota-grid,.ref-my-rota{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin:16px 0}
 .ref-session-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .ref-session-card h4,.ref-duty h4{margin:0 0 12px;line-height:1.6}

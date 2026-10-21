@@ -2282,7 +2282,15 @@
   function renderConfirmedRefRota(box, state, reload) {
     const people = state.people || [], sessions = state.sessions || [], entries = state.entries || [];
     const name = id => people.find(p => p.id === id)?.name || "미연결";
-    const personColor = (node, id) => node.style.setProperty("--ref-hue", String((Number(id) * 137.508) % 360));
+    // 색상 계열과 밝기를 함께 나누고, 고정 번호를 병기해 비슷한 색도 구분한다.
+    const refColors = ["#d32f2f", "#1565c0", "#fbc02d", "#00845a", "#8e24aa", "#ef6c00", "#00acc1", "#c2185b", "#795548", "#7cb342", "#3949ab", "#f48fb1", "#00838f", "#ff8a65", "#5e35b1", "#a1887f", "#43a047", "#90caf9", "#ad1457", "#c0ca33", "#546e7a", "#ba68c8", "#ffb300", "#00695c", "#e57373", "#4527a0", "#80cbc4", "#6d4c41", "#9e9d24", "#0288d1", "#ec407a", "#455a64"];
+    const personMark = id => "#" + String(id).padStart(2, "0");
+    const personColor = (node, id) => {
+      const color = refColors[Number(id) - 1] || "hsl(" + ((Number(id) * 137.508) % 360) + " 65% 40%)";
+      const rgb = /^#[0-9a-f]{6}$/i.test(color) ? color.slice(1).match(/../g).map(x => parseInt(x, 16) / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4) : [0, 0, 0];
+      node.style.setProperty("--ref-color", color);
+      node.style.setProperty("--ref-ink", .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2] > .179 ? "#000000" : "#ffffff");
+    };
     let picked = people.some(p => p.id === ME.staffId) ? ME.staffId : null;
     const section = el("div", "ref-confirmed"), chooser = el("div", "ref-person-list"), mine = el("div"), overview = el("div", "ref-rota-grid");
     section.append(el("h3", "bk-sub", "확정 심판 배정표"), el("p", "note", "이름을 누르면 담당 회차와 경기가 같은 색으로 표시됩니다. 아래 참여 가능 응답과는 별개의 확정 배정입니다. 11/8 참석 응답은 기존 표에서 확인하세요."), chooser, mine, overview);
@@ -2305,7 +2313,7 @@
       const all = el("button", "btn ghost small", "전체 보기"); all.type = "button"; all.setAttribute("aria-pressed", String(picked === null));
       all.addEventListener("click", () => { picked = null; draw(); }); chooser.append(all);
       people.forEach(p => {
-        const b = el("button", "ref-person", p.name + (p.id === ME.staffId ? " (나)" : "")); b.type = "button";
+        const b = el("button", "ref-person", personMark(p.id) + " " + p.name + (p.id === ME.staffId ? " (나)" : "")); b.type = "button";
         personColor(b, p.id); b.setAttribute("aria-pressed", String(picked === p.id));
         b.addEventListener("click", () => { picked = p.id; draw(); }); chooser.append(b);
       });
@@ -2316,7 +2324,7 @@
         const cards = el("div", "ref-my-rota");
         sessions.forEach(s => own.filter(e => e.session === s.key).forEach(e => {
           const c = el("article", "ref-duty ref-picked"); personColor(c, picked);
-          c.append(el("h4", "", label(s)), el("strong", "", e.role + " · " + e.target)); appendGames(c, e); cards.append(c);
+          c.append(el("span", "ref-person-tag", personMark(picked) + " " + name(picked)), el("h4", "", label(s)), el("strong", "", e.role + " · " + e.target)); appendGames(c, e); cards.append(c);
         })); mine.append(cards);
       }
       sessions.forEach(s => {
@@ -2324,12 +2332,24 @@
         entries.filter(e => e.session === s.key && e.active).forEach(e => {
           const b = el("button", "ref-duty" + (picked === e.staff_id ? " ref-picked" : "")); b.type = "button";
           personColor(b, e.staff_id); b.setAttribute("aria-pressed", String(picked === e.staff_id));
-          b.append(el("strong", "", name(e.staff_id)), el("span", "", e.role + " · " + e.target));
+          b.append(el("strong", "ref-person-tag", personMark(e.staff_id) + " " + name(e.staff_id)), el("span", "", e.role + " · " + e.target));
           b.addEventListener("click", () => { picked = e.staff_id; draw(); mine.scrollIntoView({ behavior: "smooth", block: "start" }); }); card.append(b);
         }); overview.append(card);
       });
     }
-    draw(); box.append(section);
+    draw();
+    const guidance = el("section", "ref-role-guide"); guidance.append(el("h3", "bk-sub", "심판 역할"));
+    const guideGrid = el("div", "ref-role-guide-grid");
+    [
+      ["64강·32강 조별리그", ["심판 1명이 1개 조를 담당합니다. 조별 시작 전 사전교육을 진행합니다.", "대진표 위쪽 시드 경기부터 시작합니다.", "먼저 시작한 경기가 인게임에 입장하면, 다음 경기의 밴픽을 시작합니다.", "먼저 끝난 학교는 정각까지 대기하고, 이후 경기는 순서대로 진행합니다."]],
+      ["더블 엘리미네이션 · 승자조", ["심판 1명이 4팀을 담당합니다. 위쪽 경기의 밴픽이 끝나면 아래쪽 경기의 밴픽을 시작합니다.", "2라운드는 담당한 1라운드 경기에서 올라온 두 팀을 이어서 담당합니다.", "승자조 결승은 64강 심판에 참여하지 않은 선생님(이의림·이동규·송준엽·강병화)이 담당합니다. 세부 경기는 확정 배정표를 확인하세요."]],
+      ["더블 엘리미네이션 · 패자조", ["심판 1명이 1개 팀을 담당합니다.", "1·2라운드 진행 후, 한 사람씩 3라운드와 4라운드를 담당합니다."]],
+      ["4강 리그", ["심판 2명이 1개 조(4팀)를 담당합니다.", "두 경기씩 동시에 진행합니다."]]
+    ].forEach(([title, items]) => {
+      const card = el("article", "ref-role-card"), list = el("ol");
+      card.append(el("h4", "", title)); items.forEach(text => list.append(el("li", "", text))); card.append(list); guideGrid.append(card);
+    });
+    guidance.append(guideGrid); section.append(guidance); box.append(section);
     if (!state.can_manage) return;
     const manage = el("details", "ref-rota-manage"); manage.append(el("summary", "", "확정 배정 관리 · 서류용 기록 보기"), el("p", "note", "서류용 취소선과 예비 기록은 보존됩니다. ‘실제 배정’을 켠 항목만 일반 심판에게 표시됩니다. 세부 경기는 이 회차의 경기 중에서 선택하세요. 저장하면 다른 선생님의 확정 배정표에 반영됩니다."));
     sessions.forEach(s => {
