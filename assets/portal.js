@@ -1734,7 +1734,7 @@
     groups.forEach(g => {
       const st = stand.filter(x => x.division === div && x.stage === stage && x.grp === g);
       if (!st.length || !st[0].complete) { problems.push(stage + " " + g + "조 경기가 아직 다 끝나지 않았습니다"); return; }
-      if (st.some(x => !x.rank)) { problems.push(stage + " " + g + "조 동률 · 순위 직접 지정이 필요합니다"); return; }
+      if (st.some(x => !x.rank)) { problems.push(stage + " " + g + "조 경기 시간 누락 또는 최종 동률 · 확인 후 순위 지정이 필요합니다"); return; }
       st.forEach(x => {
         if (x.rank === 1) firsts.push(row(x, g));
         else if (x.rank === 2) runners.push(row(x, g));
@@ -2155,6 +2155,7 @@
     sec.append(el("p", "note", editable
       ? "참가 학교 " + schools.length + "개 중 " + placed + "개 배정 · 3팀 조는 4번 자리를 비워 두면 그 자리 경기는 자동으로 빠집니다." + (isOwner() ? "" : " 자동 조 편성은 관리자만 할 수 있습니다.")
       : stage === "4강 리그" ? "본선 결과로 자동으로 채워집니다." : "앞 단계가 끝난 뒤 관리자가 '진출 팀 배정'으로 채웁니다."));
+    sec.append(el("p", "note", "리그 순위: 승수 → 2팀 동률은 승자승. 3팀 이상 동률은 (패배 시간 합 − 승리 시간 합) ÷ 실제 경기 수가 큰 팀 우선. 부전승은 시간에서 제외합니다. 시간 점수까지 2팀 동률이면 승자승, 필요한 시간 누락·3팀 이상 최종 동률은 확인 후 직접 지정합니다."));
     const gwrap = el("div", "slot-grid");
     const usedGroups = new Set((slots || []).filter(s => s.stage === stage && s.school).map(s => s.grp));
     if (editable) sec.append(el("p", "note", usedGroups.size === MAX_GROUPS[matchDiv]
@@ -2188,7 +2189,7 @@
       if (isEditor() && st.length) {
         const d = el("details", "score-editor");
         d.open = tie;
-        d.append(el("summary", tie ? "dupe" : "", tie ? "동률 · 순위 직접 지정 필요" : manual ? "순위 직접 지정 중" : "순위 직접 지정"));
+        d.append(el("summary", tie ? "dupe" : "", tie ? "경기 시간 누락·최종 동률 확인 / 순위 직접 지정" : manual ? "순위 직접 지정 중" : "순위 직접 지정"));
         (slots || []).filter(s => s.stage === stage && s.grp === g && s.school).forEach(s => {
           const l = el("label", "slot-row");
           const sel = el("select");
