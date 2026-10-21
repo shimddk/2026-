@@ -2282,9 +2282,8 @@
   function renderConfirmedRefRota(box, state, reload) {
     const people = state.people || [], sessions = state.sessions || [], entries = state.entries || [];
     const name = id => people.find(p => p.id === id)?.name || "미연결";
-    // 색상 계열과 밝기를 함께 나누고, 고정 번호를 병기해 비슷한 색도 구분한다.
+    // 색상 계열과 밝기를 함께 나누어 담당자를 구분한다.
     const refColors = ["#d32f2f", "#1565c0", "#fbc02d", "#00845a", "#8e24aa", "#ef6c00", "#00acc1", "#c2185b", "#795548", "#7cb342", "#3949ab", "#f48fb1", "#00838f", "#ff8a65", "#5e35b1", "#a1887f", "#43a047", "#90caf9", "#ad1457", "#c0ca33", "#546e7a", "#ba68c8", "#ffb300", "#00695c", "#e57373", "#4527a0", "#80cbc4", "#6d4c41", "#9e9d24", "#0288d1", "#ec407a", "#455a64"];
-    const personMark = id => "#" + String(id).padStart(2, "0");
     const personColor = (node, id) => {
       const color = refColors[Number(id) - 1] || "hsl(" + ((Number(id) * 137.508) % 360) + " 65% 40%)";
       const rgb = /^#[0-9a-f]{6}$/i.test(color) ? color.slice(1).match(/../g).map(x => parseInt(x, 16) / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4) : [0, 0, 0];
@@ -2313,7 +2312,7 @@
       const all = el("button", "btn ghost small", "전체 보기"); all.type = "button"; all.setAttribute("aria-pressed", String(picked === null));
       all.addEventListener("click", () => { picked = null; draw(); }); chooser.append(all);
       people.forEach(p => {
-        const b = el("button", "ref-person", personMark(p.id) + " " + p.name + (p.id === ME.staffId ? " (나)" : "")); b.type = "button";
+        const b = el("button", "ref-person", p.name + (p.id === ME.staffId ? " (나)" : "")); b.type = "button";
         personColor(b, p.id); b.setAttribute("aria-pressed", String(picked === p.id));
         b.addEventListener("click", () => { picked = p.id; draw(); }); chooser.append(b);
       });
@@ -2324,7 +2323,7 @@
         const cards = el("div", "ref-my-rota");
         sessions.forEach(s => own.filter(e => e.session === s.key).forEach(e => {
           const c = el("article", "ref-duty ref-picked"); personColor(c, picked);
-          c.append(el("span", "ref-person-tag", personMark(picked) + " " + name(picked)), el("h4", "", label(s)), el("strong", "", e.role + " · " + e.target)); appendGames(c, e); cards.append(c);
+          c.append(el("span", "ref-person-tag", name(picked)), el("h4", "", label(s)), el("strong", "", e.role + " · " + e.target)); appendGames(c, e); cards.append(c);
         })); mine.append(cards);
       }
       sessions.forEach(s => {
@@ -2332,7 +2331,7 @@
         entries.filter(e => e.session === s.key && e.active).forEach(e => {
           const b = el("button", "ref-duty" + (picked === e.staff_id ? " ref-picked" : "")); b.type = "button";
           personColor(b, e.staff_id); b.setAttribute("aria-pressed", String(picked === e.staff_id));
-          b.append(el("strong", "ref-person-tag", personMark(e.staff_id) + " " + name(e.staff_id)), el("span", "", e.role + " · " + e.target));
+          b.append(el("strong", "ref-person-tag", name(e.staff_id)), el("span", "", e.role + " · " + e.target));
           b.addEventListener("click", () => { picked = e.staff_id; draw(); mine.scrollIntoView({ behavior: "smooth", block: "start" }); }); card.append(b);
         }); overview.append(card);
       });
