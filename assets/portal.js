@@ -637,6 +637,7 @@
     nav.append(b);
   }
   function removeTeacher() {
+    clearInterval(teacherTabTimer); teacherTabTimer = null; built = false; teacherViews = [];
     document.querySelectorAll(".tab-teacher, .tab-break").forEach(t => t.remove());
     nav.classList.remove("has-teacher");
     document.body.classList.remove("teacher-mode");
@@ -854,6 +855,65 @@
 
   /* ---------- 교사 전용 탭 ---------- */
   let built = false;
+  let teacherTabTimer = null, teacherViews = [];
+  let teacherTabGeneration = 0;
+  let teacherTabState = { can_manage: false, hidden: [] };
+  const TEACHER_TAB_OPTIONS = [["t-staff","지원단 명단"],["t-roster","아이디 명단"],["t-captains","팀장 연락처"],["t-advisors","지도교사 연락처"],["t-tier","팀별 티어 현황"],["t-matches","대진·경기 결과"],["t-referee","심판 일정"],["t-warn","경고 조치"],["t-rcheck","명단 확인 현황"],["t-coaching","젠지 코칭 관리"],["t-inbox","신청 접수"],["t-payment","수당 지급"]];
+  const teacherTabVisible = id => id === "t-tab-settings" ? teacherTabState.can_manage : teacherTabState.can_manage || !teacherTabState.hidden.includes(id);
+  function applyTeacherTabVisibility() {
+    let activeRemoved = false;
+    teacherViews.forEach(([id,label,lead,loader]) => {
+      const button = document.getElementById("tab-"+id), section = document.getElementById(id);
+      if (!teacherTabVisible(id)) {
+        if (button?.getAttribute("aria-selected") === "true") activeRemoved = true;
+        button?.remove(); section?.remove(); return;
+      }
+      if (!button) {
+        addTab(id,label,true); const body = addSection(id,label,lead);
+        document.getElementById("tab-"+id).addEventListener("click", () => {
+          if (!teacherTabVisible(id) || body.dataset.loaded) return;
+          body.dataset.loaded="1"; loader(body);
+        });
+      }
+      const tab = document.getElementById("tab-"+id);
+      tab.textContent = label + (teacherTabState.can_manage && teacherTabState.hidden.includes(id) ? " · 숨김" : "");
+      nav.append(tab);
+    });
+    if (activeRemoved) {
+      const next = teacherViews.find(([id]) => teacherTabVisible(id));
+      if (next) document.getElementById("tab-"+next[0])?.click();
+      window.showTab(next ? next[0] : "home");
+      toast("관리자가 이 탭을 숨겼습니다.");
+    }
+  }
+  async function refreshTeacherTabVisibility() {
+    if (ME.status !== "approved") return;
+    const user = ME.id;
+    const generation = teacherTabGeneration;
+    const {data,error} = await sb.rpc("teacher_tab_visibility");
+    if (error || !data || ME.id !== user || ME.status !== "approved" || generation !== teacherTabGeneration) return;
+    teacherTabState = data; applyTeacherTabVisibility();
+    const controls = document.querySelector("#t-tab-settings .tbody");
+    if (controls?.dataset.loaded) loadTeacherTabSettings(controls);
+  }
+  function loadTeacherTabSettings(box) {
+    box.replaceChildren(); if (!teacherTabState.can_manage) return;
+    box.append(el("p","note","체크한 탭만 다른 교사에게 표시됩니다. 관리자는 숨긴 탭도 계속 볼 수 있습니다. 열어 둔 교사 화면에는 최대 30초 안에 반영됩니다. 기존 자료와 데이터 접근 권한은 변경하지 않습니다."));
+    const list = el("div","teacher-tab-settings");
+    TEACHER_TAB_OPTIONS.forEach(([id,title]) => {
+      const label=el("label","pub-toggle"), check=el("input"); check.type="checkbox"; check.checked=!teacherTabState.hidden.includes(id);
+      label.append(check,el("span","",title));
+      check.addEventListener("change",async()=>{
+        teacherTabGeneration++;
+        check.disabled=true;
+        const {data,error}=await sb.rpc("set_teacher_tab_visibility",{p_tab:id,p_hidden:!check.checked});
+        if(error || !data) {check.checked=!check.checked;toast("탭 표시 설정을 저장하지 못했습니다.",true);}
+        else {teacherTabState=data;applyTeacherTabVisibility();toast(check.checked?"다른 교사에게 표시합니다.":"다른 교사에게 숨겼습니다.");}
+        check.disabled=false;
+      }); list.append(label);
+    }); box.append(list);
+  }
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden && built)refreshTeacherTabVisibility();});
   const SHEETS = {
     roster: { title: "팀별 아이디 명단", subs: [["roster_all", "전체"], ["roster_middle", "중등부"], ["roster_high", "고등부"]] },
     captains: { title: "팀장 연락처", subs: [["captains", "전체"]] },
@@ -867,6 +927,11 @@
     document.body.classList.add("teacher-mode");
     if (built) return;
     built = true;
+    const buildingUser = ME.id;
+    const {data:tabSetting,error:tabError}=await sb.rpc("teacher_tab_visibility");
+    if(ME.id !== buildingUser || ME.status !== "approved") return;
+    if(tabError || !tabSetting) {built=false;toast("교사용 탭 설정을 불러오지 못했습니다. 잠시 후 다시 로그인해 주세요.",true);return;}
+    teacherTabState=tabSetting;
     const views = [
       // 지원단 명단은 심판 권한(젠지 코치)에 안 보임 (2026-10-18 사용자 요청)
       ...(ME.role === "referee" ? [] : [["t-staff", "지원단 명단", "지원단 선생님 명단과 업무 분장입니다.", loadStaff]]),
@@ -887,14 +952,13 @@
     if (isOwner()) views.push(["t-drawpreview", "예상 조 편성", "지금까지 확정된 팀으로 조 편성을 미리 뽑아 봅니다(관리자 전용). 저장되지 않으며 실제 대진표와 학생 화면에는 아무 영향이 없습니다.", loadDrawPreview]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
     if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "심판가능 체크 교사의 수당 서류를 비공개로 제출합니다.", loadPaymentPreview]);
-    views.forEach(([id, label, lead, loader]) => {
-      addTab(id, label, true);
-      const body = addSection(id, label, lead);
-      body.append(el("p", "note", "불러오는 중…"));
-      document.getElementById("tab-" + id).addEventListener("click", () => { if (!body.dataset.loaded) { body.dataset.loaded = "1"; loader(body); } }, { once: false });
-    });
+    if(teacherTabState.can_manage) views.push(["t-tab-settings","탭 표시 관리","다른 교사에게 보이는 교사용 탭을 설정합니다.",loadTeacherTabSettings]);
+    teacherViews=views; applyTeacherTabVisibility();
+    clearInterval(teacherTabTimer);
+    teacherTabTimer=setInterval(()=>{if(!document.hidden)refreshTeacherTabVisibility();},30000);
     if (wantsTeacher()) {
-      const id = location.hash.startsWith("#t-") ? location.hash.slice(1) : "t-staff";
+      const requested = location.hash.startsWith("#t-") ? location.hash.slice(1) : "t-staff";
+      const id = views.some(([v])=>v===requested && teacherTabVisible(v)) ? requested : (views.find(([v])=>teacherTabVisible(v))?.[0] || "home");
       document.getElementById("tab-" + id)?.click();
       window.showTab(id);
     }
