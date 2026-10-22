@@ -2365,7 +2365,8 @@
         for(let i=0;i<maxPeople;i++){
           const td=el("td","ref-assignment-cell"),assigned=seats[i]||[];
           assigned.forEach(e=>{const b=el("button","ref-duty ref-rota-person"+(picked===e.staff_id?" ref-picked":""));b.type="button";personColor(b,e.staff_id);b.setAttribute("aria-pressed",String(picked===e.staff_id));
-            b.append(roleBadge(e.role),el("strong","ref-person-tag",name(e.staff_id))); if(!paper)b.append(el("small","",e.target));
+            b.append(roleBadge(e.role),el("strong","ref-person-tag",name(e.staff_id)));
+            if(!paper){const detail=el("small","ref-duty-description");String(e.target||"").split(" · ").forEach((text,i)=>{if(i)detail.append(el("br"));detail.append(document.createTextNode(text));});b.append(detail);}
             b.addEventListener("click",()=>{picked=e.staff_id;draw();mine.scrollIntoView({behavior:"smooth",block:"start"});});td.append(b);
           });if(!assigned.length)td.append(el("span","note","—"));row.append(td);
         } body.append(row);

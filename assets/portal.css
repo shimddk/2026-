@@ -410,6 +410,8 @@ table.dtable td.st-duty input.cell { max-width: none; }
 .ref-rota-table .ref-meta-2{width:150px;min-width:150px;white-space:normal;box-sizing:border-box}
 .ref-rota-person{width:122px;min-width:122px;max-width:122px;margin:0;padding:10px;border-left-width:4px}
 .ref-rota-person+.ref-rota-person{margin-top:8px}
+button.ref-rota-person{padding:10px}
+.ref-rota-person .ref-duty-description{display:block;width:100%;min-width:0;font-size:12px;white-space:normal;overflow-wrap:anywhere;line-height:1.6}
 .ref-session-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .ref-session-card h4,.ref-duty h4{margin:0 0 12px;line-height:1.6}
 .ref-duty{display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;text-align:left;font:inherit;overflow-wrap:anywhere}
