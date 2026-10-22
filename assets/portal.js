@@ -2352,21 +2352,22 @@
           c.append(roleBadge(e.role), el("span", "ref-person-tag", name(picked)), el("h4", "", label(s))); if(!paper){c.append(el("strong", "", e.target));appendGames(c, e);} cards.append(c);
         })); mine.append(cards);
       }
-      const maxPeople = Math.max(1,...sessions.map(s=>shown.filter(e=>e.session===s.key&&e.active).length));
+      const maxPeople = Math.max(10,2+Math.max(0,...sessions.map(s=>shown.filter(e=>e.session===s.key&&e.active&&e.role==="심판").length)));
       const table=el("table","dtable ref-rota-table"), head=el("thead"), hr=el("tr"), body=el("tbody");
+      table.style.setProperty("width",(300+140*maxPeople)+"px");
       table.setAttribute("aria-label",(paper?"서류상":"실제")+" 심판 배정 · "+sessions.length+"회차");
       ["날짜","시간","경기명칭",...Array.from({length:maxPeople},(_,i)=>"배정 "+(i+1))].forEach((text,i)=>{const th=el("th",i<3?"ref-meta ref-meta-"+i:"",text);th.setAttribute("scope","col");hr.append(th);}); head.append(hr);
-      const order={총괄:0,심판:1,기록:2};
       sessions.forEach(s=>{
-        const list=shown.filter(e=>e.session===s.key&&e.active).sort((a,b)=>(order[a.role]??3)-(order[b.role]??3));
+        const list=shown.filter(e=>e.session===s.key&&e.active);
+        const seats=[list.filter(e=>e.role==="총괄"),list.filter(e=>e.role==="기록"),...list.filter(e=>e.role==="심판").map(e=>[e])];
         const row=el("tr"); row.append(el("th","ref-meta ref-meta-0",s.day.slice(5).replace("-","/")),el("td","ref-meta ref-meta-1",s.time));
         const game=el("td","ref-meta ref-meta-2",s.division+" "+s.label);game.append(el("small","note"," · "+list.length+"명"));row.append(game);
         for(let i=0;i<maxPeople;i++){
-          const td=el("td"),e=list[i];
-          if(e){const b=el("button","ref-duty ref-rota-person"+(picked===e.staff_id?" ref-picked":""));b.type="button";personColor(b,e.staff_id);b.setAttribute("aria-pressed",String(picked===e.staff_id));
+          const td=el("td","ref-assignment-cell"),assigned=seats[i]||[];
+          assigned.forEach(e=>{const b=el("button","ref-duty ref-rota-person"+(picked===e.staff_id?" ref-picked":""));b.type="button";personColor(b,e.staff_id);b.setAttribute("aria-pressed",String(picked===e.staff_id));
             b.append(roleBadge(e.role),el("strong","ref-person-tag",name(e.staff_id))); if(!paper)b.append(el("small","",e.target));
             b.addEventListener("click",()=>{picked=e.staff_id;draw();mine.scrollIntoView({behavior:"smooth",block:"start"});});td.append(b);
-          }else td.append(el("span","note","—"));row.append(td);
+          });if(!assigned.length)td.append(el("span","note","—"));row.append(td);
         } body.append(row);
       });table.append(head,body);overview.append(table);drawManager(paper);
     }

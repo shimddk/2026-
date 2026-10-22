@@ -401,13 +401,15 @@ table.dtable td.st-duty input.cell { max-width: none; }
 .ref-role-badge{display:inline-block;align-self:flex-start;background:var(--role-bg);color:var(--role-ink);border-radius:5px;padding:3px 8px;font-weight:700;font-size:12px;white-space:nowrap}
 .ref-edit-entry select[class*="ref-role-"]{background:var(--role-bg);color:var(--role-ink);font-weight:700}
 .ref-rota-overview{max-width:100%;margin:16px 0;border:1px solid var(--line);border-radius:10px}
-.ref-rota-table{width:max-content;min-width:100%;border-collapse:collapse}
+.ref-rota-table{width:max-content;min-width:100%;border-collapse:collapse;table-layout:fixed}
+.ref-rota-table th:nth-child(n+4),.ref-rota-table .ref-assignment-cell{width:140px;min-width:140px;max-width:140px;box-sizing:border-box}
 .ref-rota-table th,.ref-rota-table td{vertical-align:top;padding:8px;border-right:1px solid var(--line)}
 .ref-rota-table .ref-meta{white-space:nowrap;vertical-align:middle}
-.ref-rota-table .ref-meta-0{min-width:60px}
-.ref-rota-table .ref-meta-1{min-width:55px}
-.ref-rota-table .ref-meta-2{min-width:130px;white-space:normal;max-width:180px}
-.ref-rota-person{min-width:100px;max-width:140px;margin:0;padding:10px;border-left-width:4px}
+.ref-rota-table .ref-meta-0{width:80px;min-width:80px;box-sizing:border-box}
+.ref-rota-table .ref-meta-1{width:70px;min-width:70px;box-sizing:border-box}
+.ref-rota-table .ref-meta-2{width:150px;min-width:150px;white-space:normal;box-sizing:border-box}
+.ref-rota-person{width:122px;min-width:122px;max-width:122px;margin:0;padding:10px;border-left-width:4px}
+.ref-rota-person+.ref-rota-person{margin-top:8px}
 .ref-session-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .ref-session-card h4,.ref-duty h4{margin:0 0 12px;line-height:1.6}
 .ref-duty{display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;text-align:left;font:inherit;overflow-wrap:anywhere}
