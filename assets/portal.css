@@ -391,6 +391,23 @@ table.dtable td.st-duty input.cell { max-width: none; }
 .ref-role-card ol{margin:0;padding-left:22px;line-height:1.8;font-size:14px}
 .ref-role-card li+li{margin-top:8px}
 .ref-rota-grid,.ref-my-rota{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin:16px 0}
+.ref-confirmed{--ref-lead-bg:#e9ddff;--ref-lead-ink:#54219a;--ref-judge-bg:#d9edff;--ref-judge-ink:#124c8c;--ref-record-bg:#d9f3e6;--ref-record-ink:#145f40}
+:root[data-theme="dark"] .ref-confirmed{--ref-lead-bg:#46315f;--ref-lead-ink:#e9d5ff;--ref-judge-bg:#203f60;--ref-judge-ink:#c5e6ff;--ref-record-bg:#204d3c;--ref-record-ink:#bcf5d7}
+.ref-view-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.ref-view-tabs [aria-pressed="true"]{background:var(--text);color:var(--card);border-color:var(--text)}
+.ref-role-lead{--role-bg:var(--ref-lead-bg);--role-ink:var(--ref-lead-ink)}
+.ref-role-judge{--role-bg:var(--ref-judge-bg);--role-ink:var(--ref-judge-ink)}
+.ref-role-record{--role-bg:var(--ref-record-bg);--role-ink:var(--ref-record-ink)}
+.ref-role-badge{display:inline-block;align-self:flex-start;background:var(--role-bg);color:var(--role-ink);border-radius:5px;padding:3px 8px;font-weight:700;font-size:12px;white-space:nowrap}
+.ref-edit-entry select[class*="ref-role-"]{background:var(--role-bg);color:var(--role-ink);font-weight:700}
+.ref-rota-overview{max-width:100%;margin:16px 0;border:1px solid var(--line);border-radius:10px}
+.ref-rota-table{width:max-content;min-width:100%;border-collapse:collapse}
+.ref-rota-table th,.ref-rota-table td{vertical-align:top;padding:8px;border-right:1px solid var(--line)}
+.ref-rota-table .ref-meta{white-space:nowrap;vertical-align:middle}
+.ref-rota-table .ref-meta-0{min-width:60px}
+.ref-rota-table .ref-meta-1{min-width:55px}
+.ref-rota-table .ref-meta-2{min-width:130px;white-space:normal;max-width:180px}
+.ref-rota-person{min-width:100px;max-width:140px;margin:0;padding:10px;border-left-width:4px}
 .ref-session-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .ref-session-card h4,.ref-duty h4{margin:0 0 12px;line-height:1.6}
 .ref-duty{display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;text-align:left;font:inherit;overflow-wrap:anywhere}
