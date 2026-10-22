@@ -964,6 +964,18 @@
     }
   }
 
+  async function paymentFileFormat(file, kind) {
+    const invalid = () => new Error((kind === "identity" ? "신분증은 PDF·JPG·PNG" : "통장은 PDF") + " 파일로, 파일당 10MB 이하인지 확인해 주세요.");
+    if (file.size < 5 || file.size > 10485760) throw invalid();
+    const bytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+    let format = null;
+    if (/\.pdf$/i.test(file.name) && new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-") format = { ext: "pdf", mime: "application/pdf" };
+    if (kind === "identity" && /\.jpe?g$/i.test(file.name) && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) format = { ext: "jpg", mime: "image/jpeg" };
+    if (kind === "identity" && /\.png$/i.test(file.name) && [137,80,78,71,13,10,26,10].every((v,i) => bytes[i] === v)) format = { ext: "png", mime: "image/png" };
+    if (!format || (file.type && file.type !== format.mime)) throw invalid();
+    return format;
+  }
+
   async function loadPaymentPreview(box) {
     box.replaceChildren();
     if (!canPreviewPayment()) return;
@@ -977,7 +989,7 @@
         try {
           const { data, error } = await sb.storage.from("payment-documents").download(path);
           if (error || !data) throw new Error();
-          const url = URL.createObjectURL(data), a = el("a"); a.href = url; a.download = title + ".pdf";
+          const url = URL.createObjectURL(data), a = el("a"); a.href = url; a.download = title + "." + (path.match(/\.(pdf|jpg|jpeg|png)$/i)?.[1].toLowerCase() || "pdf");
           document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
         } catch { toast("파일을 내려받지 못했습니다. 로그인과 접근 권한을 확인해 주세요.", true); }
         finally { b.disabled = false; }
@@ -985,15 +997,15 @@
     };
     if (state.submitter) {
     const submit = el("section", "card payment-preview");
-    submit.append(el("h3", "", "본인 제출"), el("p", "note", "PDF 파일당 최대 10MB입니다. 불필요한 개인정보는 가린 사본을 제출해 주세요."));
+    submit.append(el("h3", "", "본인 제출"), el("p", "note", "신분증은 PDF·JPG·PNG, 통장은 PDF로 제출해 주세요. 파일당 최대 10MB이며, 불필요한 개인정보는 가려 주세요."));
     const form = el("form"), fields = el("fieldset", "payment-fields"), inputs = {};
     fields.append(el("legend", "", "제출 항목"));
     [["identity", "신분증 사본", "file"], ["bank", "통장 사본", "file"], ["email", "전자계약서 수신용 이메일 주소", "email"], ["phone", "핸드폰 번호", "tel"]].forEach(([key, title, type]) => {
       const label = el("label", "payment-field"), input = el("input");
       input.type = type; input.autocomplete = "off"; input.required = type !== "file" || !current;
-      if (type === "file") input.accept = ".pdf,application/pdf";
+      if (type === "file") input.accept = key === "identity" ? ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" : ".pdf,application/pdf";
       else { input.value = current ? current[key] : ""; input.placeholder = "직접 입력해 주세요"; input.maxLength = key === "email" ? 254 : 20; }
-      label.append(el("span", "", title + (type === "file" ? " (PDF)" : "")), input);
+      label.append(el("span", "", title + (type === "file" ? (key === "identity" ? " (PDF·JPG·PNG)" : " (PDF)") : "")), input);
       if (type === "file" && current) label.append(el("small", "note", "제출됨 · 새 파일을 선택하지 않으면 기존 파일을 유지합니다."), download(current[key + "_path"], title));
       inputs[key] = input; fields.append(label);
     });
@@ -1006,17 +1018,18 @@
       try {
         if (!/^01[016789][0-9]{7,8}$/.test(inputs.phone.value.replace(/[ -]/g, ""))) throw new Error("휴대폰 번호를 확인해 주세요.");
         // Validate both files before transmitting either. Never retain original filenames.
+        const formats = {};
         for (const key of ["identity", "bank"]) {
           const file = inputs[key].files[0];
-          if (!file && !current) throw new Error("신분증·통장 PDF를 모두 선택해 주세요.");
-          if (file && (!/\.pdf$/i.test(file.name) || file.size < 5 || file.size > 10485760 || (file.type && file.type !== "application/pdf") || new TextDecoder().decode(await file.slice(0, 5).arrayBuffer()) !== "%PDF-")) throw new Error("PDF 파일인지, 파일당 10MB 이하인지 확인해 주세요.");
+          if (!file && !current) throw new Error("신분증·통장 사본을 모두 선택해 주세요.");
+          if (file) formats[key] = await paymentFileFormat(file, key);
         }
         const paths = {};
         for (const key of ["identity", "bank"]) {
           const file = inputs[key].files[0]; paths[key] = current ? current[key + "_path"] : null;
           if (file) {
-            const path = ME.id + "/" + key + "/" + crypto.randomUUID() + ".pdf";
-            const { error } = await sb.storage.from("payment-documents").upload(path, file, { contentType: "application/pdf", upsert: false, cacheControl: "0" });
+            const path = ME.id + "/" + key + "/" + crypto.randomUUID() + "." + formats[key].ext;
+            const { error } = await sb.storage.from("payment-documents").upload(path, file, { contentType: formats[key].mime, upsert: false, cacheControl: "0" });
             if (error) throw new Error("파일 업로드에 실패했습니다. 기존 제출 자료는 유지됩니다. 잠시 후 다시 시도해 주세요."); paths[key] = path;
           }
         }
