@@ -57,15 +57,34 @@
   /* ---------- 학생용 공개 대진표 ---------- */
   // 공개 시각(app_settings bracket_publish_at, 10/20 19:00) 전에는 학생에게 학교 이름이 안 옴 → 페이지를 열어 둔 채 그 시각이 되면 다시 불러옴
   let bracketTimer = null;
+  let withdrawnSchools = [];
+  const withdrawalKey = s => String(s || "").replace(/\s/g, "");
+  const isSchoolWithdrawn = (division, school) => withdrawnSchools.some(w => (!division || w.division === division) && withdrawalKey(w.school) === withdrawalKey(school));
+  function paintWithdrawalHost(host) {
+    const active = isSchoolWithdrawn(host.dataset.withdrawalDivision, host.dataset.withdrawalSchool);
+    if (!host._withdrawalTag) { host._withdrawalTag = el("span", "withdrawal-tag", "기권"); host._withdrawalTag.title = "기권 학교는 2027년 대회에 참가할 수 없습니다."; host.append(host._withdrawalTag); }
+    host._withdrawalTag.hidden = !active;
+  }
+  function markWithdrawalHost(host, school, division = "") {
+    host.dataset.withdrawalSchool = school || ""; host.dataset.withdrawalDivision = division; paintWithdrawalHost(host);
+  }
+  async function refreshWithdrawals() {
+    const { data, error } = await sb.rpc("public_school_withdrawals");
+    if (error) throw new Error("기권 명단을 불러오지 못했습니다.");
+    withdrawnSchools = data || [];
+    document.querySelectorAll("[data-withdrawal-school]").forEach(paintWithdrawalHost);
+    if (window.setWithdrawnSchools) window.setWithdrawnSchools(withdrawnSchools);
+    return withdrawnSchools;
+  }
   function loadPublicBracket() {
-    Promise.all([sb.rpc("public_bracket"), sb.rpc("public_standings"), sb.rpc("public_schedule"), sb.rpc("public_bracket_publish_at"), sb.rpc("public_lineups").select("school,region")]).then(([m, s, sc, pa, regions]) => {
+    Promise.all([sb.rpc("public_bracket"), sb.rpc("public_standings"), sb.rpc("public_schedule"), sb.rpc("public_bracket_publish_at"), sb.rpc("public_lineups").select("school,region"), refreshWithdrawals().catch(() => [])]).then(([m, s, sc, pa, regions]) => {
       const at = pa && !pa.error && pa.data ? Date.parse(pa.data) : null;
       if (window.setBracketPublish) window.setBracketPublish(at);
       if (!m.error && m.data && m.data.length && window.applyBracket) window.applyBracket(m.data, s.error ? [] : s.data, regions.error ? [] : regions.data);
       if (!sc.error && window.applySchedule) window.applySchedule(sc.data);
       const left = at ? at - Date.now() : 0;
       if (!bracketTimer && left > 0 && left < 2147483647) bracketTimer = setTimeout(() => { bracketTimer = null; loadPublicBracket(); }, left + 3000);
-    });
+    }).catch(() => {});
   }
   loadPublicBracket();
 
@@ -164,10 +183,11 @@
   async function renderRecord(preset) {
     const root = document.getElementById("recordRoot");
     if (!root) return;
-    const res = preset || await loadLineups();
+    let res;
+    try { await refreshWithdrawals(); res = preset || await loadLineups(); } catch { res = null; }
     root.replaceChildren();
     if (!res) { root.append(el("p", "note", "불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.")); return; }
-    if (!res.rows.length) {
+    if (!res.rows.length && !withdrawnSchools.length) {
       const c = el("div", "pending");
       c.textContent = "전적 검색은 대진이 확정된 뒤(10/19 이후) 공개됩니다.";
       root.append(c);
@@ -209,6 +229,9 @@
       const k = r.division + "|" + r.school + "|" + (r.team_no || 1);
       if (!bySchool.has(k)) bySchool.set(k, { division: r.division, school: r.school, region: r.region, teamNo: r.team_no || 1, teamCount: r.team_count || 1, ids: [] });
       bySchool.get(k).ids.push(r);
+    });
+    withdrawnSchools.forEach(w => {
+      if (![...bySchool.values()].some(t => t.division === w.division && withdrawalKey(t.school) === withdrawalKey(w.school))) bySchool.set(w.division + "|" + w.school + "|1", { division: w.division, school: w.school, teamNo: 1, teamCount: 1, ids: [] });
     });
     const teams = [...bySchool.values()].sort((a, b) => a.school.localeCompare(b.school, "ko") || a.teamNo - b.teamNo);
     teams.forEach(t => t.ids.sort((a, b) => a.slot - b.slot));
@@ -280,6 +303,13 @@
         const card = el("article", "card rec-card " + (t.division === "고등부" ? "div-high" : "div-mid"));
         const head = el("div", "rec-head");
         head.append(el("h3", "", t.school + (t.teamCount > 1 ? " · " + t.teamNo + "팀" : "")), el("span", "rec-meta", t.division + (t.region ? " · " + t.region : "")));
+        if (isSchoolWithdrawn(t.division, t.school)) {
+          markWithdrawalHost(head.firstChild, t.school, t.division);
+          const mask = el("div", "rec-withdrawn-mask"), placeholders = el("div", "rec-withdrawn-blur"); placeholders.setAttribute("aria-hidden", "true");
+          for (let i = 0; i < 5; i++) placeholders.append(el("p", "", "선수 이름 · 게임 아이디 비공개"));
+          mask.append(placeholders, el("strong", "rec-withdrawn-label", "기권 · 학생 명단 비공개"));
+          card.append(head, mask, el("p", "withdrawal-tag", "기권 학교는 내년도(2027년) 대회에 참가할 수 없습니다.")); list.append(card); return;
+        }
         if (t.teamCount > 1) head.append(el("span", "dupe-badge", "중복 신청 · 확인 필요"));
         const st = statusOf(t);
         if (st) head.append(el("span", "ok-badge", (st.teacher ? "✔ 교사 확인 완료" : "✔ 팀장 " + (st.status === "수정함" ? "수정 완료" : "확인 완료")) + " (" + fmtTime(st.at) + ")"));
@@ -809,6 +839,7 @@
           } else {
             td.textContent = c.type === "bool" ? (v ? "O" : "") : (v ?? "");
           }
+          if (r.data && ["학교", "학교 이름"].includes(c.key)) markWithdrawalHost(td, r.data[c.key], r.sheet === "roster_middle" ? "중등부" : r.sheet === "roster_high" ? "고등부" : "");
           tr.append(td);
         });
         if (isEditor() && onDelete) {
@@ -1413,6 +1444,7 @@
     box.append(inner);
     async function draw() {
       inner.replaceChildren(el("p", "note", "불러오는 중…"));
+      try { await refreshWithdrawals(); } catch { inner.replaceChildren(el("p", "note", "기권 명단을 불러오지 못했습니다. 다시 시도해 주세요.")); return; }
       // '전체'는 중등부·고등부 표를 합쳐서 보여 준다 (각 행은 원래 표에 그대로 저장)
       const isAll = current === "roster_all";
       const sheets = isAll ? ["roster_middle", "roster_high"] : [current];
@@ -2076,6 +2108,34 @@
   let matchDiv = "중등부";
   let slotStage = { 중등부: "64강", 고등부: "32강" };
   const matchPick = ["", ""]; // 다시 불러와도 단계·조 필터 유지
+  function renderWithdrawalList(box, schools, reload) {
+    const section = el("section", "card withdrawal-register"), list = el("div", "withdrawal-list");
+    section.append(el("h3", "", "확정 기권 명단"), el("p", "note", "기권 학교는 학생 명단이 가려지며, 내년도(2027년) 대회에 참가할 수 없습니다. 기권 예상 학교와는 별개입니다. 명단 등록만으로 경기 결과는 바뀌지 않습니다."));
+    const current = withdrawnSchools.filter(w => w.division === matchDiv);
+    if (!current.length) list.append(el("p", "note", "등록된 기권 학교가 없습니다."));
+    current.forEach(w => {
+      const row = el("div", "withdrawal-list-row"); row.append(el("strong", "", w.school), el("span", "withdrawal-tag", "기권 · 2027년 참가 불가"));
+      if (isOwner()) { const clear = el("button", "btn ghost small", "기권 해제"); clear.type = "button";
+        clear.addEventListener("click", async () => {
+          if (!confirm(w.school + "의 기권 표시와 내년도 참가 제한을 해제할까요? 이미 기록한 부전승 결과는 그대로 유지됩니다.")) return;
+          clear.disabled = true;
+          if (await save(sb.rpc("set_school_withdrawal", { p_div: w.division, p_school: w.school, p_active: false }), "기권 표시를 해제했습니다")) { await refreshWithdrawals(); loadPublicBracket(); renderRecord(); reload(); } else clear.disabled = false;
+        }); row.append(clear);
+      } list.append(row);
+    }); section.append(list);
+    if (isOwner()) {
+      const form = el("form", "gbar"), select = el("select"), add = el("button", "btn small", "기권 등록"); select.setAttribute("aria-label", "기권 학교 선택");
+      const first = el("option", "", "기권 학교 선택"); first.value = ""; select.append(first);
+      schools.filter(s => !isSchoolWithdrawn(matchDiv, s)).forEach(s => { const o = el("option", "", s); o.value = s; select.append(o); }); add.type = "submit"; form.append(select, add);
+      form.addEventListener("submit", async event => {
+        event.preventDefault(); if (!select.value) return;
+        if (!confirm(select.value + "을(를) 기권으로 등록할까요? 학생 명단이 가려지고 2027년 대회 참가 불가로 표시됩니다. 경기 결과는 바뀌지 않습니다.")) return;
+        add.disabled = true;
+        if (await save(sb.rpc("set_school_withdrawal", { p_div: matchDiv, p_school: select.value, p_active: true }), "기권 명단에 등록했습니다")) { await refreshWithdrawals(); loadPublicBracket(); renderRecord(); reload(); } else add.disabled = false;
+      }); section.append(form, el("p", "note", "남은 경기 부전승 처리는 아래 ‘조별 기권 처리’에서 진행하세요. 완료된 경기 결과는 유지됩니다."));
+    } box.append(section);
+  }
+
   async function loadMatches(box) {
     const [{ data: rows, error }, { data: slots }, { data: stand }, { data: ros }, { data: sessions }, { data: avail }, staff] = await Promise.all([
       sb.from("matches").select("*").eq("division", matchDiv).order("sort").order("match_no"),
@@ -2090,6 +2150,7 @@
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
     loadPublicBracket();
     const reload = () => loadMatches(box);
+    try { await refreshWithdrawals(); } catch { box.append(el("p", "note", "기권 명단을 불러오지 못했습니다.")); }
     const regions = drawRegions(ros);
     const sessById = Object.fromEntries((sessions || []).map(s => [s.id, s]));
 
@@ -2101,7 +2162,9 @@
       b.addEventListener("click", () => { matchDiv = d; reload(); });
       sw.append(b);
     });
-    box.append(sw, el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 조별리그는 1·2경기 동시 시작, 3·4경기 +1시간, 5·6경기 +2시간입니다. 승자와 경기 시간(분:초)을 입력하면 조 순위가 계산됩니다. " +
+    box.append(sw);
+    renderWithdrawalList(box, [...new Set((ros || []).map(r => r.data["학교 이름"]).filter(Boolean))].sort((a,b) => a.localeCompare(b,"ko")), reload);
+    box.append(el("p", "note", "① " + FIRST_STAGE[matchDiv] + " 조 편성(관리자 '자동 조 편성', 조 수 = 팀 수 ÷ 4 올림)으로 경기 칸이 채워집니다. ② 조별리그는 1·2경기 동시 시작, 3·4경기 +1시간, 5·6경기 +2시간입니다. 승자와 경기 시간(분:초)을 입력하면 조 순위가 계산됩니다. " +
       "③ 각 조 1·2위만 진출하며 3위 승급은 없습니다. 중등 64강 → 32강만 관리자가 '진출 팀 배정'을 눌러 미리보기 후 저장합니다. ④ 중등·고등 32강 → 본선은 A조1위 vs B조2위처럼 고정 대진으로 자동 연결됩니다. 장로: A1-B2·C1-D2·E1-F2·G1-H2, 바론: B1-A2·D1-C2·F1-E2·H1-G2. 본선 이후도 점수를 넣으면 자동으로 이어집니다."));
 
     // 1) 조 편성 + 조별 순위 (단계 고르기)
@@ -2134,7 +2197,7 @@
         const candidates = (slots || []).filter(s => s.stage === stage && s.school).sort((a,b) => a.school.localeCompare(b.school,"ko"));
         const first = el("option", "", "기권 학교 선택"); first.value = ""; select.append(first);
         candidates.forEach(s => { const o = el("option", "", s.grp + "조 · " + s.school); o.value = s.school; select.append(o); });
-        const info = el("p", "note", "완료된 결과는 유지합니다. 진행 중인 경기가 있다면 먼저 결과를 입력해 주세요. 기권 학교의 이 단계 미완료 경기만 상대 팀 1:0 부전승으로 처리합니다. 경기 시간은 기록하지 않습니다.");
+        const info = el("p", "note", "완료된 결과는 유지합니다. 진행 중인 경기가 있다면 먼저 결과를 입력해 주세요. 기권 학교의 이 단계 미완료 경기만 상대 팀 1:0 부전승으로 처리합니다. 경기 시간은 기록하지 않습니다. 기권 확정 명단에도 함께 등록되며, 2027년 대회 참가 불가로 표시됩니다.");
         cancel.type = apply.type = "button";
         cancel.addEventListener("click", () => dlg.close());
         apply.addEventListener("click", async () => {
@@ -2143,7 +2206,7 @@
           if (!pending.length) { toast("처리할 미완료 경기가 없습니다."); return; }
           if (!confirm(select.value + "의 " + stage + " 미완료 " + pending.length + "경기를 상대 팀 부전승으로 처리할까요?\n이미 끝난 경기와 조 편성은 유지됩니다. 처리 전 기록은 DB에 백업됩니다.")) return;
           apply.disabled = true;
-          if (await save(sb.rpc("withdraw_group_team", { p_div: matchDiv, p_stage: stage, p_school: select.value, p_expected: pending.map(m => m.id) }), "기권 처리했습니다")) { dlg.close(); reload(); }
+          if (await save(sb.rpc("withdraw_group_team", { p_div: matchDiv, p_stage: stage, p_school: select.value, p_expected: pending.map(m => m.id) }), "기권 처리했습니다")) { await refreshWithdrawals(); renderRecord(); dlg.close(); reload(); }
           else apply.disabled = false;
         });
         dlg.append(el("h3", "", "조별 기권 처리 · " + stage), info, select, cancel, apply);

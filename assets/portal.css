@@ -429,3 +429,12 @@ button.ref-duty{cursor:pointer}
 .ref-check{display:flex;align-items:center;gap:8px;line-height:1.7;padding:6px 0}
 .ref-check input{flex-shrink:0}
 @media(max-width:600px){.ref-edit-entry{grid-template-columns:1fr}.ref-person{padding:8px;font-size:13px}.ref-rota-manage,.ref-availability{padding:10px}}
+.withdrawal-tag{display:inline-block;margin-left:6px;color:var(--t-red,#c62828);font-weight:800;font-size:.9em;white-space:normal}
+.withdrawal-tag[hidden]{display:none}
+.withdrawn-school-name{text-decoration:line-through;text-decoration-thickness:2px}
+.bk-school-label{overflow-wrap:anywhere}
+.rec-withdrawn-mask{position:relative;min-height:180px;padding:8px;border:1px solid var(--line);border-radius:10px;margin:12px 0;overflow:hidden}
+.rec-withdrawn-blur{filter:blur(5px);user-select:none;pointer-events:none;opacity:.6;line-height:1.7}
+.rec-withdrawn-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;color:var(--t-red,#c62828);font-size:18px;background:color-mix(in srgb,var(--card) 65%,transparent)}
+.withdrawal-list-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0}
+.withdrawal-register{margin:16px 0}

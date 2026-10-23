@@ -723,7 +723,7 @@ const TL_SESSIONS = [
 // st: ok = 확정, wait = 미확정(추후 안내)
 const FAQ = [
   [58,"D","리그전에서 승패가 같으면 순위를 어떻게 정하나요?","승수를 먼저 비교하고, 2팀 동률이면 맞대결 승자가 상위입니다. 3팀 이상이 동률이면 시간 점수=(패배 경기 시간 합−승리 경기 시간 합)÷실제 경기 수를 비교해 큰 팀이 상위입니다. 해당 리그 단계에서 빠르게 이기고 오래 버틴 팀이 유리하며, 부전승은 시간 계산에서 제외합니다. 시간 점수까지 같은 팀이 2팀이면 맞대결로 결정합니다. 필요한 경기 시간이 빠졌거나 3팀 이상이 시간 점수까지 같으면 지원단이 확인해 순위를 지정합니다. 예선 조별리그와 4강 리그에 같은 기준을 적용합니다.","ok"],
-  [57,"D","조별리그 도중 학교가 기권하면 어떻게 되나요?","이미 완료한 경기 결과는 그대로 반영합니다. 기권 이후 남은 경기는 상대 팀의 부전승(1:0)으로 처리하며, 실제 경기 시간은 기록하지 않습니다. 조 편성은 유지합니다.","ok"],
+  [57,"D","조별리그 도중 학교가 기권하면 어떻게 되나요?","이미 완료한 경기 결과는 그대로 반영합니다. 기권 이후 남은 경기는 상대 팀의 부전승(1:0)으로 처리하며, 실제 경기 시간은 기록하지 않습니다. 조 편성은 유지합니다. 기권 학교는 내년도(2027년) 대회에 참가할 수 없습니다.","ok"],
   [1,"A","모집 마감은 언제인가요?","10/19(월) 밤 11시 59분(23:59)까지입니다. 처음 안내(10/12)에서 연장되었습니다.","ok"],
   [2,"A","첫 경기는 언제인가요?","10/24(토)입니다. 중등부 64강 조별리그로 시작합니다(14:00·18:00 두 번에 나눠 진행, 어느 조가 언제인지는 조 편성 후 대진표에 나옵니다). 고등부 첫 경기는 10/25(일) 13:00 32강 조별리그입니다. 자세한 시간은 '일정' 탭을 보세요.","ok"],
   [3,"A","본선 일정은요?","본선은 장로·바론 두 그룹 더블 엘리미네이션입니다. 10/31(토) 승자조(고등부 13:00, 중등부 17:00), 11/1(일) 패자조(중등부 13:00, 고등부 17:00)로 진행하고, 11/4(수) 4강 리그는 18:00·19:00·20:00에 두 경기씩 진행합니다.","ok"],
@@ -987,6 +987,15 @@ function bkSrc(src, here) {
   return (BK_NAME[g] ? BK_NAME[g] + " " : "") + bkShort(p[1]) + (p[0] === "W" ? " 승자" : " 패자");
 }
 const BK_REGIONS = {};
+let BK_WITHDRAWN = [];
+window.setWithdrawnSchools = function (rows) { BK_WITHDRAWN = rows || []; renderBracket(); };
+function bkSchoolNode(s, fallback = "") {
+  const node = el("span", "bk-school-label"), withdrawn = BK_WITHDRAWN.some(w => w.division === BK.div && String(w.school).replace(/\s/g, "") === String(s || "").replace(/\s/g, ""));
+  node.append(el("span", withdrawn ? "withdrawn-school-name" : "", bkSchool(s) || fallback));
+  if (withdrawn) { const badge = el("span", "withdrawal-tag", "기권"); badge.title = "2027년 대회 참가 불가"; node.append(badge); }
+  return node;
+}
+function bkTeamNode(m, n) { return bkSchoolNode(m["team" + n], bkTeam(m, n)); }
 const bkSchool = s => s ? s + (BK_REGIONS[s] ? " (" + BK_REGIONS[s] + ")" : "") : "";
 function bkBox(m) {
   const box = el("div", "mbox");
@@ -995,7 +1004,7 @@ function bkBox(m) {
     const t = m["team" + n], s = m["score" + n], src = m["src" + n];
     const cls = !t ? " ph" : m.winner ? (m.winner === t ? " win" : " lose") : "";
     const row = el("div", "mt" + cls);
-    row.append(el("span", "", bkSchool(t) || (String(src).startsWith("G:") ? bkTeam(m, n) : bkSrc(src, m.code.split("-")[0]))), el("b", "", s == null ? "" : String(s)));
+    row.append(bkSchoolNode(t, String(src).startsWith("G:") ? bkTeam(m, n) : bkSrc(src, m.code.split("-")[0])), el("b", "", s == null ? "" : String(s)));
     box.append(row);
   });
   return box;
@@ -1008,7 +1017,7 @@ function bkCol(title, list) {
 }
 function bkAdv(label, m) {
   const a = el("div", "adv", label);
-  a.append(el("b", "", bkSchool(m && m.winner) || "미정"));
+  const winner = el("b"); winner.append(bkSchoolNode(m && m.winner, "미정")); a.append(winner);
   return a;
 }
 // 학교가 정해지기 전 자리 이름: 중등 32강 1·3번 = 64강 1위 자리(조 1위 + 잘한 2위), 2·4번 = 2위 자리(나머지 2위 + 잘한 3위)
@@ -1048,7 +1057,8 @@ function bkGroupCard(ms, stage, g, title) {
   rows.forEach(s => {
     const up = stage !== "4강 리그" && s.rank && s.rank <= 2;
     const tr = el("tr", up ? "up" : "");
-    tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), el("td", "sch", bkSchool(s.school)), el("td", "", s.wins), el("td", "", s.losses));
+    const schoolCell = el("td", "sch"); schoolCell.append(bkSchoolNode(s.school));
+    tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), schoolCell, el("td", "", s.wins), el("td", "", s.losses));
     tb.append(tr);
   });
   t.append(th, tb);
@@ -1061,7 +1071,8 @@ function bkGroupCard(ms, stage, g, title) {
     if (["64강", "32강", "4강 리그"].includes(stage)) d.append(el("p", "group-times", "1·2경기 동시 시작 → 1시간 뒤 3·4경기 → 1시간 뒤 5·6경기"));
     games.forEach(m => {
       const line = el("div", "gm");
-      line.append(el("span", "gm-time", m.scheduled_at ? m.scheduled_at.split(" ").pop() : "—"), el("span", "gm-teams", bkTeam(m, 1) + " vs " + bkTeam(m, 2)), el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
+      const names = el("span", "gm-teams"); names.append(bkTeamNode(m, 1), document.createTextNode(" vs "), bkTeamNode(m, 2));
+      line.append(el("span", "gm-time", m.scheduled_at ? m.scheduled_at.split(" ").pop() : "—"), names, el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
       if ((m.round_label || "").includes(" · 부전승")) line.append(el("b", "", "부전승"));
       d.append(line);
     });
@@ -1083,11 +1094,12 @@ function bkSchoolFinder(ms) {
     const found = schools.filter(s => normalize(s).includes(q));
     if (!found.length) { results.append(el("p", "note", "검색된 학교가 없습니다. 선택한 부문과 학교 이름을 확인해 주세요. 대진 공개 전에는 학교가 표시되지 않습니다.")); return; }
     found.forEach(school => {
-      const card = el("article"); card.append(el("h4", "", school + " · " + BK.div));
+      const card = el("article"), schoolTitle = el("h4"); schoolTitle.append(bkSchoolNode(school), document.createTextNode(" · " + BK.div)); card.append(schoolTitle);
       ms.filter(m => !m.void && (m.team1 === school || m.team2 === school)).forEach(m => {
         const n = m.team1 === school ? 2 : 1, row = el("div", "school-game");
         const score = m.score1 != null && m.score2 != null ? " · " + (m.winner === school ? "승" : m.winner ? "패" : "진행 중") + " (" + m.score1 + ":" + m.score2 + ")" : "";
-        row.append(el("time", "", m.scheduled_at || "시간 미정"), el("span", "", "vs " + (m["team"+n] ? bkSchool(m["team"+n]) : "상대 미정") + score), el("small", "note", m.stage + (m.grp ? " · " + (m.stage === "본선" ? (BK_NAME[m.grp] || m.grp) + " 그룹" : m.grp + "조") : "") + ((m.round_label || "").includes("부전승") ? " · 부전승" : "")));
+        const opponent = el("span"); opponent.append(document.createTextNode("vs "), bkSchoolNode(m["team"+n], "상대 미정"), document.createTextNode(score));
+        row.append(el("time", "", m.scheduled_at || "시간 미정"), opponent, el("small", "note", m.stage + (m.grp ? " · " + (m.stage === "본선" ? (BK_NAME[m.grp] || m.grp) + " 그룹" : m.grp + "조") : "") + ((m.round_label || "").includes("부전승") ? " · 부전승" : "")));
         card.append(row);
       });
       card.append(el("p", "note", "시간은 예정 시작 시각입니다. 다음 단계는 진출 시 배정되며, 확정 후 이곳에 표시됩니다."));
