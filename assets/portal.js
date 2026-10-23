@@ -2402,14 +2402,50 @@
         const targetLabel = el("label", "", "담당 설명"), target = el("input"); target.type = "text"; target.maxLength = 100; target.value = e.target; targetLabel.append(target);
         const gameDetails = el("details", "ref-edit-games"); gameDetails.append(el("summary", "", "세부 경기 선택"));
         const checks = [];
-        (state.matches || []).filter(m => m.session_id === s.session_id && m.division === s.division).forEach(m => {
+        const sessionGames = (state.matches || []).filter(m => m.session_id === s.session_id && m.division === s.division);
+        sessionGames.forEach(m => {
           const l = el("label", "ref-check"), c = el("input"); c.type = "checkbox"; c.value = m.code; c.checked = (e.match_codes || []).includes(m.code); checks.push(c);
           l.append(c, document.createTextNode((m.time || "") + " · " + m.code + " · " + (m.team1 || "미정") + " vs " + (m.team2 || "미정"))); gameDetails.append(l);
         });
+        const groupGames = sessionGames.filter(m => ["64강", "32강"].includes(m.stage) || /^(64|32)-[A-P]-\d+$/.test(m.code || ""));
+        const groupNames = [...new Set(groupGames.map(m => m.grp).filter(Boolean))].sort();
+        const groupLabel = el("label", "", "담당 조"), groupSelect = el("select", "ref-group-select");
+        groupSelect.setAttribute("aria-label", "담당 조");
+        const manual = el("option", "", "세부 경기 직접 선택"); manual.value = ""; groupSelect.append(manual);
+        groupNames.forEach(g => { const o = el("option", "", g + "조 · " + groupGames.filter(m => m.grp === g).length + "경기"); o.value = g; groupSelect.append(o); });
+        const targetGroup = () => /^([A-P])\s*조$/i.exec(target.value.trim())?.[1].toUpperCase();
+        groupSelect.value = groupNames.includes(targetGroup()) ? targetGroup() : ""; groupLabel.append(groupSelect);
+        const groupNote = el("p", "note ref-group-note", "담당 조를 선택하면 기존 경기 선택을 해당 조 전체 경기로 바꿉니다. 저장 버튼을 눌러야 반영됩니다.");
+        const schoolHint = el("p", "note ref-school-hint"), ownGroup = el("button", "btn ghost small", "소속 학교 조 선택"); ownGroup.type = "button";
+        const schoolKey = value => String(value || "").replace(/\s/g, "").replace(/고등학교$/, "고").replace(/중학교$/, "중");
+        let homeGroup = "";
+        const updateSchoolHint = () => {
+          const person = people.find(p => p.id === Number(teacher.value)), school = schoolKey(person?.school);
+          const stages = new Set(groupGames.map(m => String(m.code || "").split("-")[0]));
+          const homeGames = school ? (state.matches || []).filter(m => m.division === s.division && stages.has(String(m.code || "").split("-")[0]) && [m.team1, m.team2].some(t => schoolKey(t) === school)) : [];
+          const homeGroups = [...new Set(homeGames.map(m => m.grp).filter(Boolean))];
+          homeGroup = homeGroups.length === 1 && groupNames.includes(homeGroups[0]) ? homeGroups[0] : "";
+          schoolHint.textContent = !school ? "지원단 명단에 소속 학교가 등록되어 있지 않습니다." : "소속 학교: " + person.school + (homeGroups.length ? " · " + homeGroups.map(g => g + "조").join(" / ") + (homeGroup ? "" : " (다른 회차 · 해당 시간의 배정에서 수정하세요)") : " · 이 단계에서 해당 학교의 조를 찾지 못했습니다.");
+          ownGroup.hidden = !homeGroup;
+        };
+        const syncGroup = g => {
+          if (!groupNames.includes(g)) return false;
+          const codes = new Set(groupGames.filter(m => m.grp === g).map(m => m.code));
+          checks.forEach(c => { c.checked = codes.has(c.value); }); groupSelect.value = g; target.value = g + "조";
+          groupNote.textContent = g + "조 " + codes.size + "경기가 선택되었습니다. 저장하면 담당 조와 세부 경기가 함께 반영됩니다."; return true;
+        };
+        groupSelect.addEventListener("change", () => { if (groupSelect.value) syncGroup(groupSelect.value); });
+        target.addEventListener("input", () => { const g = targetGroup(); if (g && syncGroup(g)) return; groupSelect.value = ""; });
+        checks.forEach(c => c.addEventListener("change", () => { groupSelect.value = ""; groupNote.textContent = "세부 경기를 직접 선택 중입니다. 담당 설명을 확인한 뒤 저장하세요."; }));
+        teacher.addEventListener("change", updateSchoolHint);
+        ownGroup.addEventListener("click", () => { if (homeGroup) syncGroup(homeGroup); }); updateSchoolHint();
         const submit = el("button", "btn small", "이 배정 저장"); submit.type = "submit";
-        form.append(source,teacherLabel,roleLabel,activeLabel);if(!paper)form.append(targetLabel,gameDetails);form.append(submit);
+        form.append(source,teacherLabel,roleLabel,activeLabel);if(!paper){if(groupNames.length)form.append(groupLabel,schoolHint,ownGroup,groupNote);form.append(targetLabel,gameDetails);}form.append(submit);
         form.addEventListener("submit", async event => {
-          event.preventDefault(); submit.disabled = true;
+          event.preventDefault();
+          if (!paper && groupSelect.value) syncGroup(groupSelect.value);
+          if (!paper && groupNames.length && targetGroup() && !groupNames.includes(targetGroup())) { toast("이 회차의 조를 선택하세요. 다른 시간의 조는 해당 시간 배정에서 수정하세요.", true); return; }
+          submit.disabled = true;
           const codes = paper?[]:checks.filter(c => c.checked).map(c => c.value);
           const targetText = codes.length ? target.value.replace(" · 세부 경기 지정 전", "") : target.value;
           const ok = await save(sb.rpc("set_ref_rota_assignment", { p_key: e.key, p_staff: Number(teacher.value), p_active: active.checked, p_codes: codes, p_target: paper?"":targetText, p_role:role.value,p_view:paper?"paper":"actual",p_revision: state.revision }), "확정 배정을 저장했습니다");
@@ -2437,7 +2473,7 @@
     const reload = () => loadReferee(root);
     const rota = await sb.rpc("ref_rota_state");
     if (rota.error) box.append(el("p", "note", "확정 배정표를 불러오지 못했습니다. 새로고침하거나 관리자에게 확인해 주세요."));
-    else renderConfirmedRefRota(box, rota.data, reload);
+    else renderConfirmedRefRota(box, { ...rota.data, people: (rota.data.people || []).map(p => ({ ...p, school: staff.find(s => s.id === p.id)?.school || "" })) }, reload);
     const availability = el("details", "ref-availability"), availabilityBody = el("div");
     availability.append(el("summary", "", "기존 참여 가능 응답 · 11/8 참석 여부"), availabilityBody); box.append(availability); box = availabilityBody;
     const has = new Set((avail || []).filter(a => a.available).map(a => a.session_id + "|" + a.staff_id));

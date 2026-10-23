@@ -424,6 +424,7 @@ button.ref-duty{cursor:pointer}
 .ref-edit-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
 .ref-edit-entry>p,.ref-edit-games{grid-column:1/-1}
 .ref-edit-entry label:not(.ref-check){display:flex;flex-direction:column;gap:6px;min-width:0}
+.ref-edit-entry .ref-group-note,.ref-edit-entry .ref-school-hint{grid-column:1/-1;margin:0;white-space:normal;overflow-wrap:anywhere}
 .ref-edit-entry input[type="text"],.ref-edit-entry select{box-sizing:border-box;width:100%;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font:inherit}
 .ref-check{display:flex;align-items:center;gap:8px;line-height:1.7;padding:6px 0}
 .ref-check input{flex-shrink:0}
