@@ -2137,14 +2137,12 @@
   }
 
   async function loadMatches(box) {
-    const [{ data: rows, error }, { data: slots }, { data: stand }, { data: ros }, { data: sessions }, { data: avail }, staff] = await Promise.all([
+    const [{ data: rows, error }, { data: slots }, { data: stand }, { data: ros }, { data: sessions }] = await Promise.all([
       sb.from("matches").select("*").eq("division", matchDiv).order("sort").order("match_no"),
       sb.from("league_slots").select("*").eq("division", matchDiv).order("grp").order("seed"),
       sb.rpc("public_standings"),
       sb.from("sheet_rows").select("data").eq("sheet", matchDiv === "중등부" ? "roster_middle" : "roster_high"),
-      sb.from("ref_sessions").select("*").order("day").order("start_time").order("sort"),
-      sb.from("ref_avail").select("*").eq("available", true),
-      fetchStaff()
+      sb.from("ref_sessions").select("*").order("day").order("start_time").order("sort")
     ]);
     box.replaceChildren();
     if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
@@ -2285,20 +2283,6 @@
     // 2) 경기 결과 (표). 3팀 조의 빈 자리와 붙는 경기는 숨김
     const emptySeat = new Set((slots || []).filter(s => !s.school && !s.src && (slots || []).some(o => o.stage === s.stage && o.school)).map(s => "G:" + s.stage + ":" + s.grp + ":" + s.seed));
     const shown = rows.filter(r => !emptySeat.has(r.src1) && !emptySeat.has(r.src2));
-    // 심판: 그 경기 회차에 '가능'으로 체크한 선생님을 목록 위쪽에
-    const avById = {};
-    (avail || []).forEach(a => { (avById[a.session_id] = avById[a.session_id] || new Set()).add(a.staff_id); });
-    const lists = el("div");
-    (sessions || []).forEach(s => {
-      const d = el("datalist"); d.id = "refs-" + s.id;
-      const ok = staff.filter(x => avById[s.id] && avById[s.id].has(x.id));
-      ok.forEach(x => { const o = el("option"); o.value = x.name; o.label = "✔ 이 시간 가능"; d.append(o); });
-      staff.filter(x => !ok.includes(x)).forEach(x => { const o = el("option"); o.value = x.name; d.append(o); });
-      lists.append(d);
-    });
-    const dAll = el("datalist"); dAll.id = "refs-all";
-    staff.forEach(x => { const o = el("option"); o.value = x.name; dAll.append(o); });
-    lists.append(dAll);
     const label = r => (r.stage === "본선" ? r.grp + " · " : "") + r.round_label; // 조별·리그 경기는 이름에 이미 조가 있음
     const teamCol = n => ({
       key: "team" + n, label: "학교" + n,
@@ -2314,11 +2298,11 @@
       teamCol(2), { key: "_region2", label: "지역2", readonly: true, get: r => teamRegion(r.team2, regions) },
       { key: "winner", label: "승자", get: r => r.winner, cellClass: r => (r.winner ? "win" : ""), cell: (td,r) => matchWinnerCell(td,r,reload) },
       { key: "duration_sec", label: "경기 시간(분:초)", get: r => fmtDur(r.duration_sec) },
-      { key: "referee", label: "심판", get: r => r.referee, list: r => (r.session_id ? "refs-" + r.session_id : "refs-all") },
+      { key: "referee", label: "심판", readonly: true, get: r => r.referee || "배정 전" },
       { key: "note", label: "비고", get: r => r.note }
     ];
     const holder = el("div");
-    box.append(el("h3", "bk-sub", "경기 결과 입력"), el("p", "note", "승자 칸에서 해당 경기의 두 학교 중 하나를 선택하면 조 순위와 전체 대진표에 반영됩니다. 일시는 심판 회차에서 자동으로 들어옵니다. '✔ 이 시간 가능'은 해당 회차에 참여 가능한 심판입니다." + (ME.role === "referee" ? " 심판 권한은 승자·경기 시간·심판·비고를 입력할 수 있습니다." : "")), lists, holder);
+    box.append(el("h3", "bk-sub", "경기 결과 입력"), el("p", "note", "승자 칸에서 해당 경기의 두 학교 중 하나를 선택하면 조 순위와 전체 대진표에 반영됩니다. 일시는 심판 회차에서, 심판은 '심판 일정'의 실제 세부 경기 배정에서 자동으로 들어옵니다. 배정 변경은 심판 일정에서 해 주세요." + (ME.role === "referee" ? " 심판 권한은 승자·경기 시간·비고를 입력할 수 있습니다." : "")), holder);
     grid(holder, {
       columns, rows: shown, exportName: "대진·경기 결과(" + matchDiv + ")",
       canSave: isEditor() || (ME.role === "referee" && ME.status === "approved"),
