@@ -2359,7 +2359,12 @@
       ["날짜","시간","경기명칭",...Array.from({length:maxPeople},(_,i)=>"배정 "+(i+1))].forEach((text,i)=>{const th=el("th",i<3?"ref-meta ref-meta-"+i:"",text);th.setAttribute("scope","col");hr.append(th);}); head.append(hr);
       sessions.forEach(s=>{
         const list=shown.filter(e=>e.session===s.key&&e.active);
-        const seats=[list.filter(e=>e.role==="총괄"),list.filter(e=>e.role==="기록"),...list.filter(e=>e.role==="심판").map(e=>[e])];
+        const judges=list.filter(e=>e.role==="심판");
+        if(!paper){
+          const groupRank=e=>/^([A-P])\s*조/.exec(String(e.target||"").trim().toUpperCase())?.[1].charCodeAt(0) ?? 999;
+          judges.sort((a,b)=>groupRank(a)-groupRank(b));
+        }
+        const seats=[list.filter(e=>e.role==="총괄"),list.filter(e=>e.role==="기록"),...judges.map(e=>[e])];
         const row=el("tr"); row.append(el("th","ref-meta ref-meta-0",s.day.slice(5).replace("-","/")),el("td","ref-meta ref-meta-1",s.time));
         const game=el("td","ref-meta ref-meta-2",s.division+" "+s.label);game.append(el("small","note"," · "+list.length+"명"));row.append(game);
         for(let i=0;i<maxPeople;i++){
