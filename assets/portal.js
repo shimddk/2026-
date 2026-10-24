@@ -893,7 +893,7 @@
   let teacherTabTimer = null, teacherViews = [];
   let teacherTabGeneration = 0;
   let teacherTabState = { can_manage: false, hidden: [] };
-  const TEACHER_TAB_OPTIONS = [["t-staff","지원단 명단"],["t-roster","아이디 명단"],["t-captains","팀장 연락처"],["t-advisors","지도교사 연락처"],["t-tier","팀별 티어 현황"],["t-matches","대진·경기 결과"],["t-referee","심판 일정"],["t-warn","경고 조치"],["t-rcheck","명단 확인 현황"],["t-coaching","젠지 코칭 관리"],["t-chat","챗봇 사용 현황"],["t-inbox","신청 접수"],["t-payment","수당 지급"]];
+  const TEACHER_TAB_OPTIONS = [["t-staff","지원단 명단"],["t-roster","아이디 명단"],["t-captains","팀장 연락처"],["t-advisors","지도교사 연락처"],["t-tier","팀별 티어 현황"],["t-matches","대진·경기 결과"],["t-referee","심판 일정"],["t-warn","경고 조치"],["t-rcheck","명단 확인 현황"],["t-coaching","젠지 코칭 관리"],["t-inbox","신청 접수"],["t-payment","수당 지급"]];
   const teacherTabVisible = id => id === "t-tab-settings" ? teacherTabState.can_manage : teacherTabState.can_manage || !teacherTabState.hidden.includes(id);
   function applyTeacherTabVisibility() {
     let activeRemoved = false;
@@ -967,6 +967,9 @@
     if(ME.id !== buildingUser || ME.status !== "approved") return;
     if(tabError || !tabSetting) {built=false;toast("교사용 탭 설정을 불러오지 못했습니다. 잠시 후 다시 로그인해 주세요.",true);return;}
     teacherTabState=tabSetting;
+    // 챗봇 사용 현황은 심승보 계정만(서버 chat_stats_allowed가 판단, 2026-10-24 사용자 요청)
+    const { data: chatStatsOk } = await sb.rpc("chat_stats_allowed");
+    if(ME.id !== buildingUser || ME.status !== "approved") return;
     const views = [
       // 지원단 명단은 심판 권한(젠지 코치)에 안 보임 (2026-10-18 사용자 요청)
       ...(ME.role === "referee" ? [] : [["t-staff", "지원단 명단", "지원단 선생님 명단과 업무 분장입니다.", loadStaff]]),
@@ -983,7 +986,7 @@
     if (isEditor()) views.push(["t-rcheck", "명단 확인 현황", "팀장이 전적 검색에서 직접 확인·수정한 현황입니다. 저장하면 아이디 명단·티어 현황에 바로 반영되고, 잘못된 수정은 여기서 되돌릴 수 있습니다.", loadRosterCheck]);
     // 젠지 코치(심판 권한)도 보기 가능 (2026-10-18 사용자 요청), 고치기는 편집자만
     if (isEditor() || ME.role === "referee") views.push(["t-coaching", "젠지 코칭 관리", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다. 담당 코치·상태를 바꾸면 공개 '젠지 코칭' 탭에도 바로 반영됩니다(신청자·메모는 공개 안 됨)." + (isEditor() ? "" : " 심판 권한은 보기만 할 수 있습니다(배정·상태는 GGA 시트에서 10분마다 자동 반영)."), loadCoaching]);
-    if (isEditor()) views.push(["t-chat", "챗봇 사용 현황", "학생용 질문 챗봇을 얼마나 쓰는지, 어떤 질문을 못 찾는지 보여 줍니다(학생 이름·번호·아이디는 가려 저장).", loadChatStats]);
+    if (chatStatsOk === true) views.push(["t-chat", "챗봇 사용 현황", "학생용 질문 챗봇을 얼마나 쓰는지, 어떤 질문을 못 찾는지 보여 줍니다(학생 이름·번호·아이디는 가려 저장).", loadChatStats]);
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     // 2026-10-21: 예상 조 편성은 관리자 포함 모두에게 숨김. 미리보기 함수와 기존 데이터는 보존.
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
