@@ -66,7 +66,7 @@
     color-scheme: light;
     --radius: 16px;
     --division-bg: #e1f7ff; --division-ink: #174864; --division-active: #693be8; --division-active-ink: #ffffff;
-    --home-bracket-bg: #00b894; --home-bracket-ink: #072d24; --home-bracket-hover: #00cea6;
+    --home-bracket-bg: linear-gradient(135deg, #5ef0c4 0%, #00c39a 45%, #00a8c8 100%); --home-bracket-ink: #052a22; --home-bracket-glow: rgba(0, 184, 160, .35);
   }
   :root[data-theme="dark"] {
     --division-bg: #193c55; --division-ink: #dff7ff; --division-active: #d6c5ff; --division-active-ink: #23134c;
@@ -172,8 +172,9 @@
     background: linear-gradient(135deg, var(--neon), var(--neon2)); color: var(--on-accent);
   }
   .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
-  .btn.bracketbtn { background: var(--home-bracket-bg); color: var(--home-bracket-ink); }
-  .btn.bracketbtn:hover, .btn.bracketbtn:focus-visible { background: var(--home-bracket-hover); }
+  /* 대진표 바로가기: 민트→초록→청록 그라데이션(챗봇 버튼과 같은 결) */
+  .btn.bracketbtn { background: var(--home-bracket-bg); color: var(--home-bracket-ink); box-shadow: 0 6px 22px var(--home-bracket-glow); }
+  .btn.bracketbtn:hover, .btn.bracketbtn:focus-visible { filter: brightness(1.05); box-shadow: 0 8px 28px var(--home-bracket-glow); }
   /* 질문 챗봇 버튼: 복숭아(#f3ab8c)→코랄→핑크 그라데이션, 나눔고딕, 글자 물결 모션(vibe-motion-ripple: 2.1초 ÷ 속도 1.25, 세기 65, 한 번) */
   .btn.chatbtn {
     position: relative; overflow: hidden; white-space: nowrap; flex: none; color: #3a0f1f; background: linear-gradient(135deg, #f3ab8c 0%, #ff8a7a 45%, #ff6fae 100%);
