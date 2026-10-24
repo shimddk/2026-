@@ -454,7 +454,7 @@
       <p>경기도 중·고등학생이 학교 대표 팀으로 겨루는 온라인 리그입니다.<br>결승 전까지는 디스코드로 온라인 진행하고, 1~4위전은 오프라인에서 열립니다.</p>
       <div class="cta">
         <button class="btn ripple-btn" data-go="apply" id="applyBtn" aria-label="참가 신청 안내">참가 신청 안내</button>
-        <button class="btn bracketbtn" data-go="bracket" aria-label="대진표 바로가기">대진표 바로가기</button>
+        <button class="btn bracketbtn ripple-btn" data-go="bracket" aria-label="대진표 바로가기">대진표 바로가기</button>
         <button class="btn chatbtn ripple-btn" data-go="faq" aria-label="질문 챗봇 열기">질문 챗봇 열기</button>
       </div>
     </div>
@@ -919,6 +919,7 @@ function rippleButton(b, delay) {
   rippleButton(b, 300);
   if (left < 2147483647) setTimeout(done, left + 500);
 })();
+rippleButton(document.querySelector(".btn.bracketbtn"), 500);
 rippleButton(document.querySelector(".btn.chatbtn"), 700);
 
 // 홈이 보일 때만 CSS 빛 효과를 실행한다. 탭 전환·브라우저 숨김·움직임 줄이기는 즉시 정지.
