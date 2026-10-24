@@ -1080,6 +1080,8 @@ function bkGroupCard(ms, stage, g, title) {
   const card = el("div", "card group");
   card.append(el("h3", "", title));
   const rows = BK.standings.filter(s => s.division === BK.div && s.stage === stage && s.grp === g);
+  // Preserve the original draw order; the rank column alone shows results.
+  if (stage === "64강" || stage === "32강") rows.sort((a,b) => Number(a.seed) - Number(b.seed));
   const t = el("table", "stand");
   const hr = el("tr");
   ["순위", "학교", "승", "패"].forEach(h => hr.append(el("th", "", h)));
@@ -1099,7 +1101,7 @@ function bkGroupCard(ms, stage, g, title) {
     const up = stage !== "4강 리그" && s.rank && s.rank <= 2;
     const tr = el("tr", up ? "up" : "");
     const schoolCell = el("td", "sch"); schoolCell.append(bkSchoolNode(s.school));
-    if (stage === "32강" && BK.div === "중등부" && s.seed) schoolCell.append(el("small", "group-times", " · " + s.seed + "시드"));
+    if ((stage === "64강" || stage === "32강") && s.seed) schoolCell.append(el("small", "group-times", " · " + s.seed + "시드"));
     tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), schoolCell, el("td", "", s.wins), el("td", "", s.losses));
     tb.append(tr);
   });
