@@ -143,6 +143,7 @@
 
   main { padding: 32px 0 48px; }
   section[role="tabpanel"][hidden] { display: none; }
+  #tab-apply[hidden], #applyBtn[hidden] { display: none !important; }
   h2 { font-size: clamp(28px, 1.4vw + 16px, 44px); margin: 0 0 8px; }
   .lead { color: var(--muted); margin: 0 0 24px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--card-shadow); }
@@ -442,7 +443,7 @@
       <button class="tab" role="tab" id="tab-record" aria-controls="record" aria-selected="false" tabindex="-1">전적 검색</button>
       <button class="tab" role="tab" id="tab-warn" aria-controls="warn" aria-selected="false" tabindex="-1">경고 현황</button>
       <button class="tab" role="tab" id="tab-coaching" aria-controls="coaching" aria-selected="false" tabindex="-1">젠지 코칭</button>
-      <button class="tab" role="tab" id="tab-apply" aria-controls="apply" aria-selected="false" tabindex="-1">참가 신청</button>
+      <button class="tab" role="tab" id="tab-apply" aria-controls="apply" aria-selected="false" tabindex="-1" hidden>참가 신청</button>
       <button class="tab" role="tab" id="tab-faq" aria-controls="faq" aria-selected="false" tabindex="-1">질문/FAQ</button>
     </nav>
     <div class="visits" id="visits" hidden aria-label="방문자 수"></div>
@@ -459,7 +460,7 @@
       <h1>2026 경기도 교육감배<br><span>미래형 이스포츠 스쿨리그</span></h1>
       <p>경기도 중·고등학생이 학교 대표 팀으로 겨루는 온라인 리그입니다.<br>결승 전까지는 디스코드로 온라인 진행하고, 1~4위전은 오프라인에서 열립니다.</p>
       <div class="cta">
-        <button class="btn ripple-btn" data-go="apply" id="applyBtn" aria-label="참가 신청 안내">참가 신청 안내</button>
+        <button class="btn ripple-btn" data-go="apply" id="applyBtn" aria-label="참가 신청 안내" hidden>참가 신청 안내</button>
         <button class="btn bracketbtn ripple-btn" data-go="bracket" aria-label="대진표 바로가기">대진표 바로가기</button>
         <button class="btn chatbtn ripple-btn" data-go="faq" aria-label="질문 챗봇 열기">질문 챗봇 열기</button>
       </div>
@@ -820,8 +821,12 @@ const ESCALATE_MSG = "이 내용은 공식 자료로 확인되지 않습니다. 
 /* ---------- 탭 ---------- */
 // 교사용 탭이 나중에 추가되므로 탭 목록은 매번 새로 읽는다
 const navEl = document.querySelector('nav[role="tablist"]');
-const allTabs = () => [...navEl.querySelectorAll('[role="tab"]')];
+// Restore the application tab and home entry by changing this flag to true.
+const APPLICATION_TAB_VISIBLE = false;
+["tab-apply", "applyBtn"].forEach(id => { document.getElementById(id).hidden = !APPLICATION_TAB_VISIBLE; });
+const allTabs = () => [...navEl.querySelectorAll('[role="tab"]')].filter(t => !t.hidden);
 function showTab(id, focus) {
+  if (id === "apply" && !APPLICATION_TAB_VISIBLE) { document.getElementById("apply").hidden = true; id = "home"; }
   if (!document.getElementById(id)) return;
   allTabs().forEach(t => {
     const on = t.getAttribute("aria-controls") === id;
