@@ -1826,6 +1826,14 @@
   }
   function assignSeats(div, ones, twos, regions = {}, stage = FIRST_STAGE[div]) {
     const { ones: s1, twos: s2 } = seatKeys(div, stage);
+    const pots = div === "중등부" && stage === "64강";
+    const rankTime = list => shuffle(list.slice()).sort((a,b) => b.time - a.time).map((t,i) => ({...t, timeRank:i+1}));
+    const rankedOnes = pots ? rankTime(ones) : ones, rankedTwos = pots ? rankTime(twos) : twos;
+    const mixPots = list => {
+      if (!pots) return shuffle(list.slice());
+      const upper=shuffle(list.slice(0,8)), lower=shuffle(list.slice(8));
+      return upper.flatMap((t,i)=>[t,lower[i]]);
+    };
     const W = [1000, 100, 10]; // 같은 조(고등: 같은 1R 경기) > 1라운드 상대 > 같은 절반(고등: 같은 그룹)
     const cost = (a, b) => {
       const seats = [...a.map((t, i) => [t, s1[i]]), ...b.map((t, i) => [t, s2[i]])];
@@ -1841,11 +1849,12 @@
     };
     let best = null, bestC = Infinity;
     for (let r = 0; r < 60; r++) {
-      const a = shuffle(ones.slice()), b = shuffle(twos.slice());
+      const a = mixPots(rankedOnes), b = mixPots(rankedTwos);
       let c = cost(a, b), improved = true;
       while (improved) {
         improved = false;
         for (const arr of [a, b]) for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
+          if (pots && i % 2 !== j % 2) continue;
           [arr[i], arr[j]] = [arr[j], arr[i]];
           const c2 = cost(a, b);
           if (c2 < c) { c = c2; improved = true; } else [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -1859,7 +1868,7 @@
       // Group membership remains fixed after optimization. Only the four slot
       // numbers change: winners 1/2, runners-up 3/4; higher time score first.
       seats = "ABCDEFGH".split("").flatMap(grp => seats.filter(x => x.grp === grp)
-        .sort((a,b) => a.team.rank - b.team.rank || b.team.time - a.team.time)
+        .sort((a,b) => a.team.rank - b.team.rank || a.team.timeRank - b.team.timeRank)
         .map((x,i) => ({ ...x, seed: i + 1 })));
     }
     return { seats, cost: Math.floor(bestC / 1000), regionPairs: bestC % 1000 };
@@ -1894,7 +1903,7 @@
     }
     function draw() {
       body.replaceChildren();
-      body.append(el("p", "note", div + " " + ad.stage + " 각 조 1·2위만 진출합니다. 3위 승급은 없습니다. 32강 각 조에서 이전 조 1위는 1·2번, 조 2위는 3·4번 시드입니다. 같은 순위끼리는 시간 점수=(패배 시간 합−승리 시간 합)÷실제 경기 수가 큰 팀이 앞번호입니다. 부전승 제외 · 점수 동점은 이번 추첨 순서 유지 · 번호가 큰 팀이 하위 시드입니다."));
+      body.append(el("p", "note", div + " " + ad.stage + " 각 조 1·2위만 진출합니다. 3위 승급은 없습니다. 64강 조 1위 16팀과 조 2위 16팀을 각각 시간 점수로 1~16등까지 정렬합니다. 각 순위의 1~8등·9~16등에서 한 팀씩, 총 네 포트를 조마다 한 팀씩 배정합니다. 32강 조 안에서는 조 1위 상위권=1시드·하위권=2시드, 조 2위 상위권=3시드·하위권=4시드입니다. 시간 점수=(패배 시간 합−승리 시간 합)÷실제 경기 수가 큰 팀이 앞번호입니다. 부전승 제외 · 점수 동점은 이번 추첨 순서 유지 · 번호가 큰 팀이 하위 시드입니다."));
       ad.problems.forEach(t => body.append(el("p", "rdlg-err", t)));
       if (ad.tieR || ad.tieT) body.append(el("p", "rdlg-err", "자르는 선에 같은 성적인 팀이 있습니다(" + [ad.tieR && "2위", ad.tieT && "3위"].filter(Boolean).join("·") + "). 규정에 따라 직접 골라 주세요."));
       if (ad.missing.length) body.append(el("p", "rdlg-err", "경기 결과 표에서 누락된 실제 경기 시간을 먼저 입력해 주세요. 부전승 시간은 입력하지 않습니다."));
@@ -1915,7 +1924,7 @@
         c.append(el("h4", "", k));
         list.sort((a, b) => a.seed - b.seed).forEach(x => {
           const r = el("div", "slot-row");
-          r.append(el("span", "slot-no", toGroups ? x.seed + "시드" : "ABCDEFGH"[(x.seed - 1) % 8]), el("span", "", drawSchoolLabel(x.team.school, regions)), el("span", "slot-st", x.team.grp + "조 " + x.team.rank + "위 · 시간 점수 " + timeLine(x.team)));
+          r.append(el("span", "slot-no", toGroups ? x.seed + "시드" : "ABCDEFGH"[(x.seed - 1) % 8]), el("span", "", drawSchoolLabel(x.team.school, regions)), el("span", "slot-st", x.team.grp + "조 " + x.team.rank + "위 · 같은 순위 중 " + x.team.timeRank + "등 · 시간 점수 " + timeLine(x.team)));
           c.append(r);
         });
         wrap.append(c);

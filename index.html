@@ -1179,7 +1179,7 @@ function renderBracket() {
     section.addEventListener("toggle", () => { toggleLabel.textContent = section.open ? " · 접기" : " · 펼치기"; });
     h.append(toggleLabel);
     summary.append(h); section.append(summary);
-    if (stage === "32강" && BK.div === "중등부") section.append(el("p", "note", "배정 시드: 64강 조 1위는 1·2시드, 조 2위는 3·4시드. 같은 순위끼리는 시간 점수(패배 시간 합−승리 시간 합)÷실제 경기 수가 높은 팀이 앞번호입니다. 부전승은 시간 계산에서 제외하며 동점은 추첨 순서입니다. 번호가 큰 하위 시드가 진영을 선택합니다(경고에 따른 선택 제한은 유지)."));
+    if (stage === "32강" && BK.div === "중등부") section.append(el("p", "note", "배정 시드: 64강 조 1위·2위 각 16팀을 시간 점수로 정렬하고 상위 8팀·하위 8팀에서 조마다 한 팀씩 배정합니다. 조 1위 상위/하위는 1·2시드, 조 2위 상위/하위는 3·4시드입니다. 시간 점수(패배 시간 합−승리 시간 합)÷실제 경기 수가 높은 팀이 앞번호입니다. 부전승은 시간 계산에서 제외하며 동점은 추첨 순서입니다. 번호가 큰 하위 시드가 진영을 선택합니다(경고에 따른 선택 제한은 유지)."));
     root.append(section);
     const gwrap = el("div", "groups");
     // 조 편성이 끝나면 실제로 쓰는 조만 (조 수 = 팀 수 ÷ 4 올림)
