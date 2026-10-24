@@ -1065,7 +1065,7 @@ function bkAdv(label, m) {
 // 고등 본선 1~8 = 32강 1위 자리, 9~16 = 2위 자리 / 4강 리그 = 장로1·바론1·장로2·바론2
 function bkSeedLabel(stage, g, seed) {
   if (stage === "4강 리그") return ["장로 1위", "바론 1위", "장로 2위", "바론 2위"][seed - 1];
-  if (stage === "32강" && BK.div === "중등부") return "64강 " + (seed % 2 ? "1위 자리" : "2위 자리");
+  if (stage === "32강" && BK.div === "중등부") return seed + "시드 · 64강 조 " + (seed <= 2 ? "1위" : "2위");
   if (stage === "본선 진출") return "32강 " + (seed <= 8 ? "1위 자리" : "2위 자리");
   return "";
 }
@@ -1172,7 +1172,7 @@ function renderBracket() {
     const section = el("details", "bk-stage"), summary = el("summary");
     const stageKey = BK.div + ":" + stage;
     const played = ms.filter(m => m.stage === stage && !m.void && m.team1 && m.team2);
-    const finished = played.length > 0 && played.every(m => !!m.winner);
+    const finished = played.length > 0 && played.every(m => !!m.winner || (m.score1 != null && m.score2 != null && m.score1 !== m.score2));
     section.open = bkStageOpen.has(stageKey) ? bkStageOpen.get(stageKey) : !finished;
     const toggleLabel = el("span", "note", section.open ? " · 접기" : " · 펼치기");
     section.addEventListener("toggle", () => { bkStageOpen.set(stageKey, section.open); toggleLabel.textContent = section.open ? " · 접기" : " · 펼치기"; });
