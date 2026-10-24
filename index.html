@@ -66,6 +66,7 @@
     color-scheme: light;
     --radius: 16px;
     --division-bg: #e1f7ff; --division-ink: #174864; --division-active: #693be8; --division-active-ink: #ffffff;
+    --home-bracket-bg: #00b894; --home-bracket-ink: #072d24; --home-bracket-hover: #00cea6;
   }
   :root[data-theme="dark"] {
     --division-bg: #193c55; --division-ink: #dff7ff; --division-active: #d6c5ff; --division-active-ink: #23134c;
@@ -159,8 +160,9 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .hero p { color: var(--muted); max-width: 760px; word-break: keep-all; } /* 문장마다 줄바꿈, 넓은 화면에서 한 문장이 한 줄에 들어가게 */
-  .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 760px; margin: 24px 0 36px; }
-  .cta .btn { font-size: 19px; padding: 16px 20px; border-radius: 14px; text-align: center; }
+  .cta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 760px; margin: 24px 0 36px; }
+  .cta .btn { min-width: 0; font-size: 19px; padding: 16px 20px; border-radius: 14px; text-align: center; }
+  @media (max-width: 600px) { .cta { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cta .chatbtn { grid-column: 1 / -1; } }
   @media (max-width: 480px) { .cta { gap: 8px; } .cta .btn { font-size: 16px; padding: 14px 10px; } }
   .apply-cta { margin: 6px 0 22px; }
   .btn.apply-form { display: inline-block; font-size: 19px; padding: 16px 26px; border-radius: 14px; text-decoration: none; }
@@ -170,12 +172,24 @@
     background: linear-gradient(135deg, var(--neon), var(--neon2)); color: var(--on-accent);
   }
   .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  .btn.bracketbtn { background: var(--home-bracket-bg); color: var(--home-bracket-ink); }
+  .btn.bracketbtn:hover, .btn.bracketbtn:focus-visible { background: var(--home-bracket-hover); }
   /* 질문 챗봇 버튼: 복숭아(#f3ab8c)→코랄→핑크 그라데이션, 나눔고딕, 글자 물결 모션(vibe-motion-ripple: 2.1초 ÷ 속도 1.25, 세기 65, 한 번) */
   .btn.chatbtn {
     position: relative; overflow: hidden; white-space: nowrap; flex: none; color: #3a0f1f; background: linear-gradient(135deg, #f3ab8c 0%, #ff8a7a 45%, #ff6fae 100%);
     box-shadow: 0 6px 22px rgba(255, 120, 140, .35);
   }
   .btn.chatbtn:hover, .btn.chatbtn:focus-visible { filter: brightness(1.05); box-shadow: 0 8px 28px rgba(255, 120, 140, .5); }
+  #home:not([hidden]) .chatbtn.motion-active::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, .38) 50%, transparent 75%);
+    transform: translateX(-120%); animation: chatShine 6s ease-in-out infinite;
+  }
+  @keyframes chatShine {
+    0%, 70% { transform: translateX(-120%); opacity: 0; }
+    74% { opacity: 1; }
+    94%, 100% { transform: translateX(120%); opacity: 0; }
+  }
   .btn.ripple-btn { position: relative; overflow: hidden; white-space: nowrap; }
   .btn.ripple-btn .rp { display: inline-block; white-space: pre; }
   .btn.ripple-btn.rippling .rp { animation: chatRipple 1.68s linear both; animation-delay: calc(var(--i) * 70ms); }
@@ -191,7 +205,10 @@
     72%, 100% { transform: translateY(0) scale(1); }
   }
   @keyframes chatRing { 0% { transform: translate(-50%, -50%) scale(0); opacity: .65; } 100% { transform: translate(-50%, -50%) scale(28); opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { .btn.ripple-btn.rippling .rp, .btn.ripple-btn.rippling::after { animation: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .btn.ripple-btn.rippling .rp, .btn.ripple-btn.rippling::after, #home .chatbtn.motion-active::before { animation: none; }
+    #home .chatbtn.motion-active::before { opacity: 0; }
+  }
   .dday { text-align: center; }
   .dday .label { color: var(--muted); font-size: 14px; }
   .dday .num { font-size: 44px; font-weight: 900; color: var(--neon); line-height: 1.2; }
@@ -437,6 +454,7 @@
       <p>경기도 중·고등학생이 학교 대표 팀으로 겨루는 온라인 리그입니다.<br>결승 전까지는 디스코드로 온라인 진행하고, 1~4위전은 오프라인에서 열립니다.</p>
       <div class="cta">
         <button class="btn ripple-btn" data-go="apply" id="applyBtn" aria-label="참가 신청 안내">참가 신청 안내</button>
+        <button class="btn bracketbtn" data-go="bracket" aria-label="대진표 바로가기">대진표 바로가기</button>
         <button class="btn chatbtn ripple-btn" data-go="faq" aria-label="질문 챗봇 열기">질문 챗봇 열기</button>
       </div>
     </div>
@@ -868,7 +886,7 @@ function el(tag, cls, text) {
 function rippleButton(b, delay) {
   if (!b) return;
   b.replaceChildren(...[...b.textContent].map((ch, i) => { const s = el("span", "rp", ch); s.style.setProperty("--i", i); s.setAttribute("aria-hidden", "true"); return s; }));
-  const play = () => { if (b.disabled) return; b.classList.remove("rippling"); void b.offsetWidth; b.classList.add("rippling"); };
+  const play = () => { if (b.disabled || document.hidden || b.closest("[hidden]") || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; b.classList.remove("rippling"); void b.offsetWidth; b.classList.add("rippling"); };
   setTimeout(play, delay);
   b.addEventListener("mouseenter", play);
   b.addEventListener("focus", play);
@@ -902,6 +920,22 @@ function rippleButton(b, delay) {
   if (left < 2147483647) setTimeout(done, left + 500);
 })();
 rippleButton(document.querySelector(".btn.chatbtn"), 700);
+
+// 홈이 보일 때만 CSS 빛 효과를 실행한다. 탭 전환·브라우저 숨김·움직임 줄이기는 즉시 정지.
+(function homeChatMotion() {
+  const home = document.getElementById("home"), button = home?.querySelector(".chatbtn");
+  if (!button) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const sync = () => {
+    const active = !home.hidden && !document.hidden && !reduced.matches;
+    button.classList.toggle("motion-active", active);
+    if (!active) button.classList.remove("rippling");
+  };
+  new MutationObserver(sync).observe(home, { attributes: true, attributeFilter: ["hidden"] });
+  document.addEventListener("visibilitychange", sync);
+  reduced.addEventListener("change", sync);
+  sync();
+})();
 
 const ddWrap = document.getElementById("ddays");
 DDAYS.forEach(d => {
