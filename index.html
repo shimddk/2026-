@@ -361,6 +361,11 @@
   .qbtn.dq { border-style: dashed; }
   .dq-meta { margin-top: 6px; font-size: 12px; color: var(--muted); }
   .msg + .msg { margin-top: 0; }
+  .msg.pin { border: 2px solid var(--neon); }
+  .msg .chip { margin-top: 8px; }
+  .school-games { margin: 4px 0 6px; padding-left: 18px; white-space: normal; }
+  .school-games li { margin: 3px 0; color: var(--muted); }
+  .school-games li.next { color: var(--text); font-weight: 700; }
   .sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: var(--bg2); }
   .composer input {
@@ -413,6 +418,7 @@
   }
   @media (max-width: 820px) {
     .faq-layout { grid-template-columns: 1fr; }
+    .faq-layout .chat { order: -1; } /* 2026-10-24: 휴대폰은 챗봇 입력 창을 맨 위에 */
     .side { position: static; }
     .qlist { max-height: 220px; }
     .chat { height: 560px; }
@@ -748,6 +754,8 @@ const TL_SESSIONS = [
 // st: ok = 확정, wait = 미확정(추후 안내)
 const FAQ = [
   [58,"D","리그전에서 승패가 같으면 순위를 어떻게 정하나요?","승수를 먼저 비교하고, 2팀 동률이면 맞대결 승자가 상위입니다. 3팀 이상이 동률이면 시간 점수=(패배 경기 시간 합−승리 경기 시간 합)÷실제 경기 수를 비교해 큰 팀이 상위입니다. 해당 리그 단계에서 빠르게 이기고 오래 버틴 팀이 유리하며, 부전승은 시간 계산에서 제외합니다. 시간 점수까지 같은 팀이 2팀이면 맞대결로 결정합니다. 필요한 경기 시간이 빠졌거나 3팀 이상이 시간 점수까지 같으면 지원단이 확인해 순위를 지정합니다. 예선 조별리그와 4강 리그에 같은 기준을 적용합니다.","ok"],
+  [59,"A","우리 학교 경기 시간과 상대는 어디서 보나요?","챗봇에 학교 이름을 넣어 물어보면 바로 알려 드려요(예: 원곡고 경기 언제?). '대진표' 탭 맨 위 '우리 학교 경기 찾기'에 학교 이름을 넣어도 상대 학교·경기 시간·결과가 나옵니다. 조별리그는 1·2경기가 동시에 시작하고, 3·4경기는 1시간 뒤, 5·6경기는 2시간 뒤입니다. 다음 단계 진출이 정해지면 같은 곳에 자동으로 표시됩니다.","ok"],
+  [60,"A","경기 결과는 어디서 확인하나요?","경기가 끝나면 지원단 선생님이 결과를 입력하고, 바로 '대진표' 탭의 조별 순위와 경기 목록에 반영됩니다. 입력까지 조금 시간이 걸릴 수 있어요. 챗봇에 학교 이름을 넣어 물어봐도 결과를 볼 수 있습니다. 결과가 틀려 보이면 디스코드 질문방에 학교 이름과 경기(예: A조 3경기)를 함께 알려 주세요.","ok"],
   [57,"D","조별리그 도중 학교가 기권하면 어떻게 되나요?","이미 완료한 경기 결과는 그대로 반영합니다. 기권 이후 남은 경기는 상대 팀의 부전승(1:0)으로 처리하며, 실제 경기 시간은 기록하지 않습니다. 조 편성은 유지합니다. 기권 학교는 내년도(2027년) 대회에 참가할 수 없습니다.","ok"],
   [1,"A","모집 마감은 언제인가요?","10/19(월) 밤 11시 59분(23:59)까지입니다. 처음 안내(10/12)에서 연장되었습니다.","ok"],
   [2,"A","첫 경기는 언제인가요?","10/24(토)입니다. 중등부 64강 조별리그로 시작합니다(14:00·18:00 두 번에 나눠 진행, 어느 조가 언제인지는 조 편성 후 대진표에 나옵니다). 고등부 첫 경기는 10/25(일) 13:00 32강 조별리그입니다. 자세한 시간은 '일정' 탭을 보세요.","ok"],
@@ -815,7 +823,17 @@ const CATS = [
   { key: "D", label: "경기 방식·규칙" },
   { key: "E", label: "혜택·코칭·스크림" }
 ];
-const TOP = [1, 2, 10, 13, 20, 26, 37, 42];
+// 2026-10-24 경기 기간용 자주 묻는 질문(모집 기간 목록: 1, 2, 10, 13, 20, 26, 37, 42)
+const TOP = [59, 60, 5, 52, 54, 57, 58, 53];
+// 경기일 안내(챗봇 맨 위 고정). 날짜는 한국 시간 기준
+const MATCH_DAYS = [
+  ["2026-10-24", "10/24(토)", "중등부 64강 조별리그"],
+  ["2026-10-25", "10/25(일)", "고등부 32강 · 중등부 32강 조별리그"],
+  ["2026-10-31", "10/31(토)", "본선 승자조"],
+  ["2026-11-01", "11/1(일)", "본선 패자조"],
+  ["2026-11-04", "11/4(수)", "4강 리그"],
+  ["2026-11-08", "11/8(일)", "결선(오프라인)"]
+];
 const ESCALATE_MSG = "이 내용은 공식 자료로 확인되지 않습니다. 디스코드 4번 질문방으로 문의하세요.\n지원단 선생님께서 직접 확인 후 답변해 드립니다.";
 
 /* ---------- 탭 ---------- */
@@ -1306,6 +1324,9 @@ function similar(s) {
   return score >= 0.62 ? best : null;
 }
 const RULES = [
+  [59,/(?:우리|내|저희)\s*(?:학교|팀).*(?:경기|상대|시간|몇\s*시|언제|조)|상대.*(?:누구|어디|학교)|몇\s*조|어느\s*조|우리\s*(?:경기|조)/],
+  [60,/결과.*(?:어디|언제|반영|확인|올라|안\s*나|안\s*떠|틀)|점수.*(?:어디|반영|틀)|순위.*(?:어디|확인|반영)/],
+  [57,/기권|몰수|불참|부전승|(?:경기|대회).*포기/],[58,/동률|승패.*같|승수.*같|순위.*(?:정하|결정|기준)|승자승|시간\s*점수/],
   [52,/지각|미입장|(?:경기|입장|접속).*늦|늦(?:으면|게).*(?:경기|입장|들어|접속)/],[53,/경고.*(?:받으면|몇\s*회|누적|어떻게|벌칙)|벌칙|밴\s*카드.*제한/],
   [54,/진영|블루|레드/],[55,/전체\s*채팅|게임.*채팅|채팅.*(?:써|쓰|사용|금지|돼|되)|퍼즈|일시\s*정지|이모티콘|인장|\bgg\b/i],
   [51,/팀장\s*교육|대회\s*교육|^(?!.*(?:코칭|코치|젠지|gga|아카데미)).*교육.*(?:언제|몇\s*시|시간|참여|참석)/i],
@@ -1332,9 +1353,9 @@ const RULES = [
   [42,/혜택|입상|우승|뭐\s*주|교육감상|상금|상품|코칭|방송|중계/]
 ];
 // 공식 자료에 답이 없는 주제 → 지원단 문의 안내
-const UNKNOWN = /참가비|참가\s*비용|유료|무료|불참|몰수패|접속.*끊|재경기|대리\s*플레이|계정\s*공유|마이크|카메라|화면\s*공유|상대\s*전적|이동|인솔|보호자|초상권|개인정보.*동의|생활기록부|초대\s*링크|담당자.*누구|버스|주차|식사|점심|숙박|날씨/;
+const UNKNOWN = /참가비|참가\s*비용|유료|무료|접속.*끊|재경기|대리\s*플레이|계정\s*공유|마이크|카메라|화면\s*공유|상대\s*전적|이동|인솔|보호자|초상권|개인정보.*동의|생활기록부|초대\s*링크|담당자.*누구|버스|주차|식사|점심|숙박|날씨/;
 // 더 구체적인 답이 함께 걸리면 일반 답은 빼기
-const OVERRIDE = { 49:[43,42], 50:[23,11,10], 39:[17,18], 23:[20], 5:[2], 6:[5], 16:[13,10], 11:[10], 22:[20], 21:[20], 38:[37], 43:[42,20,22,21], 45:[16,44], 24:[23,41,20], 15:[20,13], 46:[43,42,20], 47:[43,42,6,20], 48:[43,42,20] };
+const OVERRIDE = { 59:[2,5,6,8,60], 60:[8], 57:[52], 58:[53], 49:[43,42], 50:[23,11,10], 39:[17,18], 23:[20], 5:[2], 6:[5], 16:[13,10], 11:[10], 22:[20], 21:[20], 38:[37], 43:[42,20,22,21], 45:[16,44], 24:[23,41,20], 15:[20,13], 46:[43,42,20], 47:[43,42,6,20], 48:[43,42,20] };
 
 let lastQ = "";
 function answer(input) {
@@ -1351,7 +1372,12 @@ function answer(input) {
   const words = n.split(/\s+/).filter(w => w.length >= 2 && !STOP.includes(w));
   const cands = FAQ.map(f => ({ f, s: words.filter(w => norm(f.q).includes(w)).length }))
     .filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 3).map(x => x.f);
-  return cands.length ? { kind: "suggest", faqs: cands } : { kind: "escalate" };
+  if (cands.length) return { kind: "suggest", faqs: cands };
+  // 2026-10-24: 낱말이 안 겹쳐도 글자 두 개씩 조금이라도 비슷한 FAQ가 있으면 '혹시 이 질문?'으로 보여 줌
+  const a = bigrams(text);
+  const loose = a.size < 2 ? [] : FAQ.map(f => { const b = bigrams(f.q); let k = 0; a.forEach(x => b.has(x) && k++); return { f, s: 2 * k / (a.size + b.size) }; })
+    .filter(x => x.s >= 0.25).sort((x, y) => y.s - x.s).slice(0, 3).map(x => x.f);
+  return loose.length ? { kind: "suggest", faqs: loose } : { kind: "escalate" };
 }
 
 /* ---------- 디스코드 질문방 답변 (구글 시트 → 10분마다 갱신, portal.js가 넣어 줌) ---------- */
@@ -1478,18 +1504,79 @@ function suggButtons(faqs) {
   faqs.forEach(f => {
     const b = el("button", "chip", f.q);
     b.type = "button";
-    b.addEventListener("click", () => ask(f.q));
+    b.addEventListener("click", () => ask(f.q, "list"));
     box.append(b);
   });
   return box;
 }
-function ask(q) {
+// 사용 기록(이름 없이 숫자만, portal.js의 window.chatLog가 보냄. 아직 준비 전이면 잠시 모아 둠)
+function track(ev, q) {
+  if (window.chatLog) window.chatLog(ev, q);
+  else (window.chatLogQueue = window.chatLogQueue || []).push([ev, q]);
+}
+// 질문 속 학교 이름 찾기: "원곡고등학교" → "원곡고등학교"·"원곡고"로 찾음(가장 긴 이름 우선)
+function findSchools(q) {
+  const t = String(q).replace(/\s/g, "");
+  const names = [...new Set(BK.matches.flatMap(m => [m.team1, m.team2]).filter(Boolean))];
+  let best = [], len = 0;
+  names.forEach(s => {
+    const short = s.replace(/등학교$/, "").replace(/학교$/, "");
+    [s, short].forEach(a => {
+      if (a.length < 3 || !t.includes(a)) return;
+      if (a.length > len) { best = [s]; len = a.length; } else if (a.length === len && !best.includes(s)) best.push(s);
+    });
+  });
+  return { schools: best.slice(0, 3), len };
+}
+const SCHOOL_ASK = /경기|상대|언제|몇\s*시|시간|결과|조|순위|일정|대진|붙|이겼|졌|다음|진출|올라/;
+function schoolMsg(school) {
+  const m = el("div", "msg bot");
+  const ms = BK.matches.filter(x => !x.void && (x.team1 === school || x.team2 === school)).sort((a, b) => (a.sort || 0) - (b.sort || 0));
+  m.append(el("span", "tag ok", "대진표"), el("div", "q", school + " 경기"));
+  if (!ms.length) m.append(el("div", "", "대진표에 아직 이 학교 경기가 없어요. 대진 공개 전이거나, 다음 단계 진출이 아직 정해지지 않았을 수 있어요."));
+  else {
+    const ul = el("ul", "school-games");
+    ms.forEach(x => {
+      const opp = x.team1 === school ? x.team2 : x.team1;
+      const done = x.winner ? (x.winner === school ? "승 " : "패 ") + (x.score1 ?? "") + ":" + (x.score2 ?? "") : "예정";
+      ul.append(el("li", x.winner ? "" : "next", [x.scheduled_at || "시간 미정", x.division + " " + (x.round_label || x.stage), "상대 " + (opp || "미정"), done].join(" · ")));
+    });
+    m.append(ul, el("div", "note", "다음 단계 진출이 정해지면 자동으로 이어서 표시됩니다."));
+  }
+  m.append(goBracketBtn(school));
+  return m;
+}
+function goBracketBtn(school) {
+  const b = el("button", "chip", "🔎 대진표에서 " + (school ? "보기" : "우리 학교 찾기"));
+  b.type = "button";
+  b.addEventListener("click", () => {
+    track("bracket_click");
+    const m = school && BK.matches.find(x => x.team1 === school || x.team2 === school);
+    if (m && m.division !== BK.div) document.querySelector('#divSwitch .chip[data-div="' + m.division + '"]')?.click();
+    showTab("bracket");
+    setTimeout(() => { const i = document.querySelector('#bracket input[type="search"]'); if (i) { if (school) { i.value = school; i.dispatchEvent(new Event("input")); } i.focus(); } }, 100);
+  });
+  return b;
+}
+function ask(q, src) {
   q = q.trim();
   if (!q) return;
   userMsg(q);
+  track(src || "ask");
   const r = answer(q);
+  // 학교 이름 + 경기 관련 말이면 그 학교 경기 일정을 바로 보여 줌
+  const fs = src ? { schools: [] } : findSchools(q);
+  if (fs.schools.length && (SCHOOL_ASK.test(q) || q.replace(/\s/g, "").length <= fs.len + 4)) {
+    fs.schools.forEach(s => log.append(schoolMsg(s)));
+    track("school");
+    lastQ = q;
+    scrollLog();
+    return;
+  }
   // 공식 FAQ로 답하면 아주 비슷한 질문방 답변만 1개, 못 찾으면 비슷한 답변을 최대 2개 함께 보여 줌
   const dq = discordMatch(q, r.kind === "faq" ? 0.5 : 0.4, r.kind === "faq" ? 1 : 2);
+  // 직접 입력한 질문만 결과 종류를 셈(못 찾은 질문은 이름 등을 가려 저장)
+  if (!src) { const kind = r.kind === "faq" ? "faq" : dq.length ? "discord" : r.kind; track(kind, kind === "suggest" || kind === "escalate" ? q : null); }
   if (r.kind === "faq") {
     r.faqs.forEach(botFaq);
     // 질문방 답변은 FAQ 아래에 최대 2개 (같은 내용으로 합쳐 둔 답변 먼저)
@@ -1525,7 +1612,7 @@ function showCat(key) {
   qlist.replaceChildren(...list.map(f => {
     const b = el("button", "qbtn", f.q);
     b.type = "button";
-    b.addEventListener("click", () => ask(f.q));
+    b.addEventListener("click", () => ask(f.q, "list"));
     return b;
   }));
   if (dq.length) {
@@ -1533,7 +1620,7 @@ function showCat(key) {
     dq.forEach(it => {
       const b = el("button", "qbtn dq", it.question);
       b.type = "button";
-      b.addEventListener("click", () => { userMsg(it.question); botDiscord(it); scrollLog(); });
+      b.addEventListener("click", () => { userMsg(it.question); botDiscord(it); scrollLog(); track("list"); });
       qlist.append(b);
     });
   }
@@ -1551,13 +1638,33 @@ const quick = document.getElementById("quick");
 FAQ.filter(f => TOP.includes(f.id)).forEach(f => {
   const b = el("button", "chip", f.q);
   b.type = "button";
-  b.addEventListener("click", () => ask(f.q));
+  b.addEventListener("click", () => ask(f.q, "quick"));
   quick.append(b);
 });
 
+// 경기일·다음 경기 안내(맨 위 고정)
+(function matchDayNotice() {
+  const now = MATCH_DAYS.find(d => daysUntil(d[0]) === 0), next = MATCH_DAYS.find(d => daysUntil(d[0]) > 0);
+  if (!now && !next) return;
+  const m = el("div", "msg bot pin");
+  m.append(el("span", "tag ok", now ? "📢 오늘 경기일" : "📅 다음 경기"),
+    el("div", "q", now ? "오늘은 " + now[2] + " 경기일입니다" : next[1] + " " + next[2]),
+    el("div", "", "학교 이름을 넣어 물어보면 우리 학교 경기 시간·상대·결과를 바로 알려 드려요. 예: 원곡고 경기 언제?"),
+    goBracketBtn(null));
+  log.append(m);
+})();
 const welcome = el("div", "msg bot");
-welcome.append(el("div", "q", "무엇이든 물어보세요"), el("div", "", "왼쪽 목록이나 아래 추천 질문을 누르면 바로 답을 볼 수 있어요. 직접 입력해도 됩니다."));
+welcome.append(el("div", "q", "무엇이든 물어보세요"), el("div", "", "왼쪽 목록이나 아래 추천 질문을 누르면 바로 답을 볼 수 있어요. 직접 입력해도 됩니다. 디스코드 질문방보다 빠르게 답을 찾을 수 있어요!"));
 log.append(welcome);
+// 챗봇 탭을 연 사람 수(페이지마다 한 번), 챗봇 안 디스코드 링크 누른 수
+(function chatOpenTrack() {
+  const faq = document.getElementById("faq");
+  let sent = false;
+  const check = () => { if (!sent && !faq.hidden) { sent = true; track("open"); } };
+  new MutationObserver(check).observe(faq, { attributes: true, attributeFilter: ["hidden"] });
+  check();
+  faq.addEventListener("click", e => { if (e.target.closest('a[href*="discord.com"]')) track("discord_click"); });
+})();
 
 document.getElementById("composer").addEventListener("submit", e => {
   e.preventDefault();

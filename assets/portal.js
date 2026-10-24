@@ -102,10 +102,10 @@
     if (!box) return;
     const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
     const robot = navigator.webdriver || /Headless|bot|crawl|spider|slurp|Lighthouse|Claude\//i.test(navigator.userAgent);
-    let vid = null;
+    let vid = null, teacher = false;
     try {
       const { data: { session } } = await sb.auth.getSession();
-      if (session && session.user) vid = session.user.id;
+      if (session && session.user) { vid = session.user.id; teacher = true; }
     } catch (e) { /* 로그인 확인 실패 → 브라우저 번호로 */ }
     if (!vid) {
       try {
@@ -113,6 +113,10 @@
         if (!vid) { vid = crypto.randomUUID(); localStorage.setItem("visitorId", vid); }
       } catch (e) { vid = null; } // 저장소가 막힌 브라우저는 세지 않고 숫자만 보여 줌
     }
+    // 질문 챗봇 사용 기록(2026-10-24): 학생 브라우저만, 교사 로그인·localhost·자동 브라우저는 세지 않음
+    const chatVid = local || robot || teacher ? null : vid;
+    window.chatLog = (ev, q) => { if (chatVid) sb.rpc("record_chat", { vid: chatVid, ev, q: q || null }).then(() => {}, () => {}); };
+    (window.chatLogQueue || []).splice(0).forEach(([ev, q]) => window.chatLog(ev, q));
     sb.rpc("record_visit", { vid: local || robot ? null : vid }).then(({ data, error }) => {
       const row = !error && data && data[0];
       if (!row) return;
@@ -889,7 +893,7 @@
   let teacherTabTimer = null, teacherViews = [];
   let teacherTabGeneration = 0;
   let teacherTabState = { can_manage: false, hidden: [] };
-  const TEACHER_TAB_OPTIONS = [["t-staff","지원단 명단"],["t-roster","아이디 명단"],["t-captains","팀장 연락처"],["t-advisors","지도교사 연락처"],["t-tier","팀별 티어 현황"],["t-matches","대진·경기 결과"],["t-referee","심판 일정"],["t-warn","경고 조치"],["t-rcheck","명단 확인 현황"],["t-coaching","젠지 코칭 관리"],["t-inbox","신청 접수"],["t-payment","수당 지급"]];
+  const TEACHER_TAB_OPTIONS = [["t-staff","지원단 명단"],["t-roster","아이디 명단"],["t-captains","팀장 연락처"],["t-advisors","지도교사 연락처"],["t-tier","팀별 티어 현황"],["t-matches","대진·경기 결과"],["t-referee","심판 일정"],["t-warn","경고 조치"],["t-rcheck","명단 확인 현황"],["t-coaching","젠지 코칭 관리"],["t-chat","챗봇 사용 현황"],["t-inbox","신청 접수"],["t-payment","수당 지급"]];
   const teacherTabVisible = id => id === "t-tab-settings" ? teacherTabState.can_manage : teacherTabState.can_manage || !teacherTabState.hidden.includes(id);
   function applyTeacherTabVisibility() {
     let activeRemoved = false;
@@ -979,6 +983,7 @@
     if (isEditor()) views.push(["t-rcheck", "명단 확인 현황", "팀장이 전적 검색에서 직접 확인·수정한 현황입니다. 저장하면 아이디 명단·티어 현황에 바로 반영되고, 잘못된 수정은 여기서 되돌릴 수 있습니다.", loadRosterCheck]);
     // 젠지 코치(심판 권한)도 보기 가능 (2026-10-18 사용자 요청), 고치기는 편집자만
     if (isEditor() || ME.role === "referee") views.push(["t-coaching", "젠지 코칭 관리", "디스코드 [GGA-코칭-지원] 채널로 들어온 코칭 신청 기록입니다. 학교당 최대 3회, 같은 타임은 최대 6팀(코치 6명)입니다. 담당 코치·상태를 바꾸면 공개 '젠지 코칭' 탭에도 바로 반영됩니다(신청자·메모는 공개 안 됨)." + (isEditor() ? "" : " 심판 권한은 보기만 할 수 있습니다(배정·상태는 GGA 시트에서 10분마다 자동 반영)."), loadCoaching]);
+    if (isEditor()) views.push(["t-chat", "챗봇 사용 현황", "학생용 질문 챗봇을 얼마나 쓰는지, 어떤 질문을 못 찾는지 보여 줍니다(학생 이름·번호·아이디는 가려 저장).", loadChatStats]);
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     // 2026-10-21: 예상 조 편성은 관리자 포함 모두에게 숨김. 미리보기 함수와 기존 데이터는 보존.
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
@@ -3156,6 +3161,30 @@
   }
 
   // 명단 확인 현황 (편집자): 학교별 확인 완료 / 수정함 / 미확인, 수정 전→후, 되돌리기
+  // 질문 챗봇 사용 현황(2026-10-24): 학생 브라우저 기준 하루 집계 + 못 찾은 질문(이름·번호·아이디 가림)
+  async function loadChatStats(box) {
+    const [{ data: rows, error }, { data: misses }] = await Promise.all([sb.rpc("chat_stats"), sb.rpc("chat_miss_list")]);
+    box.replaceChildren();
+    if (error) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
+    const pct = (a, b) => b ? (100 * a / b).toFixed(1) + "%" : "-";
+    box.append(el("p", "note", "방문자는 교사 계정을 뺀 하루 방문 브라우저 수입니다. 챗봇 기록은 2026-10-24 밤부터 쌓이며, 같은 학생이 휴대폰·PC를 쓰면 따로 셉니다. '답 찾음' = 공식 FAQ·학교 경기 일정·질문방 답변으로 답한 직접 입력 질문입니다. 디스코드 질문 수는 답변이 달린 질문 기준입니다."));
+    const t = el("table", "dtable"), head = el("tr");
+    ["날짜", "방문자", "챗봇 연 사람", "사용률", "직접 질문(사람/건)", "답 찾음", "비슷한 질문만", "못 찾음", "목록·추천 클릭", "디스코드 링크 클릭", "디스코드 질문"].forEach(h => head.append(el("th", "", h)));
+    t.append(head);
+    (rows || []).forEach(r => {
+      const tr = el("tr"), found = Number(r.faq) + Number(r.school) + Number(r.discord);
+      [r.day, r.visitors, r.openers, pct(r.openers, r.visitors), r.askers + "명 / " + r.asks + "건", found + " (" + pct(found, r.asks) + ")",
+       r.suggest, r.escalate, r.list_clicks, r.discord_clicks, r.discord_questions].forEach(v => tr.append(el("td", "", String(v))));
+      t.append(tr);
+    });
+    const wrap = el("div", "gscroll"); wrap.append(t); box.append(wrap);
+    const sec = el("details", "card"); sec.open = true;
+    sec.append(el("summary", "", "못 찾은 질문 (최근 200개, FAQ 보강용)"));
+    if (!(misses || []).length) sec.append(el("p", "note", "아직 없습니다."));
+    else { const ul = el("ul", "clean"); misses.forEach(m => ul.append(el("li", "", new Date(m.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) + " · " + (m.kind === "escalate" ? "못 찾음" : "비슷한 질문만") + " · " + m.question))); sec.append(ul); }
+    box.append(sec);
+  }
+
   async function loadRosterCheck(box) {
     const [{ data: ros }, { data: stats }, { data: changes }, { data: win }] = await Promise.all([
       sb.from("sheet_rows").select("sheet,data").in("sheet", ["roster_middle", "roster_high"]),
