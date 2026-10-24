@@ -1764,16 +1764,19 @@
     const stats = {};
     matches.filter(m => m.stage === stage && m.team1 && m.team2 && m.winner).forEach(m => {
       [m.team1, m.team2].forEach(t => {
-        const st = stats[t] = stats[t] || { games: 0, wins: 0, winSec: 0, lossSec: 0, noTime: 0 };
+        const st = stats[t] = stats[t] || { games: 0, wins: 0, played: 0, winSec: 0, lossSec: 0, noTime: 0 };
         st.games++;
+        if (m.winner === t) st.wins++;
+        if (/부전승/.test((m.round_label || "") + " " + (m.note || ""))) return;
+        st.played++;
         if (m.duration_sec == null) st.noTime++;
-        if (m.winner === t) { st.wins++; st.winSec += m.duration_sec || 0; } else st.lossSec += m.duration_sec || 0;
+        if (m.winner === t) st.winSec += m.duration_sec || 0; else st.lossSec += m.duration_sec || 0;
       });
     });
     const row = (x, g) => {
-      const st = stats[x.school] || { games: 0, wins: 0, winSec: 0, lossSec: 0, noTime: 0 };
+      const st = stats[x.school] || { games: 0, wins: 0, played: 0, winSec: 0, lossSec: 0, noTime: 0 };
       return { school: x.school, grp: g, rank: x.rank, size: size(g), wins: st.wins, games: st.games, rate: st.games ? st.wins / st.games : 0,
-        time: st.games ? (st.lossSec - st.winSec) / st.games : 0, noTime: st.noTime };
+        time: st.played ? (st.lossSec - st.winSec) / st.played : null, played: st.played, noTime: st.noTime };
     };
     const firsts = [], runners = [], thirds = [];
     groups.forEach(g => {
@@ -1797,9 +1800,11 @@
     // 자르는 선 바로 앞뒤가 같은 성적이거나 경기 시간이 비어 있으면 표시 → 관리자가 직접 고름
     const tieAt = (list, n, key) => n > 0 && n < list.length && key(list[n - 1]) === key(list[n]);
     const tieR = tieAt(runners, promoteN, x => x.rate + "|" + x.time.toFixed(1)), tieT = tieAt(thirds, thirdN, x => x.wins + "|" + x.time.toFixed(1));
-    // 조가 모두 구성되면 각 조 1·2위만 진출하므로 조 간 비교용 경기 시간은 필요 없다.
-    const missing = [...(promoteN > 0 && promoteN < runners.length ? runners : []),
+    const seedByTime = div === "중등부" && stage === "64강";
+    const missing = [...(seedByTime ? [...firsts, ...runners] : []), ...(promoteN > 0 && promoteN < runners.length ? runners : []),
       ...(thirdN > 0 && thirdN < thirds.length ? thirds : [])].filter(x => x.noTime).map(x => x.school);
+    if (seedByTime && missing.length) problems.push("32강 시드 산정에 필요한 실제 경기 시간이 빠져 있습니다: " + missing.join(", "));
+    if (seedByTime && [...firsts, ...runners].some(x => !x.played)) problems.push("실제 경기 기록이 없는 진출 팀이 있어 시간 점수로 시드를 정할 수 없습니다. 경기 기록을 확인해 주세요.");
     return { stage, groups, firsts, runners, thirds, promoteN, thirdN, problems, tieR, tieT, missing };
   }
 
@@ -1849,9 +1854,17 @@
       if (c < bestC) { bestC = c; best = { a: a.slice(), b: b.slice() }; }
       if (bestC === 0) break;
     }
-    return { seats: [...best.a.map((t, i) => ({ ...s1[i], team: t })), ...best.b.map((t, i) => ({ ...s2[i], team: t }))], cost: Math.floor(bestC / 1000), regionPairs: bestC % 1000 };
+    let seats = [...best.a.map((t, i) => ({ ...s1[i], team: t })), ...best.b.map((t, i) => ({ ...s2[i], team: t }))];
+    if (div === "중등부" && stage === "64강") {
+      // Group membership remains fixed after optimization. Only the four slot
+      // numbers change: winners 1/2, runners-up 3/4; higher time score first.
+      seats = "ABCDEFGH".split("").flatMap(grp => seats.filter(x => x.grp === grp)
+        .sort((a,b) => a.team.rank - b.team.rank || b.team.time - a.team.time)
+        .map((x,i) => ({ ...x, seed: i + 1 })));
+    }
+    return { seats, cost: Math.floor(bestC / 1000), regionPairs: bestC % 1000 };
   }
-  const seatLabel = (div, seat) => div === "중등부" ? "32강 " + seat.grp + "조 " + seat.seed + "번 (" + (seat.seed % 2 ? "1위 자리" : "2위 자리") + ")"
+  const seatLabel = (div, seat) => div === "중등부" ? "32강 " + seat.grp + "조 " + seat.seed + "시드 (" + (seat.seed <= 2 ? "64강 조 1위" : "64강 조 2위") + ")"
     : (seat.seed <= 8 ? "1위 자리 " + "ABCDEFGH"[seat.seed - 1] : "2위 자리 " + "ABCDEFGH"[seat.seed - 9]);
 
   async function openAdvance(div, slots, stand, matches, reload, regions = {}, stage = FIRST_STAGE[div]) {
@@ -1881,10 +1894,10 @@
     }
     function draw() {
       body.replaceChildren();
-      body.append(el("p", "note", div + " " + ad.stage + " 각 조 1·2위만 진출합니다. 3위 승급은 없습니다. 조 1위는 1위 자리, 조 2위는 2위 자리로 배정합니다."));
+      body.append(el("p", "note", div + " " + ad.stage + " 각 조 1·2위만 진출합니다. 3위 승급은 없습니다. 32강 각 조에서 이전 조 1위는 1·2번, 조 2위는 3·4번 시드입니다. 같은 순위끼리는 시간 점수=(패배 시간 합−승리 시간 합)÷실제 경기 수가 큰 팀이 앞번호입니다. 부전승 제외 · 점수 동점은 이번 추첨 순서 유지 · 번호가 큰 팀이 하위 시드입니다."));
       ad.problems.forEach(t => body.append(el("p", "rdlg-err", t)));
       if (ad.tieR || ad.tieT) body.append(el("p", "rdlg-err", "자르는 선에 같은 성적인 팀이 있습니다(" + [ad.tieR && "2위", ad.tieT && "3위"].filter(Boolean).join("·") + "). 규정에 따라 직접 골라 주세요."));
-      if (ad.missing.length) body.append(el("p", "rdlg-err", "경기 시간이 비어 있는 팀: " + ad.missing.join(", ") + " — 경기 결과 표에 시간을 넣으면 더 정확합니다."));
+      if (ad.missing.length) body.append(el("p", "rdlg-err", "경기 결과 표에서 누락된 실제 경기 시간을 먼저 입력해 주세요. 부전승 시간은 입력하지 않습니다."));
       if (ad.problems.length) return;
       if (ad.promoteN) body.append(pickList("잘한 2위 → 1위 자리", ad.runners, pickR, ad.promoteN, x => "승률 " + Math.round(x.rate * 100) + "% (" + x.wins + "/" + x.games + ")"));
       if (ad.thirdN) body.append(pickList("잘한 3위 → 2위 자리", ad.thirds, pickT, ad.thirdN, x => x.wins + "승"));
@@ -1902,7 +1915,7 @@
         c.append(el("h4", "", k));
         list.sort((a, b) => a.seed - b.seed).forEach(x => {
           const r = el("div", "slot-row");
-          r.append(el("span", "slot-no", toGroups ? x.seed + "번" : "ABCDEFGH"[(x.seed - 1) % 8]), el("span", "", drawSchoolLabel(x.team.school, regions)), el("span", "slot-st", x.team.grp + "조 " + x.team.rank + "위"));
+          r.append(el("span", "slot-no", toGroups ? x.seed + "시드" : "ABCDEFGH"[(x.seed - 1) % 8]), el("span", "", drawSchoolLabel(x.team.school, regions)), el("span", "slot-st", x.team.grp + "조 " + x.team.rank + "위 · 시간 점수 " + timeLine(x.team)));
           c.append(r);
         });
         wrap.append(c);

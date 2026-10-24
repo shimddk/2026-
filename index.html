@@ -246,6 +246,11 @@
   /* 예선 순위표·본선 브래킷 */
   .bk-title { font-family: 'YeogiOttaeJalnan', sans-serif; font-weight: normal; font-size: 22px; margin: 28px 0 10px; }
   .bk-title small { font-family: inherit; font-size: 14px; color: var(--muted); margin-left: 8px; }
+  .bk-stage { margin: 22px 0; }
+  .bk-stage > summary { cursor: pointer; color: var(--text); padding: 14px 0; }
+  .bk-stage > summary .bk-title { display: inline; margin: 0; }
+  .bk-stage > summary small { display: block; margin: 8px 0 0; line-height: 1.6; }
+  .bk-stage > summary:focus-visible { outline: 2px solid var(--neon); outline-offset: 4px; }
   .stand { width: 100%; border-collapse: collapse; font-size: 14px; }
   .stand th, .stand td { padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
   .stand td.sch { white-space: normal; word-break: keep-all; }
@@ -1094,6 +1099,7 @@ function bkGroupCard(ms, stage, g, title) {
     const up = stage !== "4강 리그" && s.rank && s.rank <= 2;
     const tr = el("tr", up ? "up" : "");
     const schoolCell = el("td", "sch"); schoolCell.append(bkSchoolNode(s.school));
+    if (stage === "32강" && BK.div === "중등부" && s.seed) schoolCell.append(el("small", "group-times", " · " + s.seed + "시드"));
     tr.append(el("td", "", s.rank ? s.rank + "위" : "-"), schoolCell, el("td", "", s.wins), el("td", "", s.losses));
     tb.append(tr);
   });
@@ -1144,6 +1150,7 @@ function bkSchoolFinder(ms) {
   };
   input.addEventListener("input", show); box.append(input, results); show(); return box;
 }
+const bkStageOpen = new Map();
 function renderBracket() {
   document.querySelectorAll("#divSwitch .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.div === BK.div));
   const root = document.getElementById("groups");
@@ -1162,12 +1169,22 @@ function renderBracket() {
       : maxGroups + "개 조 · 각 조 1·2위만 " + target + " 진출 · 3위 승급 없음";
     const h = el("h3", "bk-title", stage + " 조별리그");
     h.append(el("small", "", sub + (first && first.scheduled_at ? " · " + first.scheduled_at.split(" ")[0] : "")));
-    root.append(h);
+    const section = el("details", "bk-stage"), summary = el("summary");
+    const stageKey = BK.div + ":" + stage;
+    const played = ms.filter(m => m.stage === stage && !m.void && m.team1 && m.team2);
+    const finished = played.length > 0 && played.every(m => !!m.winner);
+    section.open = bkStageOpen.has(stageKey) ? bkStageOpen.get(stageKey) : !finished;
+    const toggleLabel = el("span", "note", section.open ? " · 접기" : " · 펼치기");
+    section.addEventListener("toggle", () => { bkStageOpen.set(stageKey, section.open); toggleLabel.textContent = section.open ? " · 접기" : " · 펼치기"; });
+    h.append(toggleLabel);
+    summary.append(h); section.append(summary);
+    if (stage === "32강" && BK.div === "중등부") section.append(el("p", "note", "배정 시드: 64강 조 1위는 1·2시드, 조 2위는 3·4시드. 같은 순위끼리는 시간 점수(패배 시간 합−승리 시간 합)÷실제 경기 수가 높은 팀이 앞번호입니다. 부전승은 시간 계산에서 제외하며 동점은 추첨 순서입니다. 번호가 큰 하위 시드가 진영을 선택합니다(경고에 따른 선택 제한은 유지)."));
+    root.append(section);
     const gwrap = el("div", "groups");
     // 조 편성이 끝나면 실제로 쓰는 조만 (조 수 = 팀 수 ÷ 4 올림)
     const used = new Set(BK.standings.filter(x => x.division === BK.div && x.stage === stage).map(x => x.grp));
     BK_GROUPS[stage].filter(g => !used.size || used.has(g)).forEach(g => gwrap.append(bkGroupCard(ms, stage, g, stage + " " + g + "조")));
-    root.append(gwrap);
+    section.append(gwrap);
   });
   if (!ms.length) return;
 
