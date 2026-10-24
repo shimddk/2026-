@@ -1175,7 +1175,8 @@ function renderBracket() {
     const finished = played.length > 0 && played.every(m => !!m.winner || (m.score1 != null && m.score2 != null && m.score1 !== m.score2));
     section.open = bkStageOpen.has(stageKey) ? bkStageOpen.get(stageKey) : !finished;
     const toggleLabel = el("span", "note", section.open ? " · 접기" : " · 펼치기");
-    section.addEventListener("toggle", () => { bkStageOpen.set(stageKey, section.open); toggleLabel.textContent = section.open ? " · 접기" : " · 펼치기"; });
+    summary.addEventListener("click", () => bkStageOpen.set(stageKey, !section.open));
+    section.addEventListener("toggle", () => { toggleLabel.textContent = section.open ? " · 접기" : " · 펼치기"; });
     h.append(toggleLabel);
     summary.append(h); section.append(summary);
     if (stage === "32강" && BK.div === "중등부") section.append(el("p", "note", "배정 시드: 64강 조 1위는 1·2시드, 조 2위는 3·4시드. 같은 순위끼리는 시간 점수(패배 시간 합−승리 시간 합)÷실제 경기 수가 높은 팀이 앞번호입니다. 부전승은 시간 계산에서 제외하며 동점은 추첨 순서입니다. 번호가 큰 하위 시드가 진영을 선택합니다(경고에 따른 선택 제한은 유지)."));
