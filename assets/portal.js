@@ -2110,7 +2110,7 @@
   const matchPick = ["", ""]; // 다시 불러와도 단계·조 필터 유지
   function renderWithdrawalList(box, schools, reload) {
     const section = el("section", "card withdrawal-register"), list = el("div", "withdrawal-list");
-    section.append(el("h3", "", "확정 기권 명단"), el("p", "note", "기권 학교는 학생 명단이 가려지며, 내년도(2027년) 대회에 참가할 수 없습니다. 기권 예상 학교와는 별개입니다. 명단 등록만으로 경기 결과는 바뀌지 않습니다."));
+    section.append(el("h3", "", "확정 기권 명단"), el("p", "note", "기권 학교는 학생 명단이 가려지며, 내년도(2027년) 대회에 참가할 수 없습니다. 기권 예상 학교와는 별개입니다. 등록하면 이 학교의 남은 경기(아직 결과가 없는 경기)가 모두 자동으로 상대 팀 1:0 부전승이 되고, 학생 대진표에도 바로 반영됩니다. 이미 끝난 경기 결과는 유지됩니다."));
     const current = withdrawnSchools.filter(w => w.division === matchDiv);
     if (!current.length) list.append(el("p", "note", "등록된 기권 학교가 없습니다."));
     current.forEach(w => {
@@ -2129,10 +2129,10 @@
       schools.filter(s => !isSchoolWithdrawn(matchDiv, s)).forEach(s => { const o = el("option", "", s); o.value = s; select.append(o); }); add.type = "submit"; form.append(select, add);
       form.addEventListener("submit", async event => {
         event.preventDefault(); if (!select.value) return;
-        if (!confirm(select.value + "을(를) 기권으로 등록할까요? 학생 명단이 가려지고 2027년 대회 참가 불가로 표시됩니다. 경기 결과는 바뀌지 않습니다.")) return;
+        if (!confirm(select.value + "을(를) 기권으로 등록할까요? 학생 명단이 가려지고 2027년 대회 참가 불가로 표시됩니다.\n남은 경기는 모두 상대 팀 1:0 부전승으로 자동 처리됩니다(끝난 경기는 유지, 처리 전 기록은 DB에 백업).")) return;
         add.disabled = true;
-        if (await save(sb.rpc("set_school_withdrawal", { p_div: matchDiv, p_school: select.value, p_active: true }), "기권 명단에 등록했습니다")) { await refreshWithdrawals(); loadPublicBracket(); renderRecord(); reload(); } else add.disabled = false;
-      }); section.append(form, el("p", "note", "남은 경기 부전승 처리는 아래 ‘조별 기권 처리’에서 진행하세요. 완료된 경기 결과는 유지됩니다."));
+        if (await save(sb.rpc("set_school_withdrawal", { p_div: matchDiv, p_school: select.value, p_active: true }), "기권 등록 · 남은 경기 부전승 처리했습니다")) { await refreshWithdrawals(); loadPublicBracket(); renderRecord(); reload(); } else add.disabled = false;
+      }); section.append(form, el("p", "note", "진행 중인 경기가 있다면 결과를 먼저 입력한 뒤 등록하세요. 다음 단계에서 기권 학교가 자리를 받게 되는 경기도 자동으로 부전승이 됩니다."));
     } box.append(section);
   }
 
@@ -2187,7 +2187,7 @@
       ssw.append(b);
     });
     head.append(ssw);
-    if (isOwner() && (stage === "64강" || stage === "32강")) {
+    if (false) { // 2026-10-24: 확정 기권 등록만으로 남은 경기 자동 부전승(DB private.forfeit_withdrawn) → 별도 '조별 기권 처리' 버튼 숨김
       const withdraw = el("button", "btn ghost small", "조별 기권 처리");
       withdraw.type = "button";
       withdraw.addEventListener("click", () => {
