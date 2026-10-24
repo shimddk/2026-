@@ -3172,11 +3172,11 @@
     const pct = (a, b) => b ? (100 * a / b).toFixed(1) + "%" : "-";
     box.append(el("p", "note", "방문자는 교사 계정을 뺀 하루 방문 브라우저 수입니다. 챗봇 기록은 2026-10-24 밤부터 쌓이며, 같은 학생이 휴대폰·PC를 쓰면 따로 셉니다. '답 찾음' = 공식 FAQ·학교 경기 일정·질문방 답변으로 답한 직접 입력 질문입니다. 디스코드 질문 수는 답변이 달린 질문 기준입니다."));
     const t = el("table", "dtable"), head = el("tr");
-    ["날짜", "방문자", "챗봇 연 사람", "사용률", "직접 질문(사람/건)", "답 찾음", "비슷한 질문만", "못 찾음", "목록·추천 클릭", "디스코드 링크 클릭", "디스코드 질문"].forEach(h => head.append(el("th", "", h)));
+    ["날짜", "방문자", "챗봇 연 사람", "사용률", "말풍선으로 연 사람", "직접 질문(사람/건)", "답 찾음", "비슷한 질문만", "못 찾음", "목록·추천 클릭", "디스코드 링크 클릭", "디스코드 질문"].forEach(h => head.append(el("th", "", h)));
     t.append(head);
     (rows || []).forEach(r => {
       const tr = el("tr"), found = Number(r.faq) + Number(r.school) + Number(r.discord);
-      [r.day, r.visitors, r.openers, pct(r.openers, r.visitors), r.askers + "명 / " + r.asks + "건", found + " (" + pct(found, r.asks) + ")",
+      [r.day, r.visitors, r.openers, pct(r.openers, r.visitors), r.bubble_openers, r.askers + "명 / " + r.asks + "건", found + " (" + pct(found, r.asks) + ")",
        r.suggest, r.escalate, r.list_clicks, r.discord_clicks, r.discord_questions].forEach(v => tr.append(el("td", "", String(v))));
       t.append(tr);
     });
