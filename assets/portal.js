@@ -2750,6 +2750,8 @@
   const COACH_LIMIT = 3, SLOT_LIMIT = 6;
   const dayKind = d => { const w = new Date(d + "T00:00:00+09:00").getDay(); return w === 0 || w === 6 ? "weekend" : "weekday"; };
   const slotTime = (d, s) => COACH_SLOTS[dayKind(d)][s] || "";
+  const coachingTime = r => r.source_time || slotTime(r.session_date, r.slot);
+  const coachingOrder = (a,b) => coachingTime(a).slice(0,5).localeCompare(coachingTime(b).slice(0,5)) || a.school.localeCompare(b.school,"ko");
   const dayLabel = d => d.slice(5).replace("-", "/") + "(" + "일월화수목금토"[new Date(d + "T00:00:00+09:00").getDay()] + ")";
 
   // 학생용 공개 코칭 일정 (신청자 이름·메모 없이, 취소 제외)
@@ -2815,9 +2817,9 @@
         ["시간", "학교", "부문", "코칭 유형", "담당 코치", "상태"].forEach(h => hr.append(el("th", "", h)));
         const thead = el("thead"); thead.append(hr);
         const tb = el("tbody");
-        byDate[d].forEach(r => {
+        byDate[d].sort(coachingOrder).forEach(r => {
           const tr = el("tr");
-          tr.append(el("td", "", r.slot + "타임 " + slotTime(d, r.slot)), el("td", "", r.school), el("td", "", r.division || ""),
+          tr.append(el("td", "", (r.slot ? r.slot + "타임 " : "조정 시간 ") + coachingTime(r)), el("td", "", r.school), el("td", "", r.division || ""),
             el("td", "", r.coaching_type), el("td", "", r.coach ? r.coach + " 코치님" : "배정 중"), el("td", "", r.status === "신청" ? "대기" : r.status));
           tb.append(tr);
         });
@@ -2868,11 +2870,11 @@
     rows.forEach(r => { (byDate[r.session_date] = byDate[r.session_date] || []).push(r); });
     if (!rows.length) box.append(el("p", "note", "아직 기록이 없습니다."));
     Object.keys(byDate).sort().forEach(d => {
-      const list = byDate[d];
+      const list = byDate[d].sort(coachingOrder);
       const sec = el("div", "coach-day");
       sec.append(el("h3", "", dayLabel(d) + " · " + (dayKind(d) === "weekend" ? "주말 6타임" : "평일 4타임") + " · " + list.filter(r => r.status !== "취소").length + "건"));
       const perSlot = {};
-      list.filter(r => r.status !== "취소").forEach(r => { perSlot[r.slot] = (perSlot[r.slot] || 0) + 1; });
+      list.filter(r => r.status !== "취소").forEach(r => { const key = coachingTime(r); perSlot[key] = (perSlot[key] || 0) + 1; });
       const scroller = el("div", "gscroll");
       const t = el("table", "dtable");
       const hr = el("tr");
@@ -2882,10 +2884,10 @@
       list.forEach(r => {
         const tr = el("tr", r.status === "취소" ? "coach-cancel" : "");
         const n = used[r.school] || 0;
-        const full = perSlot[r.slot] > SLOT_LIMIT;
+        const full = perSlot[coachingTime(r)] > SLOT_LIMIT;
         tr.append(
-          el("td", full ? "dupe" : "", r.slot + "타임" + (full ? " (6팀 초과)" : "")),
-          el("td", "", slotTime(d, r.slot)),
+          el("td", full ? "dupe" : "", (r.slot ? r.slot + "타임" : "조정 시간") + (full ? " (6팀 초과)" : "")),
+          el("td", "", coachingTime(r)),
           el("td", "", r.school), el("td", "", r.division || ""),
           el("td", "", r.coaching_type)
         );
