@@ -1012,6 +1012,21 @@ window.applySchedule = rows => { if (rows && rows.length) renderTimeline(rows); 
 // 교사용 화면에서 입력한 대진·결과(공개 함수)를 받아 조별 순위표·본선 브래킷·4강 리그·결선을 그린다
 // 중등부: 64강 조별(16조) → 32강 조별(8조) / 고등부: 32강 조별(8조) → 본선 장로·바론 더블 엘리미네이션 → 4강 리그 → 11/8 결선
 const BK = { matches: [], standings: [], div: "중등부" };
+const bkGameNumbers = new Map();
+let bkTeacherReferees = null;
+function bkPaintMatchInfo(node) {
+  const key=node.dataset.gameKey;
+  node.querySelector(".bk-game-number").textContent=bkGameNumbers.get(key)||"";
+  const ref=node.querySelector(".bk-referee");
+  ref.hidden=bkTeacherReferees===null;
+  ref.textContent=bkTeacherReferees===null?"":"담당 심판: "+(bkTeacherReferees.get(key)||"배정 전");
+}
+function bkMatchInfo(m) {
+  const node=el("div","bk-match-info");node.dataset.gameKey=m.division+"|"+m.code;
+  node.append(el("strong","bk-game-number"),el("small","bk-referee"));bkPaintMatchInfo(node);return node;
+}
+window.setMatchGameNumbers=rows=>{bkGameNumbers.clear();(rows||[]).forEach(m=>bkGameNumbers.set(m.division+"|"+m.code,m.game_label));document.querySelectorAll(".bk-match-info").forEach(bkPaintMatchInfo);};
+window.setTeacherMatchReferees=rows=>{bkTeacherReferees=rows===null?null:new Map(rows.map(m=>[m.division+"|"+m.code,m.referee]));document.querySelectorAll(".bk-match-info").forEach(bkPaintMatchInfo);};
 const BK_NAME = { E: "장로", B: "바론" };
 const BK_GROUPS = { "64강": "ABCDEFGHIJKLMNOP".split(""), "32강": "ABCDEFGH".split("") };
 const BK_STAGES = { 중등부: ["64강", "32강"], 고등부: ["32강"] };
@@ -1053,6 +1068,7 @@ function bkTeamNode(m, n) { return bkSchoolNode(m["team" + n], bkTeam(m, n)); }
 const bkSchool = s => s ? s + (BK_REGIONS[s] ? " (" + BK_REGIONS[s] + ")" : "") : "";
 function bkBox(m) {
   const box = el("div", "mbox");
+  box.append(bkMatchInfo(m));
   box.append(el("div", "mh", [(BK_NAME[m.code.split("-")[0]] ? BK_NAME[m.code.split("-")[0]] + " · " : "") + bkShort(m.code), m.scheduled_at].filter(Boolean).join(" · ")));
   [1, 2].forEach(n => {
     const t = m["team" + n], s = m["score" + n], src = m["src" + n];
@@ -1128,6 +1144,7 @@ function bkGroupCard(ms, stage, g, title) {
     if (["64강", "32강", "4강 리그"].includes(stage)) d.append(el("p", "group-times", "1·2경기 동시 시작 → 1시간 뒤 3·4경기 → 1시간 뒤 5·6경기"));
     games.forEach(m => {
       const line = el("div", "gm");
+      line.append(bkMatchInfo(m));
       const names = el("span", "gm-teams"); names.append(bkTeamNode(m, 1), document.createTextNode(" vs "), bkTeamNode(m, 2));
       line.append(el("span", "gm-time", m.scheduled_at ? m.scheduled_at.split(" ").pop() : "—"), names, el("b", "", m.score1 != null && m.score2 != null ? m.score1 + " : " + m.score2 : ""));
       if ((m.round_label || "").includes(" · 부전승")) line.append(el("b", "", "부전승"));
@@ -1140,13 +1157,18 @@ function bkGroupCard(ms, stage, g, title) {
 function bkSchoolFinder(ms) {
   const box = el("section", "card school-finder"), input = el("input"), results = el("div", "school-results");
   box.append(el("h3", "", "🔎 우리 학교 경기 찾기"));
-  input.type = "search"; input.placeholder = "학교 이름을 입력하세요"; input.setAttribute("aria-label", "대진표 학교 검색");
+  input.type = "search"; input.placeholder = "학교 이름 또는 게임 5를 입력하세요"; input.setAttribute("aria-label", "대진표 학교·경기 번호 검색");
   results.setAttribute("aria-live", "polite");
   const schools = [...new Set(ms.flatMap(m => [m.team1, m.team2]).filter(Boolean))].sort((a,b) => a.localeCompare(b,"ko"));
   const normalize = s => String(s || "").replace(/\s/g, "").toLowerCase();
   const show = () => {
     results.replaceChildren();
     const q = normalize(input.value);
+    if(/^(예선)?게임\d+$/.test(q)){
+      const games=BK.matches.filter(m=>normalize(bkGameNumbers.get(m.division+"|"+m.code))===q && !m.void);
+      games.forEach(m=>{const card=el("article");card.append(bkMatchInfo(m),el("h4","",m.division+" · "+m.stage),el("p","",(m.scheduled_at||"시간 미정")+" · "+(m.team1||"진출팀 미정")+" vs "+(m.team2||"진출팀 미정")));results.append(card);});
+      if(!games.length)results.append(el("p","note","해당 경기 번호가 없습니다."));return;
+    }
     if (!q) { results.append(el("p", "note", "학교를 검색하면 상대 학교·경기 시간·결과를 바로 볼 수 있습니다.")); return; }
     const found = schools.filter(s => normalize(s).includes(q));
     if (!found.length) { results.append(el("p", "note", "검색된 학교가 없습니다. 선택한 부문과 학교 이름을 확인해 주세요. 대진 공개 전에는 학교가 표시되지 않습니다.")); return; }
@@ -1154,6 +1176,7 @@ function bkSchoolFinder(ms) {
       const card = el("article"), schoolTitle = el("h4"); schoolTitle.append(bkSchoolNode(school), document.createTextNode(" · " + BK.div)); card.append(schoolTitle);
       ms.filter(m => !m.void && (m.team1 === school || m.team2 === school)).forEach(m => {
         const n = m.team1 === school ? 2 : 1, row = el("div", "school-game");
+        row.append(bkMatchInfo(m));
         const score = m.score1 != null && m.score2 != null ? " · " + (m.winner === school ? "승" : m.winner ? "패" : "진행 중") + " (" + m.score1 + ":" + m.score2 + ")" : "";
         const opponent = el("span"); opponent.append(document.createTextNode("vs "), bkSchoolNode(m["team"+n], "상대 미정"), document.createTextNode(score));
         row.append(el("time", "", m.scheduled_at || "시간 미정"), opponent, el("small", "note", m.stage + (m.grp ? " · " + (m.stage === "본선" ? (BK_NAME[m.grp] || m.grp) + " 그룹" : m.grp + "조") : "") + ((m.round_label || "").includes("부전승") ? " · 부전승" : "")));
@@ -1172,6 +1195,7 @@ function renderBracket() {
   const ms = BK.matches.filter(m => m.division === BK.div);
   const by = code => ms.find(m => m.code === code);
   root.replaceChildren();
+  root.append(el("p","note","본선부터 결선까지 중·고등부 공통 경기 번호를 사용합니다. 예: 게임 5. 조별리그는 예선 게임 번호로 구분합니다."));
   root.append(bkSchoolFinder(ms));
 
   // 1) 조별리그 (중등 64강 → 32강, 고등 32강)

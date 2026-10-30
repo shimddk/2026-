@@ -55,6 +55,21 @@
   }
 
   /* ---------- 학생용 공개 대진표 ---------- */
+  let gameNumbers = new Map();
+  const gameLabel = m => gameNumbers.get(m.division + "|" + m.code) || m.code || "";
+  async function loadGameNumbers() {
+    const {data,error}=await sb.rpc("public_match_game_numbers");
+    if(!error){gameNumbers=new Map((data||[]).map(m=>[m.division+"|"+m.code,m.game_label]));window.setMatchGameNumbers?.(data||[]);}
+  }
+  loadGameNumbers();
+  let refereeGeneration=0;
+  async function refreshBracketReferees() {
+    const generation=++refereeGeneration, user=ME.id;
+    window.setTeacherMatchReferees?.(null);
+    if(ME.status!=="approved" || ME.external || !ME.staffId) return;
+    const {data,error}=await sb.rpc("teacher_match_referees");
+    if(!error && generation===refereeGeneration && user===ME.id && ME.status==="approved" && !ME.external) window.setTeacherMatchReferees?.(data||[]);
+  }
   // 공개 시각(app_settings bracket_publish_at, 10/20 19:00) 전에는 학생에게 학교 이름이 안 옴 → 페이지를 열어 둔 채 그 시각이 되면 다시 불러옴
   let bracketTimer = null;
   let withdrawnSchools = [];
@@ -601,20 +616,26 @@
     return flag || location.hash === "#teacher" || location.hash.startsWith("#t-");
   }
 
+  let authRefreshGeneration=0;
   async function refresh() {
+    const generation=++authRefreshGeneration;
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { Object.assign(ME, { id: null, status: null, role: null, name: null, email: null, staffId: null, paymentAllowed: false }); teacherAI?.setIdentity(ME); renderAcct(); removeTeacher(); renderRecord(); return; }
+    if(generation!==authRefreshGeneration)return;
+    if (!session) { Object.assign(ME, { id: null, status: null, role: null, name: null, email: null, staffId: null, paymentAllowed: false }); refreshBracketReferees(); teacherAI?.setIdentity(ME); renderAcct(); removeTeacher(); renderRecord(); return; }
     ME.email = session.user.email;
     ME.id = session.user.id;
     const { data, error } = await sb.rpc("touch_login");
+    if(generation!==authRefreshGeneration)return;
     const row = !error && data && data[0];
     ME.status = row ? row.status : "pending";
     ME.role = row ? row.role : null;
     ME.name = row && row.staff_name ? row.staff_name : (session.user.user_metadata.full_name || session.user.email);
     ME.external = !!(row && row.external);
     ME.staffId = row && row.staff_id ? Number(row.staff_id) : null; // 심판 일정에서 본인 칸 판별
+    refreshBracketReferees();
     ME.paymentAllowed = false;
     if (ME.status === "approved") { const { data: payment } = await sb.rpc("payment_state"); ME.paymentAllowed = !!payment?.allowed; }
+    if(generation!==authRefreshGeneration)return;
     teacherAI?.setIdentity(ME);
     renderAcct();
     renderRecord();
@@ -2321,6 +2342,7 @@
       cellClass: r => (!r["team" + n] ? "ph" : r.winner ? (r.winner === r["team" + n] ? "win" : "lose") : "")
     });
     const columns = [
+      { key: "_game", label: "경기 번호", readonly: true, get: gameLabel },
       { key: "_stage", label: "단계", readonly: true, get: r => r.stage },
       { key: "_round", label: "경기", readonly: true, get: label },
       { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id || !isEditor(), get: r => r.session_id ? sessText(sessById[r.session_id], r.time_offset_min) : r.scheduled_at },
@@ -2370,6 +2392,9 @@
   }
 
   let refRotaView = "actual";
+  let refRotaDate = "", refRotaManageOpen = false, refRotaPicked;
+  const refRotaDrafts = new Map();
+  window.addEventListener("beforeunload",event=>{if(refRotaDrafts.size){event.preventDefault();event.returnValue="";}});
   function renderConfirmedRefRota(box, state, reload) {
     const people = state.people || [], sessions = state.sessions || [], entries = state.entries || [];
     const name = id => people.find(p => p.id === id)?.name || "미연결";
@@ -2381,7 +2406,7 @@
       node.style.setProperty("--ref-color", color);
       node.style.setProperty("--ref-ink", .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2] > .179 ? "#000000" : "#ffffff");
     };
-    let picked = people.some(p => p.id === ME.staffId) ? ME.staffId : null;
+    let picked = refRotaPicked === undefined ? (people.some(p => p.id === ME.staffId) ? ME.staffId : null) : refRotaPicked;
     const section = el("div", "ref-confirmed"), views = el("div", "ref-view-tabs"), chooser = el("div", "ref-person-list"), mine = el("div"), overview = el("div", "gscroll ref-rota-overview"), manageHolder = el("div");
     const modeNote = el("p", "note");
     section.append(views, el("h3", "bk-sub", "확정 심판 배정표"), modeNote, chooser, mine, overview, manageHolder);
@@ -2396,13 +2421,14 @@
         return;
       }
       const list = el("ul", "ref-game-list");
-      games.forEach(m => list.append(el("li", "", (m.time || "시간 미정") + " · " + (m.grp ? m.grp + " · " : "") + m.code + " · " + (m.team1 || "진출팀 미정") + " vs " + (m.team2 || "진출팀 미정"))));
+      games.forEach(m => list.append(el("li", "", gameLabel(m) + " · " + (m.time || "시간 미정") + " · " + (m.grp ? m.grp + " · " : "") + m.code + " · " + (m.team1 || "진출팀 미정") + " vs " + (m.team2 || "진출팀 미정"))));
       holder.append(list);
     }
     const roleClass = role => role === "총괄" ? "ref-role-lead" : role === "기록" ? "ref-role-record" : "ref-role-judge";
     const roleBadge = role => el("span", "ref-role-badge " + roleClass(role), role);
     let guidance;
     function draw() {
+      refRotaPicked=picked;
       const paper = refRotaView === "paper", shown = paper ? (state.paper_entries || []) : entries;
       views.replaceChildren();
       [["actual", "실제 배정"], ["paper", "서류상 배정"]].forEach(([key,title]) => {
@@ -2448,7 +2474,7 @@
           const td=el("td","ref-assignment-cell"),assigned=seats[i]||[];
           assigned.forEach(e=>{const b=el("button","ref-duty ref-rota-person"+(picked===e.staff_id?" ref-picked":""));b.type="button";personColor(b,e.staff_id);b.setAttribute("aria-pressed",String(picked===e.staff_id));
             b.append(roleBadge(e.role),el("strong","ref-person-tag",name(e.staff_id)));
-            if(!paper){const detail=el("small","ref-duty-description");String(e.target||"").split(" · ").forEach((text,i)=>{if(i)detail.append(el("br"));detail.append(document.createTextNode(text));});b.append(detail);}
+            if(!paper){const detail=el("small","ref-duty-description");String(e.target||"").split(" · ").forEach((text,i)=>{if(i)detail.append(el("br"));detail.append(document.createTextNode(text));});const ids=gamesFor(e).filter(m=>!["64강","32강"].includes(m.stage)).map(gameLabel);if(ids.length)detail.append(el("br"),document.createTextNode(ids.join(" · ")));b.append(detail);}
             b.addEventListener("click",()=>{picked=e.staff_id;draw();mine.scrollIntoView({behavior:"smooth",block:"start"});});td.append(b);
           });if(!assigned.length)td.append(el("span","note","—"));row.append(td);
         } body.append(row);
@@ -2472,9 +2498,38 @@
     function drawManager(paper) {
     manageHolder.replaceChildren();if (!state.can_manage) return;
     const manage = el("details", "ref-rota-manage"); manage.append(el("summary", "", (paper?"서류상":"실제")+" 배정 관리"), el("p", "note", paper?"참여 여부·담당자·역할만 저장합니다. 실제 배정과 세부 경기는 바뀌지 않습니다.":"실제 운영 담당자·역할·세부 경기를 저장합니다. 서류상 배정은 바뀌지 않습니다."));
+    manage.open=refRotaManageOpen;
+    manage.addEventListener("toggle",()=>{if(manage.isConnected)refRotaManageOpen=manage.open;});
+    const dates=[...new Set(sessions.map(s=>s.day))], dateTabs=el("div","ref-date-tabs"), savebar=el("div","ref-batch-bar"), batch=el("button","btn small","변경 사항 일괄 저장"), dirtyNote=el("span","note");
+    batch.type="button";dirtyNote.setAttribute("aria-live","polite");savebar.append(dirtyNote,batch);manage.append(dateTabs,savebar);
+    if(!dates.includes(refRotaDate))refRotaDate=dates.find(d=>d>=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Seoul"}))||dates.at(-1)||"";
+    const panels=[], readers=[];
+    const mode=paper?"paper":"actual", draftKey=e=>mode+"|"+e.key;
+    const updateDirty=()=>{const count=[...refRotaDrafts.values()].filter(p=>p.view===mode).length;dirtyNote.textContent="미저장 "+count+"건";batch.disabled=!count;};
+    const showDate=()=>{panels.forEach(p=>{p.node.hidden=p.day!==refRotaDate;});[...dateTabs.children].forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.day===refRotaDate)));};
+    dates.forEach(day=>{const b=el("button","btn ghost small",day.slice(5).replace("-","/"));b.type="button";b.dataset.day=day;b.addEventListener("click",()=>{refRotaDate=day;showDate();});dateTabs.append(b);});
+    async function persist(changes) {
+      if(!changes.length)return;
+      const y=window.scrollY,x=window.scrollX;
+      manage.inert=true;batch.disabled=true;
+      let data,error;
+      try { ({data,error}=await sb.rpc("set_ref_rota_assignments",{p_changes:changes,p_revision:state.revision})); }
+      catch { error={message:"연결을 확인한 뒤 다시 저장하세요"}; }
+      manage.inert=false;
+      if(error){toast("저장 실패: "+error.message+" · 입력 내용은 유지됩니다.",true);updateDirty();return;}
+      state.revision=data;
+      changes.forEach(p=>{const e=entries.find(e=>e.key===p.key);if(p.view==="paper")Object.assign(e,{paper_staff_id:p.staff,paper_active:p.active,paper_role:p.role});else Object.assign(e,{staff_id:p.staff,active:p.active,role:p.role,match_codes:p.codes,target:p.target});refRotaDrafts.delete(p.view+"|"+p.key);});
+      state.paper_entries=entries.map(e=>({key:e.key,session:e.session,staff_id:e.paper_staff_id,active:e.paper_active,role:e.paper_role}));
+      refRotaManageOpen=manage.open;draw();window.scrollTo({left:x,top:y,behavior:"instant"});
+      window.requestAnimationFrame?.(()=>window.scrollTo({left:x,top:y,behavior:"instant"}));
+      refreshBracketReferees();toast(changes.length+"건을 저장했습니다");
+    }
+    batch.addEventListener("click",async()=>{const changes=[];for(const r of readers){if(refRotaDrafts.has(r.key)){const p=r.read();if(!p)return;changes.push(p);}}await persist(changes);});
     sessions.forEach(s => {
-      const group = el("details"); group.append(el("summary", "", label(s)));
+      const group = el("section","ref-manage-session"); group.append(el("h4", "", label(s)));panels.push({day:s.day,node:group});
       entries.filter(e => e.session === s.key).forEach(e => {
+        const draft=refRotaDrafts.get(draftKey(e));
+        if(draft)e=paper?{...e,paper_staff_id:draft.staff,paper_active:draft.active,paper_role:draft.role}:{...e,staff_id:draft.staff,active:draft.active,role:draft.role,match_codes:draft.codes,target:draft.target};
         const form = el("form", "ref-edit-entry");
         const source = el("p", "note", "원본 " + e.key + " · " + e.source_text + (e.source_strike ? " · 서류용 취소선" : "") + (e.exception ? " · 실제 배정 예외 적용" : ""));
         const teacherLabel = el("label", "", "담당자"), teacher = el("select");
@@ -2482,13 +2537,14 @@
         const roleLabel=el("label","","역할"),role=el("select");["총괄","심판","기록"].forEach(v=>{const o=el("option","",v);o.value=v;role.append(o);});role.value=(paper?e.paper_role:e.role)==="예비"?"심판":(paper?e.paper_role:e.role);role.className=roleClass(role.value);role.addEventListener("change",()=>{role.className=roleClass(role.value);});roleLabel.append(role);
         const activeLabel = el("label", "ref-check", ""), active = el("input"); active.type = "checkbox"; active.checked = paper?e.paper_active:e.active; activeLabel.append(active, document.createTextNode(paper?"서류상 배정":"실제 배정"));
         const targetLabel = el("label", "", "담당 설명"), target = el("input"); target.type = "text"; target.maxLength = 100; target.value = e.target; targetLabel.append(target);
-        const gameDetails = el("details", "ref-edit-games"); gameDetails.append(el("summary", "", "세부 경기 선택"));
+        const gameDetails = el("details", "ref-edit-games"), gameSummary=el("summary", "", "세부 경기 선택"); gameDetails.append(gameSummary);
         const checks = [];
         const sessionGames = (state.matches || []).filter(m => m.session_id === s.session_id && m.division === s.division);
         sessionGames.forEach(m => {
           const l = el("label", "ref-check"), c = el("input"); c.type = "checkbox"; c.value = m.code; c.checked = (e.match_codes || []).includes(m.code); checks.push(c);
-          l.append(c, document.createTextNode((m.time || "") + " · " + m.code + " · " + (m.team1 || "미정") + " vs " + (m.team2 || "미정"))); gameDetails.append(l);
+          l.append(c, document.createTextNode(gameLabel(m) + " · " + (m.time || "") + " · " + m.code + " · " + (m.team1 || "미정") + " vs " + (m.team2 || "미정"))); gameDetails.append(l);
         });
+        const updateGameSummary=()=>{const selected=new Set(checks.filter(c=>c.checked).map(c=>c.value));const titles=sessionGames.filter(m=>selected.has(m.code)).map(gameLabel);gameSummary.textContent="세부 경기 선택"+(titles.length?" · "+titles.join(" / "):" · 미지정");};updateGameSummary();
         const groupGames = sessionGames.filter(m => ["64강", "32강"].includes(m.stage) || /^(64|32)-[A-P]-\d+$/.test(m.code || ""));
         const groupNames = [...new Set(groupGames.map(m => m.grp).filter(Boolean))].sort();
         const groupLabel = el("label", "", "담당 조"), groupSelect = el("select", "ref-group-select");
@@ -2523,18 +2579,22 @@
         ownGroup.addEventListener("click", () => { if (homeGroup) syncGroup(homeGroup); }); updateSchoolHint();
         const submit = el("button", "btn small", "이 배정 저장"); submit.type = "submit";
         form.append(source,teacherLabel,roleLabel,activeLabel);if(!paper){if(groupNames.length)form.append(groupLabel,schoolHint,ownGroup,groupNote);form.append(targetLabel,gameDetails);}form.append(submit);
-        form.addEventListener("submit", async event => {
-          event.preventDefault();
+        const readPatch = (validate=true) => {
           if (!paper && groupSelect.value) syncGroup(groupSelect.value);
-          if (!paper && groupNames.length && targetGroup() && !groupNames.includes(targetGroup())) { toast("이 회차의 조를 선택하세요. 다른 시간의 조는 해당 시간 배정에서 수정하세요.", true); return; }
-          submit.disabled = true;
+          if (validate && !paper && groupNames.length && targetGroup() && !groupNames.includes(targetGroup())) { toast("이 회차의 조를 선택하세요. 다른 시간의 조는 해당 시간 배정에서 수정하세요.", true); return null; }
           const codes = paper?[]:checks.filter(c => c.checked).map(c => c.value);
           const targetText = codes.length ? target.value.replace(" · 세부 경기 지정 전", "") : target.value;
-          const ok = await save(sb.rpc("set_ref_rota_assignment", { p_key: e.key, p_staff: Number(teacher.value), p_active: active.checked, p_codes: codes, p_target: paper?"":targetText, p_role:role.value,p_view:paper?"paper":"actual",p_revision: state.revision }), "확정 배정을 저장했습니다");
-          submit.disabled = false; if (ok) reload();
+          return {key:e.key,staff:Number(teacher.value),active:active.checked,codes,target:paper?"":targetText,role:role.value,view:mode};
+        };
+        const remember=()=>{refRotaDrafts.set(draftKey(e),readPatch(false));updateGameSummary();updateDirty();};
+        form.addEventListener("change",remember);form.addEventListener("input",remember);
+        ownGroup.addEventListener("click",remember);
+        readers.push({key:draftKey(e),read:readPatch});
+        form.addEventListener("submit", async event => {
+          event.preventDefault();const patch=readPatch();if(patch)await persist([patch]);
         }); group.append(form);
       }); manage.append(group);
-    }); manageHolder.append(manage);
+    });showDate();updateDirty();manageHolder.append(manage);
     }
     draw();
   }
@@ -3542,7 +3602,9 @@
   if (!LOGIN_READY) return;
   renderAcct();
   sb.auth.onAuthStateChange((event) => {
+    if(event==="SIGNED_OUT"){authRefreshGeneration++;refereeGeneration++;refRotaDrafts.clear();window.setTeacherMatchReferees?.(null);}
     if (event === "SIGNED_IN" || event === "SIGNED_OUT") setTimeout(refresh, 0);
   });
+  setInterval(()=>{if(!document.hidden && ME.status==="approved" && !ME.external && ME.staffId)refreshBracketReferees();},30000);
   refresh();
 })();

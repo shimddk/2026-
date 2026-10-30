@@ -421,6 +421,16 @@ button.ref-duty{cursor:pointer}
 .ref-rota-manage,.ref-availability{padding:16px;border:1px solid var(--line);border-radius:12px;margin:20px 0}
 .ref-rota-manage summary,.ref-availability>summary{cursor:pointer;font-weight:700;line-height:1.7}
 .ref-rota-manage>details{margin-top:16px}
+.ref-date-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.ref-date-tabs [aria-pressed="true"]{background:var(--text);color:var(--card);border-color:var(--text)}
+.ref-batch-bar{position:sticky;top:8px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+.ref-manage-session{margin-top:20px}
+.ref-manage-session[hidden]{display:none}
+.bk-match-info{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:6px 10px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.bk-game-number{color:var(--text);font-weight:800}
+.bk-referee{color:var(--text);font-size:12px}
+.bk-referee[hidden]{display:none}
+.gm>.bk-match-info,.school-game>.bk-match-info{grid-column:1/-1;width:100%;box-sizing:border-box;padding:4px 0}
 .ref-edit-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
 .ref-edit-entry>p,.ref-edit-games{grid-column:1/-1}
 .ref-edit-entry label:not(.ref-check){display:flex;flex-direction:column;gap:6px;min-width:0}
