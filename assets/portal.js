@@ -408,6 +408,7 @@
         if(r.id_hidden)item.append(el("span","rec-hidden","닉네임 변경 중"));
         else if(r.lol_id){const link=el("a","rec-id",r.lol_id);link.href=fowOne(r.lol_id);link.target="_blank";link.rel="noopener noreferrer";item.append(link);}else item.append(el("span","note","아이디 미등록"));list.append(item);});body.append(list);
     }
+    if(!isSchoolWithdrawn(division,school)){const champStats=el("div");body.append(champStats);window.ChampionRecords?.showSchoolStats(champStats,division,school);}
     const history=el("section","bracket-school-history");window.fillBracketSchoolHistory?.(history,division,school);body.append(history,more);window.ChampionRecords?.showPublic(history,division,school);
   };
 

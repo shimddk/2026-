@@ -451,6 +451,14 @@ button.ref-duty{cursor:pointer}
 .champ-lineup li{display:flex;align-items:center;gap:5px;font-size:12px}
 .champ-lineup img{border-radius:5px;flex-shrink:0}
 .champ-credit{font-size:11px;color:var(--muted);line-height:1.6}
+/* 2026-10-30 챔피언 사용 통계(결과 캡처 AI 판독, assets/champion-stats.json) */
+.champ-stats{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}
+.champ-stats li{display:grid;grid-template-columns:20px 32px minmax(0,1fr) auto;align-items:center;gap:8px;font-size:14px}
+.champ-stats .rank{color:var(--muted);font-weight:700;text-align:right}
+.champ-stats img{border-radius:6px}
+.champ-stats .cnt{color:var(--muted);font-size:12px;white-space:nowrap}
+.champ-top-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.champ-top-grid h4{margin:0 0 4px}
 .discord-inbox{padding:14px;margin:18px 0;border:1px solid var(--line);border-radius:12px;background:var(--card)}
 .discord-inbox>summary{font-weight:800;cursor:pointer;line-height:1.7}
 .discord-inbox-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}

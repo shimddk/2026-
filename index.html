@@ -1212,6 +1212,8 @@ function renderBracket() {
   root.replaceChildren();
   root.append(el("p","note","본선부터 결선까지 중·고등부 공통 경기 번호를 사용합니다. 예: 게임 5. 조별리그는 예선 게임 번호로 구분합니다."));
   root.append(bkSchoolFinder(ms));
+  // 2026-10-30 본선 진출 팀 인기 챔피언 TOP 10(결과 캡처 AI 판독 통계 파일)
+  const champTop = el("div"); root.append(champTop); window.ChampionRecords?.renderTop(champTop);
 
   // 1) 조별리그 (중등 64강 → 32강, 고등 32강)
   BK_STAGES[BK.div].forEach(stage => {

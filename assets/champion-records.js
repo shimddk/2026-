@@ -97,5 +97,25 @@
       draft.addEventListener("click",()=>save("draft"));publish.addEventListener("click",()=>save("publish"));unpublish.addEventListener("click",()=>save("unpublish"));
     }catch(e){status.textContent=e.message||"불러오지 못했습니다";}
   }
-  window.ChampionRecords={init(client,canEdit){sb=client;allowed=canEdit;},open,showPublic,validateFile,close(){activeDialog?.close();}};
+  // 2026-10-30 챔피언 사용 통계(본선 진출 32개 학교, 결과 캡처 AI 판독 결과를 모은 공개 파일 — 학교 이름·챔피언 번호·횟수만)
+  let statsPromise=null;
+  const stats=()=>statsPromise ||= fetch("assets/champion-stats.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw Error("no stats");return r.json();}).catch(e=>{statsPromise=null;throw e;});
+  function statList(rows,all,limit){const list=el("ol","champ-stats");rows.slice(0,limit).forEach(([id,n,w],i)=>{const c=all.find(x=>x.id===id),item=el("li");
+    item.append(el("span","rank",String(i+1)),c?icon(c):el("span"),el("span","",c?c.name:"챔피언 "+id),el("span","cnt",n+"회 · 승률 "+Math.round(w/n*100)+"%"));list.append(item);});return list;}
+  async function showSchoolStats(holder,division,school){
+    try{const [s,c]=await Promise.all([stats(),catalog()]),x=s.schools?.[school];if(!x||!x.picks.length)return;
+      const box=el("section","champ-stats-box");box.append(el("h3","","많이 쓴 챔피언 TOP 5"),statList(x.picks,c.champions,5),
+        el("p","note","예선 "+x.games+"경기 결과 캡처를 AI로 판독한 기준입니다. 오차가 있을 수 있어요."+(x.pending?" (확인하지 못한 "+x.pending+"칸 제외)":"")));holder.append(box);
+    }catch{/* 통계 파일이 없으면 표시하지 않음 */}
+  }
+  async function renderTop(holder){
+    try{const [s,c]=await Promise.all([stats(),catalog()]);if(!s.top)return;
+      const card=el("section","card champ-top"),grid=el("div","champ-top-grid");
+      card.append(el("h3","","📊 본선 진출 팀 인기 챔피언 TOP 10"));
+      ["중등부","고등부"].forEach(d=>{const col=el("div");col.append(el("h4","",d),statList(s.top[d]||[],c.champions,10));grid.append(col);});
+      card.append(grid,el("p","note","본선 진출 32개 학교가 예선에서 고른 챔피언입니다(결과 캡처 AI 판독, 오차 가능). 학교 이름을 누르면 그 학교가 많이 쓴 챔피언 TOP 5를 볼 수 있어요. 갱신: "+new Date(s.updated).toLocaleString("ko-KR",{timeZone:"Asia/Seoul",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})),el("p","champ-credit",legal));
+      holder.replaceChildren(card);
+    }catch{holder.replaceChildren();}
+  }
+  window.ChampionRecords={init(client,canEdit){sb=client;allowed=canEdit;},open,showPublic,showSchoolStats,renderTop,validateFile,close(){activeDialog?.close();}};
 })();
