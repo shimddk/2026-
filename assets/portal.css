@@ -495,3 +495,6 @@ button.ref-duty{cursor:pointer}
 .rec-withdrawn-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;color:var(--t-red,#c62828);font-size:18px;background:color-mix(in srgb,var(--card) 65%,transparent)}
 .withdrawal-list-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0}
 .withdrawal-register{margin:16px 0}
+.champ-top-tabs{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.champ-top-tabs button{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;font-size:14px;cursor:pointer}
+.champ-top-tabs button[aria-pressed="true"]{background:var(--neon);border-color:var(--neon);color:var(--on-accent,#fff);font-weight:700}

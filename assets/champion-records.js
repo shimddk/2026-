@@ -97,7 +97,7 @@
       draft.addEventListener("click",()=>save("draft"));publish.addEventListener("click",()=>save("publish"));unpublish.addEventListener("click",()=>save("unpublish"));
     }catch(e){status.textContent=e.message||"불러오지 못했습니다";}
   }
-  // 2026-10-30 챔피언 사용 통계(본선 진출 32개 학교, 결과 캡처 AI 판독 결과를 모은 공개 파일 — 학교 이름·챔피언 번호·횟수만)
+  // 2026-10-30 챔피언 사용 통계(10/31부터 참가 학교 전체, 대진표 TOP 10은 본선 진출 팀/대회 전체 선택, 결과 캡처 AI 판독 결과를 모은 공개 파일 — 학교 이름·챔피언 번호·횟수만)
   let statsPromise=null;
   const stats=()=>statsPromise ||= fetch("assets/champion-stats.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw Error("no stats");return r.json();}).catch(e=>{statsPromise=null;throw e;});
   function statList(rows,all,limit){const list=el("ol","champ-stats");rows.slice(0,limit).forEach(([id,n,w],i)=>{const c=all.find(x=>x.id===id),item=el("li");
@@ -105,19 +105,24 @@
   async function showSchoolStats(holder,division,school){
     try{const [s,c]=await Promise.all([stats(),catalog()]),x=s.schools?.[school];if(!x||!x.picks.length)return;
       const box=el("section","champ-stats-box");box.append(el("h3","","많이 쓴 챔피언 TOP 5"),statList(x.picks,c.champions,5),
-        el("p","note","예선 "+x.games+"경기 결과 캡처를 AI로 판독한 기준입니다. 오차가 있을 수 있어요."+(x.pending?" (확인하지 못한 "+x.pending+"칸 제외)":"")));holder.append(box);
+        el("p","note","예선 "+x.games+"경기의 결과 캡처를 AI로 판독한 기준입니다. 오차가 있을 수 있어요."+(x.pending?" (확인하지 못한 "+x.pending+"칸 제외)":"")));holder.append(box);
     }catch{/* 통계 파일이 없으면 표시하지 않음 */}
   }
   async function renderTop(holder){
     try{const [s,c]=await Promise.all([stats(),catalog()]);if(!s.top)return;
       const card=el("section","card champ-top"),grid=el("div","champ-top-grid");
-      card.append(el("h3","","📊 본선 진출 팀 인기 챔피언 TOP 10"));
-      ["중등부","고등부"].forEach(d=>{const col=el("div");col.append(el("h4","",d),statList(s.top[d]||[],c.champions,10));grid.append(col);});
-      card.append(grid,el("p","note","본선 진출 32개 학교가 예선에서 고른 챔피언입니다(결과 캡처 AI 판독, 오차 가능). 학교 이름을 누르면 그 학교가 많이 쓴 챔피언 TOP 5를 볼 수 있어요. 갱신: "+new Date(s.updated).toLocaleString("ko-KR",{timeZone:"Asia/Seoul",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})),el("p","champ-credit",legal));
+      const views=[["main","본선 진출 팀",s.top,"본선 진출 32개 학교가 예선에서 고른 챔피언입니다"],["all","대회 전체",s.top_all,"예선에 참가한 모든 학교가 고른 챔피언입니다"]].filter(v=>v[2]);
+      const title=el("h3",""),tabs=el("div","champ-top-tabs"),desc=el("p","note");
+      const show=k=>{const v=views.find(x=>x[0]===k)||views[0];title.textContent="📊 "+v[1]+" 인기 챔피언 TOP 10";desc.firstChild.textContent=v[3]+"(결과 캡처 AI 판독, 오차 가능). ";
+        tabs.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v[0])));
+        grid.replaceChildren(...["중등부","고등부"].map(d=>{const col=el("div");col.append(el("h4","",d),statList(v[2][d]||[],c.champions,10));return col;}));};
+      if(views.length>1)views.forEach(([k,label])=>{const b=el("button","",label);b.type="button";b.dataset.view=k;b.addEventListener("click",()=>show(k));tabs.append(b);});
+      desc.append(document.createTextNode(""),document.createTextNode("학교 이름을 누르면 그 학교가 많이 쓴 챔피언 TOP 5를 볼 수 있어요. 갱신: "+new Date(s.updated).toLocaleString("ko-KR",{timeZone:"Asia/Seoul",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})));
+      card.append(title,tabs,grid,desc,el("p","champ-credit",legal));show("main");
       holder.replaceChildren(card);
     }catch{holder.replaceChildren();}
   }
-  // 2026-10-30 학교 팝업 경기 기록마다 AI 판독 조합(우리 팀·상대 팀, 상대는 본선 진출 학교일 때만). 수동 기록(showPublic)을 대신함
+  // 2026-10-30 학교 팝업 경기 기록마다 AI 판독 조합(우리 팀·상대 팀, 10/31부터 탈락 학교 포함 판독된 경기 전체). 수동 기록(showPublic)을 대신함
   async function showLineups(holder,school){
     try{const [s,c]=await Promise.all([stats(),catalog()]);let any=false;
       holder.querySelectorAll("[data-champion-code]").forEach(card=>{const code=card.dataset.championCode,box=el("div","champ-public");
