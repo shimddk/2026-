@@ -383,6 +383,34 @@
     draw();
   }
 
+  // Bracket quick view always uses the public roster, including for teachers.
+  let bracketSchoolDialog=null, bracketSchoolRequest=0;
+  window.openBracketSchool=async(division,school)=>{
+    bracketSchoolDialog?.close();bracketSchoolDialog?.remove();
+    const request=++bracketSchoolRequest;
+    const dialog=el("dialog","bracket-school-dialog"),header=el("div","bracket-school-header"),title=el("h2","",school+" · "+division),close=el("button","btn ghost small","닫기"),body=el("div");
+    title.id="bracketSchoolTitle";dialog.setAttribute("aria-labelledby",title.id);close.type="button";close.addEventListener("click",()=>dialog.close());
+    header.append(title,close);dialog.append(header,body);body.append(el("p","note","공개 명단을 불러오는 중입니다…"));document.body.append(dialog);bracketSchoolDialog=dialog;dialog.showModal();
+    dialog.addEventListener("close",()=>{if(bracketSchoolDialog===dialog){bracketSchoolRequest++;bracketSchoolDialog=null;}dialog.remove();});
+    dialog.addEventListener("click",event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
+    const more=el("button","btn small","전적 검색에서 자세히 보기");more.type="button";more.addEventListener("click",async()=>{dialog.close();window.showTab("record");await renderRecord();const search=document.querySelector("#recordRoot .gsearch");if(search){search.value=school;search.dispatchEvent(new Event("input",{bubbles:true}));search.focus();}});
+    let data,error;
+    try { ({data,error}=await sb.rpc("public_lineups").eq("division",division).eq("school",school)); } catch {error=true;}
+    if(request!==bracketSchoolRequest||!dialog.open)return;
+    body.replaceChildren();body.append(el("p","rec-guard","공개된 이름과 아이디는 대회 준비에만 사용해 주세요."));
+    body.append(el("h3","","선수 명단"));
+    const rows=(data||[]).filter(r=>r.division===division&&r.school===school).sort((a,b)=>(a.team_no||1)-(b.team_no||1)||a.slot-b.slot);
+    if(error)body.append(el("p","note","명단을 불러오지 못했습니다. 닫은 뒤 다시 열어 주세요."));
+    else if(isSchoolWithdrawn(division,school))body.append(el("p","withdrawal-tag","기권 · 학생 명단 비공개"));
+    else if(!rows.length)body.append(el("p","note","현재 공개된 선수 명단이 없습니다."));
+    else {
+      const list=el("ul","rec-list");rows.forEach(r=>{const item=el("li");item.append(el("span","rec-line",r.line||""),el("span","rec-name",r.student_name||"-"));
+        if(r.id_hidden)item.append(el("span","rec-hidden","닉네임 변경 중"));
+        else if(r.lol_id){const link=el("a","rec-id",r.lol_id);link.href=fowOne(r.lol_id);link.target="_blank";link.rel="noopener noreferrer";item.append(link);}else item.append(el("span","note","아이디 미등록"));list.append(item);});body.append(list);
+    }
+    const history=el("section","bracket-school-history");window.fillBracketSchoolHistory?.(history,division,school);body.append(history,more);
+  };
+
   /* ---------- 팀장 명단 확인·수정 (전적 검색 카드 → 팀장 휴대폰 뒷자리로 본인 확인) ---------- */
   // 라이엇 아이디 규칙: 이름 3~16자 + #태그 3~5자(글자·숫자, 가운데 띄어쓰기 허용)
   function riotIdError(id) {

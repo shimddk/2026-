@@ -430,6 +430,17 @@ button.ref-duty{cursor:pointer}
 .bk-game-number{color:var(--text);font-weight:800}
 .bk-referee{color:var(--text);font-size:12px}
 .bk-referee[hidden]{display:none}
+.bk-school-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px;overflow-wrap:anywhere}
+.bk-school-button:hover,.bk-school-button:focus-visible{color:var(--neon);text-decoration-style:solid}
+.bracket-school-dialog{width:min(760px,calc(100% - 32px));max-height:85dvh;box-sizing:border-box;overflow:auto;border:1px solid var(--line);border-radius:16px;padding:20px;background:var(--card);color:var(--text)}
+.bracket-school-dialog::backdrop{background:rgb(0 0 0 / .6)}
+.bracket-school-header{display:flex;align-items:start;justify-content:space-between;gap:12px}
+.bracket-school-header h2{font-size:21px;margin:0;overflow-wrap:anywhere}
+.bracket-school-header button{flex-shrink:0}
+.bracket-school-dialog .rec-list li{overflow-wrap:anywhere;min-width:0}
+.bracket-school-dialog .school-game{display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px 12px;border-top:1px solid var(--line);padding:10px 0}
+.bracket-school-dialog .school-game small{grid-column:1/-1}
+@media(max-width:600px){.bracket-school-dialog{padding:14px;max-height:90dvh}.bracket-school-header h2{font-size:18px}.bracket-school-dialog .rec-list li{display:flex;flex-wrap:wrap;gap:6px 12px}.bracket-school-dialog .school-game{grid-template-columns:1fr}}
 .gm>.bk-match-info,.school-game>.bk-match-info{grid-column:1/-1;width:100%;box-sizing:border-box;padding:4px 0}
 .ref-edit-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
 .ref-edit-entry>p,.ref-edit-games{grid-column:1/-1}

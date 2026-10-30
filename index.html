@@ -404,7 +404,7 @@
   .promo-video video { display: block; margin: 0 auto; width: auto; height: clamp(380px, calc(100vh - 300px), 600px); max-width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; background: #000; }
   @media (max-width: 760px) {
     .home-split { grid-template-columns: 1fr; }
-    #ddays { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) minmax(0, 1fr); gap: 8px; }
+    #ddays { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
     #ddays .dday-split { gap: 4px; }
     #ddays .dday .sub { font-size: 11px; }
     #ddays .dday .opt { display: none; }
@@ -741,10 +741,10 @@
 
 <script>
 /* ---------- 대회 기본 정보 ---------- */
-// 홈 D-Day: 카드 3장, 일정 탭과 같은 시각까지 표시 (2026-10-19 사용자 요청: 예선 카드 안을 중등부·고등부 두 칸으로)
+// 홈 D-Day: 예선·본선·결선 3장. 지난 모집 마감은 본선 기간으로 교체.
 const DDAYS = [
-  { label: "모집 마감", date: "2026-10-19", time: "23:59" },
   { label: "예선 시작", split: [{ label: "중등부", date: "2026-10-24", time: "14:00" }, { label: "고등부", date: "2026-10-25", time: "13:00" }] },
+  { label: "본선", date: "2026-10-31", end: "2026-11-04" },
   { label: "결선", note: "(오프라인)", date: "2026-11-08", time: "11:00" }
 ];
 // 일정: 경기 회차는 교사용 '심판 일정' 표(public_schedule)를 그대로 보여 준다. 아래는 불러오기 전·실패 시 기본값.
@@ -969,7 +969,10 @@ DDAYS.forEach(d => {
     const row = el("div", "dday-split");
     d.split.forEach(x => { const s = el("div", "dday-half"); s.append(el("div", "sub", x.label), el("div", "num", ddayText(daysUntil(x.date))), el("div", "date", when(x))); row.append(s); });
     c.append(row);
-  } else c.append(el("div", "num", ddayText(daysUntil(d.date))), el("div", "date", when(d)));
+  } else {
+    const now=Date.now(), started=d.end && now>=Date.parse(d.date+"T00:00:00+09:00"), ended=d.end && now>=Date.parse(d.end+"T23:59:59.999+09:00");
+    c.append(el("div", "num", ended?"종료":started?"진행 중":ddayText(daysUntil(d.date))),el("div","date",d.end?mdLabel(d.date)+"~"+mdLabel(d.end):when(d)));
+  }
   ddWrap.append(c);
 });
 
@@ -1060,7 +1063,8 @@ let BK_WITHDRAWN = [];
 window.setWithdrawnSchools = function (rows) { BK_WITHDRAWN = rows || []; renderBracket(); };
 function bkSchoolNode(s, fallback = "") {
   const node = el("span", "bk-school-label"), withdrawn = BK_WITHDRAWN.some(w => w.division === BK.div && String(w.school).replace(/\s/g, "") === String(s || "").replace(/\s/g, ""));
-  node.append(el("span", withdrawn ? "withdrawn-school-name" : "", bkSchool(s) || fallback));
+  const title=el(s?"button":"span",(withdrawn ? "withdrawn-school-name " : "")+(s?"bk-school-button":""),bkSchool(s)||fallback);
+  if(s){title.type="button";const division=BK.div;title.setAttribute("aria-label",s+" 명단과 경기 전적 보기");title.addEventListener("click",()=>window.openBracketSchool?.(division,s));}node.append(title);
   if (withdrawn) { const badge = el("span", "withdrawal-tag", "기권"); badge.title = "2027년 대회 참가 불가"; node.append(badge); }
   return node;
 }
@@ -1189,6 +1193,16 @@ function bkSchoolFinder(ms) {
   input.addEventListener("input", show); box.append(input, results); show(); return box;
 }
 const bkStageOpen = new Map();
+window.fillBracketSchoolHistory=(holder,division,school)=>{
+  const matches=BK.matches.filter(m=>m.division===division&&!m.void&&(m.team1===school||m.team2===school)).sort((a,b)=>(a.sort||0)-(b.sort||0));
+  const winner=m=>m.winner || (m.score1!=null&&m.score2!=null&&m.score1!==m.score2?(m.score1>m.score2?m.team1:m.team2):null);
+  const played=matches.filter(winner),wins=played.filter(m=>winner(m)===school).length;
+  holder.append(el("h3","","대회 경기 전적"),el("p","",played.length+"경기 · "+wins+"승 "+(played.length-wins)+"패"));
+  if(!matches.length)holder.append(el("p","note","공개된 경기 기록이 없습니다."));
+  matches.forEach(m=>{const card=el("article","school-game"),opponent=m.team1===school?m.team2:m.team1,w=winner(m);
+    card.append(bkMatchInfo(m),el("time","",m.scheduled_at||"시간 미정"),el("strong","",(w?(w===school?"승":"패"):"예정")+" · vs "+(opponent||"상대 미정")),el("small","note",m.stage+" · "+(m.grp||"")+" · "+(m.round_label||"")+(m.score1!=null&&m.score2!=null?" · "+m.score1+":"+m.score2:"")));holder.append(card);
+  });
+};
 function renderBracket() {
   document.querySelectorAll("#divSwitch .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.div === BK.div));
   const root = document.getElementById("groups");
