@@ -451,6 +451,16 @@ button.ref-duty{cursor:pointer}
 .champ-lineup li{display:flex;align-items:center;gap:5px;font-size:12px}
 .champ-lineup img{border-radius:5px;flex-shrink:0}
 .champ-credit{font-size:11px;color:var(--muted);line-height:1.6}
+.discord-inbox{padding:14px;margin:18px 0;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.discord-inbox>summary{font-weight:800;cursor:pointer;line-height:1.7}
+.discord-inbox-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.discord-report{padding:14px 0;border-top:1px solid var(--line);min-width:0}
+.discord-report h4{overflow-wrap:anywhere}
+.discord-report select{max-width:100%;width:100%;box-sizing:border-box}
+.discord-inbox select{font:inherit;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px}
+.discord-capture-preview{max-width:100%;max-height:60vh;object-fit:contain}
+.champ-trial{border-top:1px solid var(--line);padding-top:12px;margin-top:16px}
+.champ-trial select{max-width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--line);padding:8px}
 @media(max-width:700px){.champ-edit-layout{grid-template-columns:1fr}.champ-editor{padding:12px}.champ-editor h2{font-size:18px}.champ-capture-preview{max-height:40vh}}
 .bracket-school-header{display:flex;align-items:start;justify-content:space-between;gap:12px}
 .bracket-school-header h2{font-size:21px;margin:0;overflow-wrap:anywhere}

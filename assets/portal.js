@@ -600,6 +600,7 @@
   const teacherAI = window.createTeacherAI ? window.createTeacherAI(sb) : null;
   const isEditor = () => ME.role === "editor" || ME.role === "owner";
   window.ChampionRecords?.init(sb,()=>ME.status==="approved"&&!ME.external&&!!ME.staffId&&(isEditor()||ME.role==="referee"));
+  window.DiscordResults?.init(sb,()=>ME.status==="approved"&&!ME.external&&!!ME.staffId&&(isEditor()||ME.role==="referee"));
   const isOwner = () => ME.role === "owner";
   const canPreviewPayment = () => ME.status === "approved" && !!ME.paymentAllowed;
   const ROLE_LABEL = { viewer: "보기", editor: "보기·고치기", owner: "관리자", referee: "심판" };
@@ -2384,6 +2385,7 @@
       { key: "note", label: "비고", get: r => r.note }
     ];
     const holder = el("div");
+    window.DiscordResults?.render(box,rows.map(r=>({...r,scheduled_at:r.session_id?sessText(sessById[r.session_id],r.time_offset_min):r.scheduled_at})),matchDiv,gameLabel);
     box.append(el("h3", "bk-sub", "경기 결과 입력"), el("p", "note", "승자 칸에서 해당 경기의 두 학교 중 하나를 선택하면 조 순위와 전체 대진표에 반영됩니다. 일시는 심판 회차에서, 심판은 '심판 일정'의 실제 세부 경기 배정에서 자동으로 들어옵니다. 배정 변경은 심판 일정에서 해 주세요." + (ME.role === "referee" ? " 심판 권한은 승자·경기 시간·비고를 입력할 수 있습니다." : "")), holder);
     grid(holder, {
       columns, rows: shown, exportName: "대진·경기 결과(" + matchDiv + ")",
@@ -3632,7 +3634,7 @@
   if (!LOGIN_READY) return;
   renderAcct();
   sb.auth.onAuthStateChange((event) => {
-    if(event==="SIGNED_OUT"){authRefreshGeneration++;refereeGeneration++;refRotaDrafts.clear();window.ChampionRecords?.close();window.setTeacherMatchReferees?.(null);}
+    if(event==="SIGNED_OUT"){authRefreshGeneration++;refereeGeneration++;refRotaDrafts.clear();window.DiscordResults?.clear();window.ChampionRecords?.close();window.setTeacherMatchReferees?.(null);}
     if (event === "SIGNED_IN" || event === "SIGNED_OUT") setTimeout(refresh, 0);
   });
   setInterval(()=>{if(!document.hidden && ME.status==="approved" && !ME.external && ME.staffId)refreshBracketReferees();},30000);
