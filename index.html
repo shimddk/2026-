@@ -279,6 +279,14 @@
   .bracket-flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 16px; }
   .bracket-flow .stage { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
   .bracket-flow .arrow { color: var(--neon); }
+  /* 2026-10-31 진행 단계 한 줄 + 진행 방식 카드 접기 */
+  .stage-strip { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0; margin: 14px 0 8px; }
+  .stage-strip li { padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--muted); font-size: 14px; }
+  .stage-strip li.done { opacity: .75; }
+  .stage-strip li.now { border-color: var(--neon); color: var(--text); font-weight: 700; box-shadow: 0 0 0 2px var(--neon) inset; }
+  .stage-strip .arrow { padding: 0; border: 0; background: none; color: var(--muted); }
+  .bracket-guide-wrap { margin: 4px 0 12px; }
+  .bracket-guide-wrap > summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 6px 0; }
   .bracket-guide { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
   .bracket-guide article { grid-column: span 2; padding: 20px; border: 1px solid var(--line); border-top: 4px solid var(--neon); border-radius: 15px; background: var(--card); box-shadow: var(--card-shadow); }
   .bracket-guide article.prelim { grid-column: span 3; border-top-color: var(--neon2); }
@@ -567,6 +575,9 @@
   <section id="bracket" role="tabpanel" aria-labelledby="tab-bracket" hidden>
     <h2>대진표</h2>
     <p class="lead"><mark class="hl"><strong>모든 경기는 단판(BO1)</strong>입니다.</mark></p>
+    <ol class="stage-strip" id="stageStrip" aria-label="대회 진행 단계"></ol>
+    <details class="bracket-guide-wrap">
+    <summary>📋 대회 진행 방식 자세히 보기 (조별리그 · 본선 · 4강 리그 · 결선)</summary>
     <div class="bracket-guide" aria-label="부문별 진출 방식과 대회 진행 단계">
       <article class="prelim"><p class="guide-kicker">중등부 · 64팀 확정</p><h3>① 중등부 조별리그</h3><p class="guide-path">64강 → 32강 → 본선 16팀</p><p>64강: <strong>16개 조 × 4팀</strong><br>32강: <strong>8개 조 × 4팀</strong><br>각 단계에서 <strong>조 1·2위만 진출 · 3위 승급 없음</strong></p><p>팀당 3경기 · 두 경기씩 동시 진행<br>다음 두 경기는 <strong>1시간 뒤 시작</strong></p></article>
       <article class="prelim"><p class="guide-kicker">고등부 · 32팀 확정</p><h3>① 고등부 조별리그</h3><p class="guide-path">32강 → 본선 16팀</p><p>32강: <strong>8개 조 × 4팀</strong><br><strong>조 1·2위만 본선 진출 · 3위 승급 없음</strong></p><p>팀당 3경기 · 두 경기씩 동시 진행<br>다음 두 경기는 <strong>1시간 뒤 시작</strong></p></article>
@@ -574,6 +585,7 @@
       <article><p class="guide-kicker">11/4(수) 18:00 / 19:00 / 20:00 · 부문별 진행</p><h3>③ 4강 리그</h3><p class="guide-path">4팀 풀리그</p><p>두 경기씩 동시 진행 · 1시간 간격<br>리그 1·2위 → <strong>결승</strong><br>리그 3·4위 → <strong>3·4위전</strong></p></article>
       <article><p class="guide-kicker">11/8(일) · 오프라인</p><h3>④ 결선</h3><p class="guide-path">3·4위전 · 결승 · 시상</p><p>중등: 11:00 / 12:00<br>고등: 14:00 / 15:00</p></article>
     </div>
+    </details>
     <p class="notice-line">📢 대진표는 <strong>10월 20일(화) 오후 7시(19:00)</strong>에 공개 예정입니다.</p>
     <div class="pending">대진표는 10월 20일(화) 19:00에 공개됩니다. 공개되면 이 화면에 팀 이름이 채워집니다.</div>
     <div class="div-switch" id="divSwitch" role="group" aria-label="부문 선택">
@@ -1210,10 +1222,11 @@ function renderBracket() {
   const ms = BK.matches.filter(m => m.division === BK.div);
   const by = code => ms.find(m => m.code === code);
   root.replaceChildren();
-  root.append(el("p","note","본선부터 결선까지 중·고등부 공통 경기 번호를 사용합니다. 예: 게임 5. 조별리그는 예선 게임 번호로 구분합니다."));
+  // 2026-10-31 순서: 우리 학교 경기 찾기 → 챔피언 TOP 10 → 경기 번호 안내 → 대진표
   root.append(bkSchoolFinder(ms));
   // 2026-10-30 본선 진출 팀 인기 챔피언 TOP 10(결과 캡처 AI 판독 통계 파일)
   const champTop = el("div"); root.append(champTop); window.ChampionRecords?.renderTop(champTop);
+  root.append(el("p","note","본선부터 결선까지 중·고등부 공통 경기 번호를 사용합니다. 예: 게임 5. 조별리그는 예선 게임 번호로 구분합니다."));
 
   // 1) 조별리그 (중등 64강 → 32강, 고등 32강)
   BK_STAGES[BK.div].forEach(stage => {
@@ -1301,6 +1314,7 @@ function updatePending() {
   const pending = document.querySelector("#bracket .pending");
   if (!pending) return;
   const named = BK.matches.some(m => m.team1 || m.team2);
+  pending.hidden = named && bracketOpen(); // 2026-10-31 대진 확정 뒤에는 위 안내줄과 같은 말이라 숨김
   pending.textContent = named ? "확정된 대진과 경기 결과가 반영되고 있습니다. 결과는 경기 후 지원단이 입력합니다."
     : bracketOpen() ? "대진표 틀입니다. 조 편성이 반영되면 학교 이름이 채워집니다."
     : "대진표 틀입니다. 공개 시각이 되면 이 화면에 학교 이름이 채워집니다.";
@@ -1314,6 +1328,23 @@ window.setBracketPublish = function (at) {
   if (left > 0 && left < 2147483647) bracketNoticeTimer = setTimeout(bracketNotice, left + 500);
 };
 window.setBracketPublish();
+
+// 2026-10-31 대진표 맨 위 진행 단계 한 줄(한국 날짜 기준 자동: 끝남 ✓ / 진행 중 / 다음)
+(function stageStrip() {
+  const box = document.getElementById("stageStrip");
+  if (!box) return;
+  const S = [["예선", "10/24~10/25", "2026-10-24", "2026-10-25"], ["본선", "10/31~11/1", "2026-10-31", "2026-11-01"],
+             ["4강 리그", "11/4", "2026-11-04", "2026-11-04"], ["결선", "11/8 오프라인", "2026-11-08", "2026-11-08"]];
+  let marked = false;
+  S.forEach(([name, when, start, end], i) => {
+    if (i) box.append(el("li", "arrow", "→"));
+    const done = daysUntil(end) < 0, now = !done && daysUntil(start) <= 0;
+    const next = !done && !now && !marked;
+    const li = el("li", done ? "done" : now || next ? "now" : "", (done ? "✓ " : "") + name + " " + when + (now ? " · 진행 중" : next ? " · 다음" : ""));
+    if (now || next) { marked = true; li.setAttribute("aria-current", "step"); }
+    box.append(li);
+  });
+})();
 
 // portal.js가 공개 함수 결과를 넘겨줌
 window.applyBracket = function (matches, standings, regions) {
