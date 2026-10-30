@@ -1200,6 +1200,7 @@ window.fillBracketSchoolHistory=(holder,division,school)=>{
   holder.append(el("h3","","대회 경기 전적"),el("p","",played.length+"경기 · "+wins+"승 "+(played.length-wins)+"패"));
   if(!matches.length)holder.append(el("p","note","공개된 경기 기록이 없습니다."));
   matches.forEach(m=>{const card=el("article","school-game"),opponent=m.team1===school?m.team2:m.team1,w=winner(m);
+    card.dataset.championCode=m.code;
     card.append(bkMatchInfo(m),el("time","",m.scheduled_at||"시간 미정"),el("strong","",(w?(w===school?"승":"패"):"예정")+" · vs "+(opponent||"상대 미정")),el("small","note",m.stage+" · "+(m.grp||"")+" · "+(m.round_label||"")+(m.score1!=null&&m.score2!=null?" · "+m.score1+":"+m.score2:"")));holder.append(card);
   });
 };
@@ -1811,6 +1812,7 @@ if (document.getElementById(start)?.getAttribute("role") === "tabpanel") showTab
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="assets/rules.js"></script>
 <script src="assets/teacher-ai.js"></script>
+<script src="assets/champion-records.js"></script>
 <script src="assets/portal.js"></script>
 </body>
 </html>
