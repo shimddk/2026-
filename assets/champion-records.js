@@ -58,15 +58,16 @@
           const paint=()=>{p.replaceChildren();const ch=c.champions.find(x=>x.name===input.value.trim());if(ch)p.append(icon(ch));};paint();input.addEventListener("input",()=>{paint();dirty=true;publish.disabled=true;});l.append(input,p);group.append(l);inputs[t].push(input);}
         form.append(group);
       });
-      const trial=el('section','champ-trial'),recognize=el('button','btn ghost small','무료 챔피언 인식 시험'),trialNote=el('p','note','표준 16:9 결과 화면의 초상화를 공식 아이콘과 비교합니다. 서버·AI 전송 없이 이 브라우저에서만 처리하며, 추천은 자동 저장하지 않습니다.'),recommendations=el('div');recognize.type='button';trial.append(recognize,trialNote,recommendations);capture.append(trial);
+      const trial=el('section','champ-trial'),recognize=el('button','btn ghost small','무료 챔피언 인식 시험'),trialNote=el('p','note','일부 원형 초상화 결과 화면만 지원합니다. 배치·스킨이 다르면 인식하지 못할 수 있습니다. 서버·AI 전송 없이 이 브라우저에서만 처리하며, 추천은 자동 저장하지 않습니다.'),recommendations=el('div');recognize.type='button';trial.append(recognize,trialNote,recommendations);capture.append(trial);
       recognize.addEventListener('click',async()=>{
         recognize.disabled=true;trialNote.textContent='아이콘을 비교하는 중입니다…';recommendations.replaceChildren();
         try{
           const found=await window.ChampionRecognizer.recognize(preview,c.champions);if(!dialog.open)return;
           trialNote.textContent='확신이 낮은 칸은 적용하지 않습니다. 스킨·크기·화면 배치에 따라 틀릴 수 있으니 반드시 확인하세요.';
           const orientationLabel=el('label','','캡처의 위쪽 팀은 어느 학교인가요?'),orientation=el('select');[['','학교 선택'],['0',state.team1],['1',state.team2]].forEach(([value,text])=>{const o=el('option','',text);o.value=value;orientation.append(o);});orientationLabel.append(orientation);recommendations.append(orientationLabel);
-          found.forEach((r,i)=>{const p=el('p','note',(i<5?'위쪽 ':'아래쪽 ')+(i%5+1)+': '+r.candidates.map(x=>c.champions.find(ch=>ch.id===x.id)?.name||x.id).join(' / ')+(r.reliable?' · 우선 추천':' · 직접 확인 필요'));recommendations.append(p);});
-          const apply=el('button','btn small','확신이 높은 추천을 입력란에 적용');apply.type='button';recommendations.append(apply);apply.addEventListener('click',()=>{if(orientation.value===''){trialNote.textContent='먼저 캡처 위쪽 팀의 학교를 선택하세요.';return;}if(inputs.flat().some(i=>i.value)&&!confirm('현재 입력란의 챔피언을 추천으로 바꿀까요? 공개된 기록은 저장·공개 전까지 유지됩니다.'))return;
+          found.forEach((r,i)=>{const p=el('p','note'),sample=el('img');sample.src=r.thumbnail;sample.alt='실제로 읽은 초상화';sample.width=sample.height=32;p.append(sample,document.createTextNode(' '+(i<5?'위쪽 ':'아래쪽 ')+(i%5+1)+': '+r.candidates.map(x=>c.champions.find(ch=>ch.id===x.id)?.name||x.id).join(' / ')+(r.reliable?' · 비교상 우선 후보':' · 직접 확인 필요')));recommendations.append(p);});
+          const checkedLabel=el('label','',''),checked=el('input');checked.type='checkbox';checkedLabel.append(checked,document.createTextNode(' 초상화와 추천 챔피언이 맞는지 직접 확인했습니다.'));recommendations.append(checkedLabel);
+          const apply=el('button','btn small','확인한 추천을 입력란에 적용');apply.type='button';apply.disabled=true;checked.addEventListener('change',()=>{apply.disabled=!checked.checked;});recommendations.append(apply);apply.addEventListener('click',()=>{if(!checked.checked)return;if(orientation.value===''){trialNote.textContent='먼저 캡처 위쪽 팀의 학교를 선택하세요.';return;}if(inputs.flat().some(i=>i.value)&&!confirm('현재 입력란의 챔피언을 추천으로 바꿀까요? 공개된 기록은 저장·공개 전까지 유지됩니다.'))return;
             found.forEach((r,i)=>{if(!r.reliable)return;const team=i<5?Number(orientation.value):1-Number(orientation.value),ch=c.champions.find(ch=>ch.id===r.candidates[0].id);inputs[team][i%5].value=ch?.name||'';inputs[team][i%5].dispatchEvent(new Event('input',{bubbles:true}));});dirty=true;publish.disabled=true;trialNote.textContent='추천을 입력했습니다. 중복·양 팀 구분과 캡처를 확인한 뒤 임시 저장하세요.';
           });
         }catch(e){trialNote.textContent=e.message;}finally{recognize.disabled=false;}

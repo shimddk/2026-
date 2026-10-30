@@ -440,7 +440,7 @@ button.ref-duty{cursor:pointer}
 .champ-editor section,.champ-editor fieldset{min-width:0}
 .champ-capture-preview{width:100%;height:auto;max-height:65vh;object-fit:contain;border:1px solid var(--line);margin-top:12px}
 .champ-editor label{display:block;margin:8px 0;overflow-wrap:anywhere}
-.champ-editor input:not([type=file]),.champ-editor textarea{box-sizing:border-box;width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text)}
+.champ-editor input:not([type=file]):not([type=checkbox]),.champ-editor textarea{box-sizing:border-box;width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text)}
 .champ-editor input[type=file]{max-width:100%}
 .champ-editor .champ-choice{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;gap:8px}
 .champ-choice input{grid-column:1}
