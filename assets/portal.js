@@ -409,7 +409,7 @@
         else if(r.lol_id){const link=el("a","rec-id",r.lol_id);link.href=fowOne(r.lol_id);link.target="_blank";link.rel="noopener noreferrer";item.append(link);}else item.append(el("span","note","아이디 미등록"));list.append(item);});body.append(list);
     }
     if(!isSchoolWithdrawn(division,school)){const champStats=el("div");body.append(champStats);window.ChampionRecords?.showSchoolStats(champStats,division,school);}
-    const history=el("section","bracket-school-history");window.fillBracketSchoolHistory?.(history,division,school);body.append(history,more);window.ChampionRecords?.showPublic(history,division,school);
+    const history=el("section","bracket-school-history");window.fillBracketSchoolHistory?.(history,division,school);body.append(history,more);window.ChampionRecords?.showLineups(history,school); // 2026-10-30 수동 기록(showPublic) 대신 AI 판독 조합
   };
 
   /* ---------- 팀장 명단 확인·수정 (전적 검색 카드 → 팀장 휴대폰 뒷자리로 본인 확인) ---------- */
@@ -597,6 +597,8 @@
   if (location.hostname === "localhost") window.__renderRecord = renderRecord;
 
   /* ---------- 로그인 상태 ---------- */
+  // 2026-10-30 경기별 챔피언 수동 기록 화면 숨김(AI 판독 통계로 대체, 자료·기능은 보존 — true로 바꾸면 다시 보임)
+  const CHAMPION_MANUAL = false;
   const ME = { status: null, role: null, name: null, email: null };
   const teacherAI = window.createTeacherAI ? window.createTeacherAI(sb) : null;
   const isEditor = () => ME.role === "editor" || ME.role === "owner";
@@ -2374,7 +2376,7 @@
     });
     const columns = [
       { key: "_game", label: "경기 번호", readonly: true, get: gameLabel },
-      { key:"_champions",label:"챔피언 기록",readonly:true,get:()=>"",cell:(td,r)=>{if(ME.status==="approved"&&!ME.external&&ME.staffId&&(isEditor()||ME.role==="referee")){const b=el("button","btn ghost small","챔피언 기록");b.type="button";b.addEventListener("click",()=>window.ChampionRecords.open({...r,scheduled_at:r.session_id?sessText(sessById[r.session_id],r.time_offset_min):r.scheduled_at},gameLabel(r)));td.append(b);}else td.textContent="—";} },
+      ...(CHAMPION_MANUAL ? [{ key:"_champions",label:"챔피언 기록",readonly:true,get:()=>"",cell:(td,r)=>{if(ME.status==="approved"&&!ME.external&&ME.staffId&&(isEditor()||ME.role==="referee")){const b=el("button","btn ghost small","챔피언 기록");b.type="button";b.addEventListener("click",()=>window.ChampionRecords.open({...r,scheduled_at:r.session_id?sessText(sessById[r.session_id],r.time_offset_min):r.scheduled_at},gameLabel(r)));td.append(b);}else td.textContent="—";} }] : []),
       { key: "_stage", label: "단계", readonly: true, get: r => r.stage },
       { key: "_round", label: "경기", readonly: true, get: label },
       { key: "scheduled_at", label: "일시", readonly: r => !!r.session_id || !isEditor(), get: r => r.session_id ? sessText(sessById[r.session_id], r.time_offset_min) : r.scheduled_at },

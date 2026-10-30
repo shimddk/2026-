@@ -117,5 +117,15 @@
       holder.replaceChildren(card);
     }catch{holder.replaceChildren();}
   }
-  window.ChampionRecords={init(client,canEdit){sb=client;allowed=canEdit;},open,showPublic,showSchoolStats,renderTop,validateFile,close(){activeDialog?.close();}};
+  // 2026-10-30 학교 팝업 경기 기록마다 AI 판독 조합(우리 팀·상대 팀, 상대는 본선 진출 학교일 때만). 수동 기록(showPublic)을 대신함
+  async function showLineups(holder,school){
+    try{const [s,c]=await Promise.all([stats(),catalog()]);let any=false;
+      holder.querySelectorAll("[data-champion-code]").forEach(card=>{const code=card.dataset.championCode,box=el("div","champ-public");
+        Object.entries(s.schools||{}).filter(([name,x])=>x.games_by_code?.[code]&&(name===school||card.textContent.includes(name))).sort(([a],[b])=>(b===school)-(a===school)).forEach(([name,x])=>{
+          box.append(el("strong","",name===school?"우리 팀 사용 챔피언":name+" 사용 챔피언"),lineup(x.games_by_code[code].filter(Boolean),c.champions));any=true;});
+        if(box.childElementCount)card.append(box);});
+      if(any)holder.append(el("p","champ-credit","사용 챔피언은 결과 캡처를 AI로 판독한 것으로 오차가 있을 수 있습니다. "+legal));
+    }catch{/* 통계 파일이 없으면 표시하지 않음 */}
+  }
+  window.ChampionRecords={init(client,canEdit){sb=client;allowed=canEdit;},open,showPublic,showLineups,showSchoolStats,renderTop,validateFile,close(){activeDialog?.close();}};
 })();
