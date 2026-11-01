@@ -2648,9 +2648,11 @@
     box.replaceChildren();
     if (error || availError || doneError || roleError || assignmentError) { box.append(el("p", "note", "불러오지 못했습니다.")); return; }
     const reload = () => loadReferee(root);
+    // 2026-11-01 사용자 요청: 심판 탭에서 젠지(GGA) 코치 6명은 표시하지 않음(DB 기록은 그대로)
+    const isGgaCoach = s => s?.school === "GGA";
     const rota = await sb.rpc("ref_rota_state");
     if (rota.error) box.append(el("p", "note", "확정 배정표를 불러오지 못했습니다. 새로고침하거나 관리자에게 확인해 주세요."));
-    else renderConfirmedRefRota(box, { ...rota.data, people: (rota.data.people || []).map(p => ({ ...p, school: staff.find(s => s.id === p.id)?.school || "" })) }, reload);
+    else renderConfirmedRefRota(box, { ...rota.data, people: (rota.data.people || []).filter(p => !isGgaCoach(staff.find(s => s.id === p.id))).map(p => ({ ...p, school: staff.find(s => s.id === p.id)?.school || "" })) }, reload);
     const availability = el("details", "ref-availability"), availabilityBody = el("div");
     availability.append(el("summary", "", "기존 참여 가능 응답 · 11/8 참석 여부"), availabilityBody); box.append(availability); box = availabilityBody;
     const has = new Set((avail || []).filter(a => a.available).map(a => a.session_id + "|" + a.staff_id));
@@ -2662,7 +2664,7 @@
     const roleHas = new Set((roleRows || []).map(a => a.session_id + "|" + a.staff_id + "|" + a.role));
     const checked = (session, staff, role) => role === "불가" ? attendance.get(session + "|" + staff) === false : role === "심판" ? has.has(session + "|" + staff) : roleHas.has(session + "|" + staff + "|" + role);
     // 심판 명단: '심판가능' 선생님 + 이미 체크한 선생님 + 나 자신(관리자 포함, 긴급 시 투입)
-    const refs = staff.filter(s => s.referee_ok || (avail || []).some(a => a.staff_id === s.id) || (roleRows || []).some(a => a.staff_id === s.id) || s.id === ME.staffId);
+    const refs = staff.filter(s => !isGgaCoach(s)).filter(s => s.referee_ok || (avail || []).some(a => a.staff_id === s.id) || (roleRows || []).some(a => a.staff_id === s.id) || s.id === ME.staffId);
     const canEdit = s => isOwner() || (ME.staffId && s.id === ME.staffId && !ME.external);
     const sessKey = s => s.day + " " + String(s.start_time).slice(0, 5);
     const sameTime = {};
