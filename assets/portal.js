@@ -3277,7 +3277,19 @@
        r.suggest, r.escalate, r.list_clicks, r.discord_clicks, r.discord_questions].forEach(v => tr.append(el("td", "", String(v))));
       t.append(tr);
     });
+    const totals = {};
+    ["visitors", "openers", "bubble_openers", "askers", "asks", "faq", "school", "discord", "suggest", "escalate", "list_clicks", "discord_clicks", "discord_questions"].forEach(key => {
+      totals[key] = (rows || []).reduce((sum, r) => sum + (Number(r[key]) || 0), 0);
+    });
+    const foot = el("tfoot", "chat-stats-total"), totalRow = el("tr"), totalFound = totals.faq + totals.school + totals.discord;
+    const totalLabel = el("th", "", "전체 합계"); totalLabel.scope = "row"; totalRow.append(totalLabel);
+    [totals.visitors, totals.openers, pct(totals.openers, totals.visitors), totals.bubble_openers,
+     totals.askers + "명 / " + totals.asks + "건", totalFound + " (" + pct(totalFound, totals.asks) + ")",
+     totals.suggest, totals.escalate, totals.list_clicks, totals.discord_clicks, totals.discord_questions]
+      .forEach(v => totalRow.append(el("td", "", String(v))));
+    foot.append(totalRow); t.append(foot);
     const wrap = el("div", "gscroll"); wrap.append(t); box.append(wrap);
+    box.append(el("p", "note", "전체 합계는 위 표의 날짜별 수치를 합한 값입니다. 같은 사람이 여러 날 이용하면 중복으로 포함됩니다. 사용률은 전체 챗봇 연 사람 합계 ÷ 전체 방문자 합계, 답 찾음 비율은 전체 답 찾음 건수 ÷ 전체 직접 질문 건수입니다."));
     const sec = el("details", "card"); sec.open = true;
     sec.append(el("summary", "", "못 찾은 질문 (최근 200개, FAQ 보강용)"));
     if (!(misses || []).length) sec.append(el("p", "note", "아직 없습니다."));
