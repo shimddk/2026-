@@ -105,13 +105,13 @@
   async function showSchoolStats(holder,division,school){
     try{const [s,c]=await Promise.all([stats(),catalog()]),x=s.schools?.[school];if(!x||!x.picks.length)return;
       const box=el("section","champ-stats-box");box.append(el("h3","","많이 쓴 챔피언 TOP 5"),statList(x.picks,c.champions,5),
-        el("p","note","예선 "+x.games+"경기의 결과 캡처를 AI로 판독한 기준입니다. 오차가 있을 수 있어요."+(x.pending?" (확인하지 못한 "+x.pending+"칸 제외)":"")));holder.append(box);
+        el("p","note","대회 "+x.games+"경기의 결과 캡처를 AI로 판독한 기준입니다. 오차가 있을 수 있어요."+(x.pending?" (확인하지 못한 "+x.pending+"칸 제외)":"")));holder.append(box);
     }catch{/* 통계 파일이 없으면 표시하지 않음 */}
   }
   async function renderTop(holder){
     try{const [s,c]=await Promise.all([stats(),catalog()]);if(!s.top)return;
       const card=el("section","card champ-top"),grid=el("div","champ-top-grid");
-      const views=[["main","본선 진출 팀",s.top,"본선 진출 32개 학교가 예선에서 고른 챔피언입니다"],["all","대회 전체",s.top_all,"예선에 참가한 모든 학교가 고른 챔피언입니다"]].filter(v=>v[2]);
+      const views=[["main","본선 진출 팀",s.top,"본선 진출 32개 학교의 판독된 대회 경기에서 고른 챔피언입니다"],["all","대회 전체",s.top_all,"참가 학교의 판독된 대회 경기에서 고른 챔피언입니다"]].filter(v=>v[2]);
       const title=el("h3",""),tabs=el("div","champ-top-tabs"),desc=el("p","note");
       const show=k=>{const v=views.find(x=>x[0]===k)||views[0];title.textContent="📊 "+v[1]+" 인기 챔피언 TOP 10";desc.firstChild.textContent=v[3]+"(결과 캡처 AI 판독, 오차 가능). ";
         tabs.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v[0])));
