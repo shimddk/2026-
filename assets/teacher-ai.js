@@ -1,6 +1,8 @@
 /* 2026 경기도 교육감배 미래형 이스포츠 스쿨리그 · 제작자: 원곡고등학교 교사 심승보
    © 2026 심승보. All rights reserved. 허락 없이 복제·수정·배포할 수 없습니다. */
 (function () {
+  // 2026-11-01 사용자 요청으로 잠시 끔: false면 말풍선을 만들지 않음(서버 함수·사용 기록은 그대로, true로 바꾸면 복구)
+  const TEACHER_AI_ENABLED = false;
   window.createTeacherAI = function (sb) {
     let identity = null, root = null, busy = false, remaining = 0, epoch = 0, parts = null, usageDialog = null;
     const node = (tag, cls, text) => {
@@ -184,6 +186,7 @@
     return {
       async setIdentity(me) {
         const next = me.status === 'approved' && !me.external && me.role !== 'referee' && me.staffId ? me.id : null;
+        if (!TEACHER_AI_ENABLED) { remove(); identity = null; return; }
         if (next !== identity) { remove(); identity = next; }
         if (!next) return;
         if (await status() && !root) mount();
