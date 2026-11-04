@@ -303,15 +303,14 @@
   .stand th:first-child { width: 38px; }
   .stand th:nth-child(3), .stand th:nth-child(4) { width: 28px; }
   .stand td.sch { overflow-wrap: anywhere; }
-  .league-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
-  .league-rank-detail { min-width: 0; }
+  .league-rank-detail { grid-column: 1 / -1; min-width: 0; }
   .league-rank-detail summary { cursor: pointer; color: var(--neon); font-weight: 700; }
   .league-rank-scroll { overflow-x: auto; }
   .league-rank-detail .league-rank-table { table-layout: auto; min-width: 720px; }
   .league-rank-table th:first-child, .league-rank-table th:nth-child(3), .league-rank-table th:nth-child(4) { width: auto; }
   .league-rank-table th, .league-rank-table td { padding: 8px 10px; }
-  @media (min-width: 1200px) {
-    .league-layout:has(> .league-rank-detail[open]) { grid-template-columns: minmax(280px, 1fr) minmax(760px, 2.6fr); }
+  @media (min-width: 1280px) {
+    .league-layout > .league-rank-detail[open] { grid-column: 2 / -1; }
   }
   .group .gm { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: start; border-top: 1px solid var(--line); padding: 8px 0; }
   .group .gm-teams, .mbox .mt span { overflow-wrap: anywhere; min-width: 0; }
@@ -1334,7 +1333,7 @@ function renderBracket() {
   const lh = el("h3", "bk-title", "4강 리그");
   lh.append(el("small", "", "장로·바론 1·2위 4팀 풀리그 · 1·2위는 결승, 3·4위는 3·4위전" + (leagueSchedule ? " · " + leagueSchedule : "")));
   root.append(lh);
-  const lw = el("div", "league-layout");
+  const lw = el("div", "groups league-layout");
   lw.append(bkGroupCard(ms, "4강 리그", "L", BK.div + " 4강 리그"));
   lw.append(bkLeagueRankDetails(
     BK.standings.filter(s => s.division === BK.div && s.stage === "4강 리그" && s.grp === "L"),
