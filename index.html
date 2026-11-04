@@ -303,6 +303,16 @@
   .stand th:first-child { width: 38px; }
   .stand th:nth-child(3), .stand th:nth-child(4) { width: 28px; }
   .stand td.sch { overflow-wrap: anywhere; }
+  .league-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+  .league-rank-detail { min-width: 0; }
+  .league-rank-detail summary { cursor: pointer; color: var(--neon); font-weight: 700; }
+  .league-rank-scroll { overflow-x: auto; }
+  .league-rank-detail .league-rank-table { table-layout: auto; min-width: 720px; }
+  .league-rank-table th:first-child, .league-rank-table th:nth-child(3), .league-rank-table th:nth-child(4) { width: auto; }
+  .league-rank-table th, .league-rank-table td { padding: 8px 10px; }
+  @media (min-width: 1200px) {
+    .league-layout:has(> .league-rank-detail[open]) { grid-template-columns: minmax(280px, 1fr) minmax(760px, 2.6fr); }
+  }
   .group .gm { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: start; border-top: 1px solid var(--line); padding: 8px 0; }
   .group .gm-teams, .mbox .mt span { overflow-wrap: anywhere; min-width: 0; }
   .school-finder { margin: 18px 0; border: 2px solid var(--neon); }
@@ -1126,7 +1136,7 @@ const L4_TIME_RECORD = {
   "고등부": [["상록고등학교",2400],["한국문화영상고등학교",1531],["상록고등학교",2360],["안산공업고등학교",1847],["상록고등학교",1707],["한국문화영상고등학교",1565]]
 };
 function bkLeagueRankDetails(rows, games) {
-  const details = el("details");
+  const details = el("details", "card league-rank-detail");
   details.append(el("summary", "", "순위 산정 자세히 보기"));
   details.append(el("p", "group-times", "승수 우선 · 2팀 동률은 맞대결 · 3팀 이상 동률은 시간 점수가 높은 팀 우선"));
   details.append(el("p", "group-times", "시간 점수 = (패배 경기 시간 합 − 승리 경기 시간 합) ÷ 실제 경기 수. 부전승은 시간 계산에서 제외합니다."));
@@ -1140,7 +1150,7 @@ function bkLeagueRankDetails(rows, games) {
     return details;
   }
   details.append(el("p", "group-times", "11월 4일 경기 기록 기준 · 점수는 소수 첫째 자리까지 표시합니다."));
-  const table = el("table", "stand"), head = el("thead"), header = el("tr"), body = el("tbody");
+  const table = el("table", "stand league-rank-table"), head = el("thead"), header = el("tr"), body = el("tbody");
   ["순위", "학교", "승패", "승리 시간 합", "패배 시간 합", "실제 경기", "시간 점수", "순위 기준"].forEach(label => header.append(el("th", "", label)));
   head.append(header);
   const formatTime = seconds => Math.floor(seconds / 60) + "분 " + seconds % 60 + "초";
@@ -1155,9 +1165,8 @@ function bkLeagueRankDetails(rows, games) {
      score === null ? "—" : (score > 0 ? "+" : "") + score.toFixed(1) + "초", tied >= 3 ? "시간 점수 비교" : tied === 2 ? "맞대결" : "승수"].forEach(value => row.append(el("td", "", value)));
     body.append(row);
   });
-  table.style.minWidth = "720px";
   table.append(head, body);
-  const scroll = el("div", "gscroll");
+  const scroll = el("div", "league-rank-scroll");
   scroll.append(table);
   details.append(scroll);
   return details;
@@ -1194,7 +1203,6 @@ function bkGroupCard(ms, stage, g, title) {
   });
   t.append(th, tb);
   card.append(t);
-  if (stage === "4강 리그") card.append(bkLeagueRankDetails(rows, games));
   if (games.length) {
     const d = el("details"); d.open = true;
     const times = [...new Set(games.map(m => m.scheduled_at).filter(Boolean))];
@@ -1326,8 +1334,12 @@ function renderBracket() {
   const lh = el("h3", "bk-title", "4강 리그");
   lh.append(el("small", "", "장로·바론 1·2위 4팀 풀리그 · 1·2위는 결승, 3·4위는 3·4위전" + (leagueSchedule ? " · " + leagueSchedule : "")));
   root.append(lh);
-  const lw = el("div", "groups");
+  const lw = el("div", "league-layout");
   lw.append(bkGroupCard(ms, "4강 리그", "L", BK.div + " 4강 리그"));
+  lw.append(bkLeagueRankDetails(
+    BK.standings.filter(s => s.division === BK.div && s.stage === "4강 리그" && s.grp === "L"),
+    ms.filter(m => m.stage === "4강 리그" && m.grp === "L" && !m.void)
+  ));
   root.append(lw);
 
   // 4) 결선 (11/8 오프라인)
