@@ -1120,6 +1120,48 @@ function bkTeam(m, n) {
   const p = (src || "").split(":");
   return (p[0] === "G" && bkSeedLabel(p[1], p[2], Number(p[3]))) || bkSrc(src);
 }
+// 11/4 4강 리그 결과에서 확인한 경기 시간. 공개 대진의 승자와 대조한다.
+const L4_TIME_RECORD = {
+  "중등부": [["도농중학교",1752],["한광중학교",1854],["한광중학교",1858],["수리중학교",3842],["수리중학교",1848],["도농중학교",1349]],
+  "고등부": [["상록고등학교",2400],["한국문화영상고등학교",1531],["상록고등학교",2360],["안산공업고등학교",1847],["상록고등학교",1707],["한국문화영상고등학교",1565]]
+};
+function bkLeagueRankDetails(rows, games) {
+  const details = el("details");
+  details.append(el("summary", "", "순위 산정 자세히 보기"));
+  details.append(el("p", "group-times", "승수 우선 · 2팀 동률은 맞대결 · 3팀 이상 동률은 시간 점수가 높은 팀 우선"));
+  details.append(el("p", "group-times", "시간 점수 = (패배 경기 시간 합 − 승리 경기 시간 합) ÷ 실제 경기 수. 부전승은 시간 계산에서 제외합니다."));
+  const record = L4_TIME_RECORD[BK.div];
+  const timed = games.map(m => {
+    const entry = record?.[Number(m.code.split("-").pop()) - 1];
+    return {match: m, seconds: entry && entry[0] === m.winner ? entry[1] : null};
+  });
+  if (rows.length !== 4 || rows.some(s => !s.rank) || timed.length !== 6 || timed.some(g => g.seconds === null)) {
+    details.append(el("p", "group-times", "확정 순위와 경기 시간 기록을 확인한 뒤 세부 점수를 표시합니다."));
+    return details;
+  }
+  details.append(el("p", "group-times", "11월 4일 경기 기록 기준 · 점수는 소수 첫째 자리까지 표시합니다."));
+  const table = el("table", "stand"), head = el("thead"), header = el("tr"), body = el("tbody");
+  ["순위", "학교", "승패", "승리 시간 합", "패배 시간 합", "실제 경기", "시간 점수", "순위 기준"].forEach(label => header.append(el("th", "", label)));
+  head.append(header);
+  const formatTime = seconds => Math.floor(seconds / 60) + "분 " + seconds % 60 + "초";
+  [...rows].sort((a,b) => a.rank - b.rank).forEach(s => {
+    const played = timed.filter(({match}) => (match.team1 === s.school || match.team2 === s.school) && !(match.round_label || "").includes(" · 부전승"));
+    const wins = played.reduce((sum, g) => sum + (g.match.winner === s.school ? g.seconds : 0), 0);
+    const losses = played.reduce((sum, g) => sum + (g.match.winner !== s.school ? g.seconds : 0), 0);
+    const score = played.length ? (losses - wins) / played.length : null;
+    const tied = rows.filter(other => other.wins === s.wins).length;
+    const row = el("tr");
+    [s.rank + "위", s.school, s.wins + "승 " + s.losses + "패", formatTime(wins), formatTime(losses), played.length + "경기",
+     score === null ? "—" : (score > 0 ? "+" : "") + score.toFixed(1) + "초", tied >= 3 ? "시간 점수 비교" : tied === 2 ? "맞대결" : "승수"].forEach(value => row.append(el("td", "", value)));
+    body.append(row);
+  });
+  table.style.minWidth = "720px";
+  table.append(head, body);
+  const scroll = el("div", "gscroll");
+  scroll.append(table);
+  details.append(scroll);
+  return details;
+}
 // 조 순위표 카드 (조별리그·4강 리그 공용). 3팀 조의 빈 자리 경기는 숨김
 function bkGroupCard(ms, stage, g, title) {
   const card = el("div", "card group");
@@ -1152,6 +1194,7 @@ function bkGroupCard(ms, stage, g, title) {
   });
   t.append(th, tb);
   card.append(t);
+  if (stage === "4강 리그") card.append(bkLeagueRankDetails(rows, games));
   if (games.length) {
     const d = el("details"); d.open = true;
     const times = [...new Set(games.map(m => m.scheduled_at).filter(Boolean))];
