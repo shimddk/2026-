@@ -502,6 +502,7 @@ button.ref-duty{cursor:pointer}
 /* 챗봇 사용 현황 전체 기간 합계 */
 .dtable .chat-stats-total th,.dtable .chat-stats-total td{font-weight:800;background:var(--bg2);border-top:2px solid var(--line)}
 /* 2026-11-05 결선 본인확인 */
+#finalRoot { margin-bottom: 48px; }
 .final-card { max-width: 640px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: var(--card-shadow); }
 .final-card h3 { margin: 0 0 6px; }
 .final-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
