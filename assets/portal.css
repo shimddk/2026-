@@ -501,3 +501,32 @@ button.ref-duty{cursor:pointer}
 
 /* 챗봇 사용 현황 전체 기간 합계 */
 .dtable .chat-stats-total th,.dtable .chat-stats-total td{font-weight:800;background:var(--bg2);border-top:2px solid var(--line)}
+/* 2026-11-05 결선 본인확인 */
+.final-card { max-width: 640px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: var(--card-shadow); }
+.final-card h3 { margin: 0 0 6px; }
+.final-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.final-row input { flex: 1 1 180px; font-size: 18px; letter-spacing: 2px; text-transform: uppercase; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.final-form { display: grid; gap: 14px; }
+.final-field { display: grid; gap: 4px; }
+.final-field span { font-weight: 700; }
+.final-field small { color: var(--muted); }
+.final-field input[type="tel"], .final-field input[type="text"] { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+.final-preview { max-width: 180px; max-height: 220px; border-radius: 10px; border: 1px solid var(--line); object-fit: cover; }
+.final-consent { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg2); font-size: 14px; }
+.final-consent p { margin: 4px 0; }
+.final-agree { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; }
+.final-status { min-height: 1.4em; margin: 0; font-weight: 700; color: var(--neon2); }
+.final-done { margin: 0; color: var(--ok); font-weight: 700; }
+.final-admin-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.final-admin-head p { flex: 1 1 320px; margin: 0; color: var(--muted); }
+.final-school-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.final-school-head h3 { margin: 0; flex: 1 1 auto; }
+.final-count { color: var(--muted); font-weight: 700; }
+.final-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.final-table th, .final-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: middle; white-space: nowrap; }
+.final-table td:nth-child(6) { white-space: normal; min-width: 160px; }
+.final-photo img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; cursor: zoom-in; }
+.final-photo img.big { width: 240px; height: auto; cursor: zoom-out; }
+.final-miss { color: var(--wait); font-weight: 700; }
+.final-hidden { text-decoration: line-through; color: var(--muted); }
+.final-code code { font-size: 15px; letter-spacing: 1px; margin-right: 6px; }

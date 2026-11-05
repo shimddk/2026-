@@ -481,6 +481,7 @@
       <button class="tab" role="tab" id="tab-warn" aria-controls="warn" aria-selected="false" tabindex="-1">경고 현황</button>
       <button class="tab" role="tab" id="tab-coaching" aria-controls="coaching" aria-selected="false" tabindex="-1">젠지 코칭</button>
       <button class="tab" role="tab" id="tab-apply" aria-controls="apply" aria-selected="false" tabindex="-1" hidden>참가 신청</button>
+      <button class="tab" role="tab" id="tab-final" aria-controls="final" aria-selected="false" tabindex="-1">결선 본인확인</button>
       <button class="tab" role="tab" id="tab-faq" aria-controls="faq" aria-selected="false" tabindex="-1">질문/FAQ</button>
     </nav>
     <div class="visits" id="visits" hidden aria-label="방문자 수"></div>
@@ -710,6 +711,13 @@
   </section>
 
   <!-- 질문/FAQ 챗봇 -->
+  <!-- 결선 본인확인 (2026-11-05, 결선 진출 8개 학교 선수 · 11/8까지만 탭 표시) -->
+  <section id="final" role="tabpanel" aria-labelledby="tab-final" hidden>
+    <h2>결선 본인확인</h2>
+    <p class="lead">결선(11/8) 진출 8개 학교 선수는 <strong>11/7(토) 23:59까지</strong> 휴대폰 번호와 얼굴 사진을 제출해 주세요. 결선 당일 본인확인과 비상 연락에 쓰고, 중계·해설진이 선수를 알아보는 참고 자료로도 제공합니다. 코드는 팀장에게 받으세요.</p>
+    <div id="finalRoot"><p class="note">불러오는 중…</p></div>
+  </section>
+
   <section id="faq" role="tabpanel" aria-labelledby="tab-faq" hidden>
     <h2>질문/FAQ</h2>
     <p class="lead">공식 FAQ와 디스코드 질문방의 선생님 답변(10분마다 갱신)을 바탕으로 답해 드립니다. 찾는 답이 없으면 지원단 문의 방법을 안내해 드려요.</p>
@@ -853,9 +861,13 @@ const navEl = document.querySelector('nav[role="tablist"]');
 // Restore the application tab and home entry by changing this flag to true.
 const APPLICATION_TAB_VISIBLE = false;
 ["tab-apply", "applyBtn"].forEach(id => { document.getElementById(id).hidden = !APPLICATION_TAB_VISIBLE; });
+// 결선 본인확인 탭은 11/8까지만 보임(그 뒤 직접 #final로 와도 홈으로)
+const FINAL_TAB_VISIBLE = Date.now() <= Date.parse("2026-11-08T23:59:59+09:00");
+document.getElementById("tab-final").hidden = !FINAL_TAB_VISIBLE;
 const allTabs = () => [...navEl.querySelectorAll('[role="tab"]')].filter(t => !t.hidden);
 function showTab(id, focus) {
   if (id === "apply" && !APPLICATION_TAB_VISIBLE) { document.getElementById("apply").hidden = true; id = "home"; }
+  if (id === "final" && !FINAL_TAB_VISIBLE) { document.getElementById("final").hidden = true; id = "home"; }
   if (!document.getElementById(id)) return;
   allTabs().forEach(t => {
     const on = t.getAttribute("aria-controls") === id;
@@ -1903,6 +1915,7 @@ if (document.getElementById(start)?.getAttribute("role") === "tabpanel") showTab
 <script src="assets/champion-recognizer.js"></script>
 <script src="assets/champion-recognizer.js"></script>
 <script src="assets/discord-results.js"></script>
+<script src="assets/final-checkin.js"></script>
 <script src="assets/portal.js"></script>
 </body>
 </html>
