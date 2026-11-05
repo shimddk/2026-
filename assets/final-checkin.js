@@ -12,7 +12,8 @@
   const lineLabel = r => (/후보/.test(r.slot) ? "후보" + (r.line ? " · " + r.line : "") : r.line || "");
   const short = s => String(s || "").replace(/등학교$|학교$/, "");
   const REASON = {
-    wrong: "코드가 맞지 않습니다. 다시 확인해 주세요.", locked: "여러 번 틀려서 잠시 잠겼습니다. 10분 뒤에 다시 시도해 주세요.",
+    wrong: "코드가 맞지 않습니다. 다시 확인해 주세요.", pin_wrong: "학교·이름·휴대폰 뒷자리가 맞지 않습니다. 신청서에 적은 번호인지 확인해 주세요.",
+    pin_format: "휴대폰 번호 뒷자리 숫자 4자리를 입력해 주세요.", student_locked: "이 학생은 여러 번 틀려서 30분 동안 잠겼습니다. 팀장에게 받은 코드로 들어오거나 잠시 뒤 다시 시도해 주세요.", locked: "여러 번 틀려서 잠시 잠겼습니다. 10분 뒤에 다시 시도해 주세요.",
     busy: "잠시 뒤에 다시 시도해 주세요.", bad: "페이지를 새로고침한 뒤 다시 시도해 주세요.", closed: "제출 기간(11/7 23:59)이 끝났습니다.",
     consent: "개인정보 수집·이용과 제공에 동의해 주세요.", phone: "휴대폰 번호를 010-0000-0000 형식으로 입력해 주세요.",
     motto: "부적절합니다. 조금 더 건강한 표현으로 작성해 주세요.", photo: "사진을 다시 선택해 올려 주세요(JPG·PNG·WEBP, 10MB 이하).", ext: "JPG·PNG·WEBP 사진만 올릴 수 있습니다."
@@ -36,7 +37,41 @@
     if (!root) return;
     let code = "", info = null, preview = null;
     const vid = visitor();
-    function start(msg) {
+    // 2026-11-05 기본 로그인: 학교·이름·휴대폰 뒷자리 4자리(신청서 번호, 없으면 처음 입력한 번호로 등록). 코드 입력은 예비.
+    let schools = null;
+    async function start(msg) {
+      info = null; code = "";
+      const box = el("form", "final-card");
+      const school = el("select"); school.setAttribute("aria-label", "학교"); school.required = true;
+      const name = el("input"); name.type = "text"; name.autocomplete = "off"; name.maxLength = 20; name.placeholder = "이름"; name.setAttribute("aria-label", "이름"); name.required = true;
+      const pin = el("input"); pin.type = "password"; pin.inputMode = "numeric"; pin.autocomplete = "off"; pin.maxLength = 4; pin.placeholder = "뒷자리 4자리"; pin.setAttribute("aria-label", "휴대폰 번호 뒷자리 4자리"); pin.required = true;
+      const go = el("button", "btn", "확인"); go.type = "submit";
+      const toCode = el("button", "btn ghost small", "팀장에게 받은 코드로 들어오기"); toCode.type = "button";
+      const status = el("p", "final-status"); status.setAttribute("role", "status"); if (msg) status.textContent = msg;
+      const grid = el("div", "final-login");
+      grid.append(school, name, pin, go);
+      box.append(el("h3", "", "본인 확인"), el("p", "note", "학교를 고르고 이름과 휴대폰 번호 뒷자리 4자리를 입력하세요. 참가 신청서에 적은 번호를 씁니다. 신청서에 번호가 없던 학생은 지금 입력한 뒷자리가 등록되니, 다음에도 같은 숫자를 입력하세요."), grid, status, toCode);
+      toCode.addEventListener("click", () => startCode());
+      box.addEventListener("submit", async e => {
+        e.preventDefault();
+        if (!/^\d{4}$/.test(pin.value)) { status.textContent = "휴대폰 번호 뒷자리 숫자 4자리를 입력해 주세요."; return; }
+        go.disabled = true; status.textContent = "확인하는 중…";
+        const { data, error } = await sb.rpc("final_checkin_login", { p_school: school.value, p_name: name.value, p_pin: pin.value, p_vid: vid });
+        if (error || !data?.ok) { go.disabled = false; status.textContent = error ? say() : say(data); return; }
+        const o = await sb.rpc("final_checkin_open", { p_code: data.code, p_vid: vid });
+        go.disabled = false;
+        if (o.error || !o.data?.ok) { status.textContent = say(o.data); return; }
+        code = data.code; info = o.data; form();
+        if (data.registered) root.querySelector(".final-status").textContent = "신청서에 번호가 없어 방금 입력한 뒷자리로 등록했습니다. 다시 들어올 때도 같은 숫자를 입력하세요.";
+      });
+      root.replaceChildren(box);
+      if (!schools) { const { data } = await sb.rpc("final_checkin_schools"); schools = data || []; }
+      school.append(el("option", "", "학교 선택"));
+      school.firstChild.value = "";
+      schools.forEach(s => { const o = el("option", "", `${s.school} (${s.division})`); o.value = s.school; school.append(o); });
+      school.focus();
+    }
+    function startCode(msg) {
       info = null; code = "";
       const box = el("form", "final-card");
       const input = el("input"); input.type = "text"; input.autocomplete = "off"; input.maxLength = 12; input.placeholder = "예: AB3C D7EF"; input.setAttribute("aria-label", "본인확인 코드");
@@ -44,6 +79,7 @@
       const status = el("p", "final-status"); status.setAttribute("role", "status"); if (msg) status.textContent = msg;
       box.append(el("h3", "", "본인확인 코드 입력"), el("p", "note", "팀장에게 받은 8자리 코드를 입력하세요. 코드는 학생마다 다르니 다른 사람에게 알려 주지 마세요."), el("div", "final-row"), status);
       box.querySelector(".final-row").append(input, go);
+      const back = el("button", "btn ghost small", "휴대폰 번호로 들어오기"); back.type = "button"; back.addEventListener("click", () => start()); box.append(back);
       box.addEventListener("submit", async e => {
         e.preventDefault(); go.disabled = true; status.textContent = "확인하는 중…";
         const { data, error } = await sb.rpc("final_checkin_open", { p_code: input.value, p_vid: vid });
@@ -59,7 +95,7 @@
       box.append(el("h3", "", `${info.school} ${info.name} 선수가 맞나요?`), el("p", "note", `${info.division}${info.line ? " · " + info.line : ""}`), el("div", "final-row"));
       box.lastChild.append(yes, no);
       yes.addEventListener("click", form);
-      no.addEventListener("click", () => start("코드가 다른 학생 것이면 팀장에게 다시 확인해 주세요."));
+      no.addEventListener("click", () => startCode("코드가 다른 학생 것이면 팀장에게 다시 확인해 주세요."));
       root.replaceChildren(box); yes.focus();
     }
     function form() {
@@ -202,7 +238,7 @@
         catch { window.prompt("아래 내용을 복사하세요", text); }
       });
       const wrap = el("div", "gscroll"), table = el("table", "final-table"), tr = el("tr");
-      ["사진", "이름", "라인", "롤 아이디", "휴대폰", "각오", "제출", "코드"].forEach(t => tr.append(el("th", "", t)));
+      ["사진", "이름", "라인", "롤 아이디", "휴대폰", "각오", "제출", "로그인", "코드"].forEach(t => tr.append(el("th", "", t)));
       const thead = el("thead"); thead.append(tr); const tbody = el("tbody"); table.append(thead, tbody); wrap.append(table);
       for (const r of list) {
         const row = el("tr"), ph = el("td", "final-photo");
@@ -232,7 +268,17 @@
           if (e5 || !d5?.ok) toast?.("만들지 못했습니다.", true); else teacher(sb, box, toast);
         });
         cd.append(regen);
-        row.append(ph, el("td", "", r.student_name), el("td", "", lineLabel(r)), el("td", "", r.lol_id || ""), el("td", "", r.phone || ""), mot, el("td", "", fmt(r.submitted_at)), cd);
+        const lg = el("td"); lg.append(el("span", r.pin_source === "self" ? "final-self" : r.pin_source ? "" : "final-miss", r.pin_source === "sheet" ? "신청서 번호" : r.pin_source === "self" ? "학생 직접 등록" : "미등록"));
+        if (r.pin_source) {
+          const rs = el("button", "btn ghost small", "로그인 초기화"); rs.type = "button";
+          rs.addEventListener("click", async () => {
+            if (!confirm(`${r.student_name} 학생의 휴대폰 뒷자리 로그인을 초기화할까요? 다음에 처음 입력하는 뒷자리로 다시 등록됩니다.`)) return;
+            const { data: d6, error: e6 } = await sb.rpc("final_checkin_admin_action", { p_id: r.id, p_action: "reset_pin" });
+            if (e6 || !d6?.ok) toast?.("초기화하지 못했습니다.", true); else teacher(sb, box, toast);
+          });
+          lg.append(rs);
+        }
+        row.append(ph, el("td", "", r.student_name), el("td", "", lineLabel(r)), el("td", "", r.lol_id || ""), el("td", "", r.phone || ""), mot, el("td", "", fmt(r.submitted_at)), lg, cd);
         tbody.append(row);
       }
       card.append(h, wrap); box.append(card);

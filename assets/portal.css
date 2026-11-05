@@ -531,3 +531,8 @@ button.ref-duty{cursor:pointer}
 .final-miss { color: var(--wait); font-weight: 700; }
 .final-hidden { text-decoration: line-through; color: var(--muted); }
 .final-code code { font-size: 15px; letter-spacing: 1px; margin-right: 6px; }
+.final-login { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 8px; margin-top: 10px; }
+.final-login select, .final-login input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; min-width: 0; }
+@media (max-width: 600px) { .final-login { grid-template-columns: 1fr 1fr; } .final-login select { grid-column: 1 / -1; } .final-login .btn { grid-column: 1 / -1; } }
+.final-self { color: var(--neon2); font-weight: 700; }
+.final-card > .btn.small { margin-top: 8px; }
