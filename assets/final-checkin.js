@@ -198,16 +198,17 @@
     const { data, error } = await sb.rpc("final_checkin_admin_list");
     if (error) { box.replaceChildren(el("p", "note", "불러오지 못했습니다(관리자만 볼 수 있습니다).")); return; }
     const rows = (data || []).sort((a, b) => (a.division === b.division ? 0 : a.division === "중등부" ? -1 : 1) || a.school.localeCompare(b.school, "ko") || slotNo(a.slot) - slotNo(b.slot));
-    const done = rows.filter(r => r.submitted_at).length;
+    // 2026-11-05 대상은 주전(active)만. 후보는 학교별 접힌 칸에서 "대상에 넣기"로 켤 수 있음
+    const targets = rows.filter(r => r.active !== false), done = targets.filter(r => r.submitted_at).length;
     const head = el("div", "final-admin-head");
     const reload = el("button", "btn ghost small", "새로고침"), dl = el("button", "btn small", "방송 자료 내려받기"); reload.type = dl.type = "button";
-    head.append(el("p", "", `제출 ${done}/${rows.length}명 · 마감 11/7(토) 23:59 · 사진·번호는 관리자만 볼 수 있습니다. 화면 밖으로 옮기지 마세요. 11/9 모두 삭제.`), reload, dl);
+    head.append(el("p", "", `제출 ${done}/${targets.length}명 · 마감 11/7(토) 23:59 · 사진·번호는 관리자만 볼 수 있습니다. 화면 밖으로 옮기지 마세요. 11/9 모두 삭제.`), reload, dl);
     reload.addEventListener("click", () => teacher(sb, box, toast));
     dl.addEventListener("click", async () => {
       dl.disabled = true; dl.textContent = "묶는 중…";
       try {
         const files = [], lines = [["부문", "학교", "이름", "라인", "롤 아이디", "각오", "사진 파일"]];
-        for (const r of rows.filter(r => r.photo_path)) {
+        for (const r of targets.filter(r => r.photo_path)) {
           const { data: blob, error: e2 } = await sb.storage.from(BUCKET).download(r.photo_path);
           if (e2) throw e2;
           const ext = r.photo_path.split(".").pop(), name = `${r.division}_${short(r.school)}_${lineLabel(r).replace(/\s·\s/g, "-")}_${r.student_name}.${ext}`.replace(/[\\/:*?"<>|]/g, "");
@@ -226,7 +227,13 @@
     box.replaceChildren(head);
     const groups = new Map();
     rows.forEach(r => { const k = r.division + "|" + r.school; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
-    for (const [k, list] of groups) {
+    for (const [k, all] of groups) {
+      const list = all.filter(r => r.active !== false), off = all.filter(r => r.active === false);
+      const toggle = (r, on) => async () => {
+        if (!on && !confirm(`${r.student_name} 학생을 본인확인 대상에서 뺄까요? 제출한 자료는 남고, 학생은 로그인할 수 없게 됩니다.`)) return;
+        const { error: e7 } = await sb.rpc("final_checkin_admin_action", { p_id: r.id, p_action: on ? "activate" : "deactivate" });
+        if (e7) toast?.("바꾸지 못했습니다.", true); else teacher(sb, box, toast);
+      };
       const [division, school] = k.split("|");
       const card = el("section", "card final-school");
       const copy = el("button", "btn ghost small", "코드 복사"); copy.type = "button";
@@ -268,6 +275,7 @@
           if (e5 || !d5?.ok) toast?.("만들지 못했습니다.", true); else teacher(sb, box, toast);
         });
         cd.append(regen);
+        if (/후보/.test(r.slot)) { const outBtn = el("button", "btn ghost small", "대상에서 빼기"); outBtn.type = "button"; outBtn.addEventListener("click", toggle(r, false)); cd.append(outBtn); }
         const lg = el("td"); lg.append(el("span", r.pin_source === "self" ? "final-self" : r.pin_source ? "" : "final-miss", r.pin_source === "sheet" ? "신청서 번호" : r.pin_source === "self" ? "학생 직접 등록" : "미등록"));
         if (r.pin_source) {
           const rs = el("button", "btn ghost small", "로그인 초기화"); rs.type = "button";
@@ -281,7 +289,14 @@
         row.append(ph, el("td", "", r.student_name), el("td", "", lineLabel(r)), el("td", "", r.lol_id || ""), el("td", "", r.phone || ""), mot, el("td", "", fmt(r.submitted_at)), lg, cd);
         tbody.append(row);
       }
-      card.append(h, wrap); box.append(card);
+      card.append(h, wrap);
+      if (off.length) {
+        const d = el("details", "final-off"); d.append(el("summary", "", `후보 ${off.length}명 (본인확인 대상 아님 · 결선에 뛰게 되면 대상에 넣기)`));
+        const ul = el("ul");
+        off.forEach(r => { const li = el("li"); const b = el("button", "btn ghost small", "대상에 넣기"); b.type = "button"; b.addEventListener("click", toggle(r, true)); li.append(el("span", "", `${r.student_name} (${lineLabel(r)})${r.submitted_at ? " · 제출 기록 있음" : ""} `), b); ul.append(li); });
+        d.append(ul); card.append(d);
+      }
+      box.append(card);
     }
   }
   window.FinalCheckin = { student, teacher, clear: clearUrls };

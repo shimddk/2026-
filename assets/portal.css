@@ -536,3 +536,7 @@ button.ref-duty{cursor:pointer}
 @media (max-width: 600px) { .final-login { grid-template-columns: 1fr 1fr; } .final-login select { grid-column: 1 / -1; } .final-login .btn { grid-column: 1 / -1; } }
 .final-self { color: var(--neon2); font-weight: 700; }
 .final-card > .btn.small { margin-top: 8px; }
+.final-off { margin-top: 10px; color: var(--muted); }
+.final-off summary { cursor: pointer; font-weight: 700; }
+.final-off ul { margin: 6px 0 0; padding-left: 18px; }
+.final-off li { margin: 4px 0; }
