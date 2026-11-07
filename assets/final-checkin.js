@@ -8,6 +8,7 @@
   const MAX = 10 * 1024 * 1024;
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const fmt = t => t ? new Date(t).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  const fmtShort = t => { if (!t) return ""; const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(t)).map(x => [x.type, x.value])); return `${p.month}/${p.day} ${p.hour}:${p.minute}`; };
   const slotNo = s => parseInt(s, 10) || 99;
   const lineLabel = r => (/후보/.test(r.slot) ? "후보" + (r.line ? " · " + r.line : "") : r.line || "");
   const short = s => String(s || "").replace(/등학교$|학교$/, "");
@@ -202,7 +203,12 @@
     const targets = rows.filter(r => r.active !== false), done = targets.filter(r => r.submitted_at).length;
     const head = el("div", "final-admin-head");
     const reload = el("button", "btn ghost small", "새로고침"), dl = el("button", "btn small", "방송 자료 내려받기"); reload.type = dl.type = "button";
-    head.append(el("p", "", `제출 ${done}/${targets.length}명 · 마감 11/7(토) 23:59 · 사진·번호는 관리자만 볼 수 있습니다. 화면 밖으로 옮기지 마세요. 11/9 모두 삭제.`), reload, dl);
+    // 2026-11-08 결선 당일 출석 체크(관리자). 전체·학교별 출석 수는 체크할 때 바로 다시 셈
+    const attTotal = el("strong", "final-att-total");
+    const countAll = () => { attTotal.textContent = `출석 ${targets.filter(r => r.attended_at).length}/${targets.length}명`; };
+    const attCounters = [countAll];
+    const recount = () => attCounters.forEach(f => f());
+    head.append(attTotal, el("p", "", `사진 ${targets.filter(r => r.photo_path).length}/${targets.length}명 · 학생 제출 ${done}명 · 사진·번호는 관리자만 볼 수 있습니다. 화면 밖으로 옮기지 마세요.`), reload, dl);
     reload.addEventListener("click", () => teacher(sb, box, toast));
     dl.addEventListener("click", async () => {
       dl.disabled = true; dl.textContent = "묶는 중…";
@@ -238,28 +244,68 @@
       const card = el("section", "card final-school");
       const copy = el("button", "btn ghost small", "코드 복사"); copy.type = "button";
       const h = el("div", "final-school-head");
-      h.append(el("h3", "", `${division} · ${school}`), el("span", "final-count", `제출 ${list.filter(r => r.submitted_at).length}/${list.length}`), copy);
+      const attCount = el("span", "final-count final-att-count");
+      attCounters.push(() => { const n = list.filter(r => r.attended_at).length; attCount.textContent = `출석 ${n}/${list.length}`; attCount.classList.toggle("all", n === list.length && n > 0); });
+      h.append(el("h3", "", `${division} · ${school}`), attCount, el("span", "final-count", `사진 ${list.filter(r => r.photo_path).length}/${list.length}`), copy);
+      // 팀장 연락처 이름이 결선 대상 선수와 맞지 않으면 알려 줌(관리자가 행의 '팀장 지정'으로 고름)
+      let capNote = null;
+      if (!list.some(r => r.is_captain)) {
+        const capName = all.find(r => r.cap_name)?.cap_name, capOff = off.find(r => r.is_captain);
+        capNote = (el("p", "final-cap-note", capOff ? `팀장(${capOff.student_name})은 후보로 되어 있어 아래 접힌 '후보'에 있습니다. 결선에 뛰면 '대상에 넣기'를 누르세요.`
+          : `팀장 연락처의 이름${capName ? `(${capName})` : ""}이 이 표의 선수와 맞지 않아 팀장 표시를 못 했습니다. 팀장인 선수 행에서 '팀장 지정'을 누르세요.`));
+      }
       copy.addEventListener("click", async () => {
         const text = `[${school}] 결선 본인확인 코드 (사이트 '결선 본인확인' 탭, 11/7 23:59까지)\n` + list.map(r => `${r.student_name}(${lineLabel(r)}): ${r.code.slice(0, 4)} ${r.code.slice(4)}`).join("\n") + "\n※ 코드는 학생마다 다릅니다. 본인 코드만 전달해 주세요.";
         try { await navigator.clipboard.writeText(text); toast?.("복사했습니다. 팀장에게 디스코드 개인 메시지로 보내 주세요."); }
         catch { window.prompt("아래 내용을 복사하세요", text); }
       });
       const wrap = el("div", "gscroll"), table = el("table", "final-table"), tr = el("tr");
-      ["사진", "이름", "라인", "롤 아이디", "휴대폰", "각오", "제출", "로그인", "코드"].forEach(t => tr.append(el("th", "", t)));
+      ["사진", "이름", "라인", "롤 아이디", "휴대폰", "각오", "제출", "로그인", "코드", "출석"].forEach(t => tr.append(el("th", "", t)));
       const thead = el("thead"); thead.append(tr); const tbody = el("tbody"); table.append(thead, tbody); wrap.append(table);
       for (const r of list) {
-        const row = el("tr"), ph = el("td", "final-photo");
+        const row = el("tr", r.is_captain ? "final-captain" : ""), ph = el("td", "final-photo");
+        const showImg = blob => {
+          const u = URL.createObjectURL(blob); urls.add(u);
+          const im = el("img"); im.src = u; im.alt = r.student_name + " 사진"; ph.replaceChildren(im);
+          if (r.photo_source === "teacher") ph.append(el("small", "final-by-teacher", "교사 업로드"));
+          im.addEventListener("click", () => im.classList.toggle("big"));
+        };
         if (r.photo_path) {
           const b = el("button", "btn ghost small", "사진 보기"); b.type = "button"; ph.append(b);
+          if (r.photo_source === "teacher") ph.append(el("small", "final-by-teacher", "교사 업로드"));
           b.addEventListener("click", async () => {
             b.disabled = true;
             const { data: blob, error: e3 } = await sb.storage.from(BUCKET).download(r.photo_path);
             if (e3) { b.disabled = false; toast?.("사진을 불러오지 못했습니다.", true); return; }
-            const u = URL.createObjectURL(blob); urls.add(u);
-            const im = el("img"); im.src = u; im.alt = r.student_name + " 사진"; ph.replaceChildren(im);
-            im.addEventListener("click", () => im.classList.toggle("big"));
+            showImg(blob);
           });
-        } else ph.append(el("span", "final-miss", "미제출"));
+        } else {
+          // 2026-11-08 사진을 안 낸 학생은 관리자가 대신 올림(학생 제출과 같은 비공개 저장소·형식 검사)
+          ph.append(el("span", "final-miss", "미제출"));
+          const fi = el("input"); fi.type = "file"; fi.accept = "image/jpeg,image/png,image/webp"; fi.hidden = true;
+          const ub = el("button", "btn ghost small", "사진 올리기"); ub.type = "button";
+          ub.addEventListener("click", () => fi.click());
+          fi.addEventListener("change", async () => {
+            const f = fi.files[0]; fi.value = ""; if (!f) return;
+            if (f.size > MAX) { toast?.("10MB 이하 사진만 올릴 수 있습니다.", true); return; }
+            const t = await imageType(f);
+            if (!t) { toast?.("JPG·PNG·WEBP 사진만 올릴 수 있습니다(아이폰 HEIC는 캡처해서 올려 주세요).", true); return; }
+            ub.disabled = true; ub.textContent = "올리는 중…";
+            try {
+              const tk = await sb.rpc("final_checkin_admin_ticket", { p_id: r.id, p_ext: t[0] });
+              if (tk.error || !tk.data?.ok) throw 0;
+              const up = await sb.storage.from(BUCKET).upload(tk.data.path, f, { contentType: t[1], upsert: false });
+              if (up.error) throw 0;
+              const sv = await sb.rpc("final_checkin_admin_set_photo", { p_id: r.id, p_path: tk.data.path });
+              if (sv.error || !sv.data?.ok) throw 0;
+              r.photo_path = tk.data.path; r.photo_source = "teacher";
+              showImg(f); toast?.(`${r.student_name} 사진을 올렸습니다`);
+            } catch { ub.disabled = false; ub.textContent = "사진 올리기"; toast?.("사진을 올리지 못했습니다. 다시 시도해 주세요.", true); }
+          });
+          ph.append(ub, fi);
+        }
+        const nm = el("td", "final-name", r.student_name);
+        if (r.is_captain) nm.append(el("span", "final-cap-badge", "팀장"));
         const mot = el("td");
         if (r.motto) {
           mot.append(el("span", r.motto_hidden ? "final-hidden" : "", r.motto));
@@ -286,18 +332,43 @@
           });
           lg.append(rs);
         }
-        row.append(ph, el("td", "", r.student_name), el("td", "", lineLabel(r)), el("td", "", r.lol_id || ""), el("td", "", r.phone || ""), mot, el("td", "", fmt(r.submitted_at)), lg, cd);
+        // 팀장 표시를 관리자가 바꿈(자동 = 팀장 연락처 이름과 같은 선수)
+        const cap = el("button", "btn ghost small", r.is_captain ? "팀장 해제" : "팀장 지정"); cap.type = "button";
+        cap.addEventListener("click", async () => {
+          const act = r.is_captain ? (r.cap_auto ? "captain_off" : "captain_auto") : (r.cap_auto ? "captain_auto" : "captain_on");
+          const { error: e8 } = await sb.rpc("final_checkin_admin_action", { p_id: r.id, p_action: act });
+          if (e8) toast?.("바꾸지 못했습니다.", true); else teacher(sb, box, toast);
+        });
+        cd.append(cap);
+        // 출석 체크: 누르면 바로 저장, 실패하면 원래대로
+        const at = el("td", "final-att"), lab = el("label", "final-att-box"), chk = el("input"), when = el("small", "");
+        chk.type = "checkbox"; chk.checked = !!r.attended_at; chk.setAttribute("aria-label", `${r.student_name} 출석`);
+        const paint = () => { lab.classList.toggle("on", chk.checked); when.textContent = r.attended_at ? new Date(r.attended_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false }) : ""; row.classList.toggle("final-attended", chk.checked); };
+        lab.append(chk, el("span", "", "출석"));
+        at.append(lab, when); paint();
+        chk.addEventListener("change", async () => {
+          const want = chk.checked; chk.disabled = true;
+          const { data: d9, error: e9 } = await sb.rpc("final_checkin_admin_action", { p_id: r.id, p_action: want ? "attend" : "unattend" });
+          chk.disabled = false;
+          if (e9 || !d9?.ok) { chk.checked = !want; toast?.("출석을 저장하지 못했습니다. 다시 눌러 주세요.", true); return; }
+          r.attended_at = want ? (d9.attended_at || new Date().toISOString()) : null;
+          paint(); recount();
+        });
+        row.append(ph, nm, el("td", "", lineLabel(r)), el("td", "", r.lol_id || ""), el("td", "", r.phone || ""), mot, el("td", "", fmtShort(r.submitted_at)), lg, cd, at);
         tbody.append(row);
       }
-      card.append(h, wrap);
+      card.append(h);
+      if (capNote) card.append(capNote);
+      card.append(wrap);
       if (off.length) {
         const d = el("details", "final-off"); d.append(el("summary", "", `후보 ${off.length}명 (본인확인 대상 아님 · 결선에 뛰게 되면 대상에 넣기)`));
         const ul = el("ul");
-        off.forEach(r => { const li = el("li"); const b = el("button", "btn ghost small", "대상에 넣기"); b.type = "button"; b.addEventListener("click", toggle(r, true)); li.append(el("span", "", `${r.student_name} (${lineLabel(r)})${r.submitted_at ? " · 제출 기록 있음" : ""} `), b); ul.append(li); });
+        off.forEach(r => { const li = el("li"); const b = el("button", "btn ghost small", "대상에 넣기"); b.type = "button"; b.addEventListener("click", toggle(r, true)); li.append(el("span", "", `${r.student_name}${r.is_captain ? " [팀장]" : ""} (${lineLabel(r)})${r.submitted_at ? " · 제출 기록 있음" : ""} `), b); ul.append(li); });
         d.append(ul); card.append(d);
       }
       box.append(card);
     }
+    recount();
   }
   window.FinalCheckin = { student, teacher, clear: clearUrls };
 })();

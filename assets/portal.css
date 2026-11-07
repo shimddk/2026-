@@ -540,3 +540,23 @@ button.ref-duty{cursor:pointer}
 .final-off summary { cursor: pointer; font-weight: 700; }
 .final-off ul { margin: 6px 0 0; padding-left: 18px; }
 .final-off li { margin: 4px 0; }
+/* 2026-11-08 결선 당일 출석·팀장·교사 사진 업로드. 표가 옆으로 길어지지 않게 버튼 칸은 줄바꿈 */
+.final-table th, .final-table td { padding: 6px 6px; }
+.final-table td:nth-child(6) { min-width: 100px; font-size: 13px; }
+.final-table td.final-code, .final-table td:nth-child(8), .final-table td.final-photo { white-space: normal; }
+.final-table td.final-code .btn, .final-table td:nth-child(8) .btn, .final-table td.final-photo .btn, .final-table td:nth-child(6) .btn { display: block; margin: 3px 0 0; padding: 3px 8px; font-size: 12px; white-space: nowrap; }
+.final-table td.final-code code { display: block; margin: 0; }
+.final-photo small { display: block; font-size: 11px; color: var(--muted); }
+.final-table tr.final-captain td { background: color-mix(in srgb, var(--neon2) 10%, transparent); }
+.final-table tr.final-captain td:first-child { box-shadow: inset 4px 0 0 var(--neon2); }
+.final-cap-badge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--neon2); color: var(--on-accent, #fff); font-size: 12px; font-weight: 700; vertical-align: middle; }
+.final-cap-note { margin: 6px 0 0; font-size: 13px; color: var(--wait); font-weight: 700; }
+.final-att { width: 1%; text-align: center !important; }
+.final-att-box { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border: 2px solid var(--line); border-radius: 9px; cursor: pointer; font-weight: 700; color: var(--muted); user-select: none; }
+.final-att-box input { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--ok); }
+.final-att-box.on { border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.final-att small { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.final-table tr.final-attended td.final-name { color: var(--ok); }
+.final-att-total { font-size: 16px; color: var(--ok); }
+.final-att-count { color: var(--wait); }
+.final-att-count.all { color: var(--ok); }
