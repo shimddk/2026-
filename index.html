@@ -1778,9 +1778,10 @@ function ask(q, src) {
   if (r.kind === "faq") {
     r.faqs.forEach(botFaq);
     // 질문방 답변은 FAQ 아래에 최대 2개 (같은 내용으로 합쳐 둔 답변 먼저)
-    const extra = r.faqs.flatMap(f => FAQ_EXTRA[f.id] || []);
+    const extra = r.faqs.filter(f => f.id < 73 || f.id > 76).flatMap(f => FAQ_EXTRA[f.id] || []); // 2026-11-09 결선 FAQ(73~76)에는 지난 질문방 답변을 붙이지 않음(연기 전 온라인·11/8 기준 답이라 헷갈림)
     // 2026-10-24: 선생님마다 답이 다를 수 있으므로 가장 최근 답변 1개만
-    [...extra, ...dq].sort((a, b) => Date.parse(b.asked_at || 0) - Date.parse(a.asked_at || 0)).slice(0, 1).forEach(botDiscord);
+    const finalOnly = r.faqs.every(f => f.id >= 73 && f.id <= 76);
+    [...extra, ...(finalOnly ? [] : dq)].sort((a, b) => Date.parse(b.asked_at || 0) - Date.parse(a.asked_at || 0)).slice(0, 1).forEach(botDiscord);
   } else if (dq.length) {
     dq.forEach(botDiscord);
     const m = el("div", "msg bot");
