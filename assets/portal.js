@@ -165,8 +165,10 @@
     [11, "후보6", /후보6 LOL 아이디$/], [12, "후보7", /후보7 LOL 아이디$/], [13, "후보8", /후보8 LOL 아이디$/], [14, "후보9", /후보9 LOL 아이디$/]
   ];
   async function loadLineups() {
-    // 승인된 교사는 원본 명단에서, 그 외는 공개 함수(관리자가 공개를 켰을 때만 결과가 있음)에서
-    if (ME.status === "approved") {
+    // 2026-11-09 결선 연기 뒤: 교사 로그인 상태도 공개 명단(결선 8개 학교 결선 본인확인 대상만)을 씀.
+    // 전체 원본 명단은 교사용 '아이디 명단' 탭에서 봄. 옛 교사용 원본 보기는 아래에 남겨 둠(USE_TEACHER_ROSTER=true로 복구).
+    const USE_TEACHER_ROSTER = false;
+    if (USE_TEACHER_ROSTER && ME.status === "approved") {
       const [{ data, error }, { data: flags }] = await Promise.all([
         sb.from("sheet_rows").select("sheet,row_no,data").in("sheet", ["roster_middle", "roster_high"]),
         sb.from("nickname_flags").select("sheet,school,id_key,level,reason")
@@ -262,7 +264,7 @@
     let teams = [...bySchool.values()].sort((a, b) => a.school.localeCompare(b.school, "ko") || a.teamNo - b.teamNo);
     if (!res.teacher && finalists) {
       teams = teams.filter(t => isFinalist(finalists, t.division, t.school));
-      root.append(el("p", "pending rec-finalist-note", "결선 진출 8개 학교만 표시합니다. 탈락한 학교의 선수 이름·게임 아이디는 개인정보 보호를 위해 가렸습니다(대진표의 학교 이름과 경기 기록은 그대로 볼 수 있습니다)."));
+      root.append(el("p", "pending rec-finalist-note", "결선 진출 8개 학교의 결선 출전 선수(학교별 5명)만 표시합니다. 탈락한 학교의 선수 이름·게임 아이디는 개인정보 보호를 위해 가렸습니다(대진표의 학교 이름과 경기 기록은 그대로 볼 수 있습니다)."));
     }
     teams.forEach(t => t.ids.sort((a, b) => a.slot - b.slot));
 
