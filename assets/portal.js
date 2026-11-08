@@ -202,11 +202,15 @@
     const { data, error } = await sb.rpc("public_lineups");
     return error ? null : { rows: data || [], teacher: false };
   }
+  // 2026-11-08 결선 연기: 학생 화면은 결선 진출 8개 학교만(서버 public_lineups도 탈락 학교 이름·아이디를 비움)
+  let finalistsPromise = null;
+  const loadFinalists = () => (finalistsPromise ||= sb.rpc("public_finalist_schools").then(({ data, error }) => { if (error) { finalistsPromise = null; return null; } return data || []; }));
+  const isFinalist = (list, division, school) => (list || []).some(f => f.division === division && withdrawalKey(f.school) === withdrawalKey(school));
   async function renderRecord(preset) {
     const root = document.getElementById("recordRoot");
     if (!root) return;
-    let res;
-    try { await refreshWithdrawals(); res = preset || await loadLineups(); } catch { res = null; }
+    let res, finalists = null;
+    try { await refreshWithdrawals(); res = preset || await loadLineups(); finalists = await loadFinalists(); } catch { res = null; }
     root.replaceChildren();
     if (!res) { root.append(el("p", "note", "불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.")); return; }
     if (!res.rows.length && !withdrawnSchools.length) {
@@ -255,7 +259,11 @@
     withdrawnSchools.forEach(w => {
       if (![...bySchool.values()].some(t => t.division === w.division && withdrawalKey(t.school) === withdrawalKey(w.school))) bySchool.set(w.division + "|" + w.school + "|1", { division: w.division, school: w.school, teamNo: 1, teamCount: 1, ids: [] });
     });
-    const teams = [...bySchool.values()].sort((a, b) => a.school.localeCompare(b.school, "ko") || a.teamNo - b.teamNo);
+    let teams = [...bySchool.values()].sort((a, b) => a.school.localeCompare(b.school, "ko") || a.teamNo - b.teamNo);
+    if (!res.teacher && finalists) {
+      teams = teams.filter(t => isFinalist(finalists, t.division, t.school));
+      root.append(el("p", "pending rec-finalist-note", "결선 진출 8개 학교만 표시합니다. 탈락한 학교의 선수 이름·게임 아이디는 개인정보 보호를 위해 가렸습니다(대진표의 학교 이름과 경기 기록은 그대로 볼 수 있습니다)."));
+    }
     teams.forEach(t => t.ids.sort((a, b) => a.slot - b.slot));
 
     const bar = el("div", "gbar");
@@ -397,14 +405,16 @@
     dialog.addEventListener("close",()=>{if(bracketSchoolDialog===dialog){bracketSchoolRequest++;bracketSchoolDialog=null;}dialog.remove();});
     dialog.addEventListener("click",event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
     const more=el("button","btn small","전적 검색에서 자세히 보기");more.type="button";more.addEventListener("click",async()=>{dialog.close();window.showTab("record");await renderRecord();const search=document.querySelector("#recordRoot .gsearch");if(search){search.value=school;search.dispatchEvent(new Event("input",{bubbles:true}));search.focus();}});
-    let data,error;
-    try { ({data,error}=await sb.rpc("public_lineups").eq("division",division).eq("school",school)); } catch {error=true;}
+    let data,error,finalists=null;
+    try { ({data,error}=await sb.rpc("public_lineups").eq("division",division).eq("school",school)); finalists=await loadFinalists(); } catch {error=true;}
+    const eliminated=!!finalists&&!isFinalist(finalists,division,school);
     if(request!==bracketSchoolRequest||!dialog.open)return;
-    body.replaceChildren();body.append(el("p","rec-guard","공개된 이름과 아이디는 대회 준비에만 사용해 주세요."));
+    body.replaceChildren();if(!eliminated)body.append(el("p","rec-guard","공개된 이름과 아이디는 대회 준비에만 사용해 주세요."));
     body.append(el("h3","","선수 명단"));
     const rows=(data||[]).filter(r=>r.division===division&&r.school===school).sort((a,b)=>(a.team_no||1)-(b.team_no||1)||a.slot-b.slot);
     if(error)body.append(el("p","note","명단을 불러오지 못했습니다. 닫은 뒤 다시 열어 주세요."));
     else if(isSchoolWithdrawn(division,school))body.append(el("p","withdrawal-tag","기권 · 학생 명단 비공개"));
+    else if(eliminated)body.append(el("p","note","선수 명단은 결선 진출 학교만 공개합니다(개인정보 보호). 아래 경기 기록과 사용 챔피언은 그대로 볼 수 있습니다."));
     else if(!rows.length)body.append(el("p","note","현재 공개된 선수 명단이 없습니다."));
     else {
       const list=el("ul","rec-list");rows.forEach(r=>{const item=el("li");item.append(el("span","rec-line",r.line||""),el("span","rec-name",r.student_name||"-"));
@@ -1050,7 +1060,7 @@
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     // 2026-10-21: 예상 조 편성은 관리자 포함 모두에게 숨김. 미리보기 함수와 기존 데이터는 보존.
     // 2026-11-05 결선 본인확인: 사진·휴대폰 번호는 관리자(owner)만(서버도 같은 검사)
-    if ((isOwner() || finalOk === true) && window.FinalCheckin) views.push(["t-final", "결선 본인확인", "결선 진출 8개 학교 선수의 본인확인 사진·비상 연락처입니다. 관리자와 지정된 선생님만 볼 수 있으며 11/9에 모두 삭제합니다.", b => window.FinalCheckin.teacher(sb, b, toast)]);
+    if ((isOwner() || finalOk === true) && window.FinalCheckin) views.push(["t-final", "결선 본인확인", "결선 진출 8개 학교 선수의 본인확인 사진·비상 연락처입니다. 관리자와 지정된 선생님만 볼 수 있으며, 결선이 연기되어 연기된 결선이 끝난 뒤 모두 삭제합니다.", b => window.FinalCheckin.teacher(sb, b, toast)]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
     if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "심판가능 체크 교사의 수당 서류를 비공개로 제출합니다.", loadPaymentPreview]);
     if(teacherTabState.can_manage) views.push(["t-tab-settings","탭 표시 관리","다른 교사에게 보이는 교사용 탭을 설정합니다.",loadTeacherTabSettings]);
