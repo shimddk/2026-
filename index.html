@@ -1867,9 +1867,9 @@ function showCat(key) {
     return b;
   }));
   if (dq.length) {
-    // 2026-11-09 다듬은 질문방 Q&A를 접어서 'n개'로
-    const box = el("details", "qsub-wrap");
-    box.append(el("summary", "", "질문방에서 나온 질문 " + dq.length + "개"));
+    // 2026-11-09 다듬은 질문방 Q&A 'n개' — 사용자 요청으로 접지 않고 늘 펼쳐 둠
+    const box = el("div", "qsub-wrap");
+    box.append(el("div", "qsub", "질문방에서 나온 질문 " + dq.length + "개"));
     dq.forEach(it => {
       const b = el("button", "qbtn dq", (it.online ? "〔온라인 경기〕 " : "") + it.question);
       b.type = "button";
