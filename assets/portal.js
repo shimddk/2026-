@@ -104,9 +104,8 @@
   loadPublicBracket();
 
   /* ---------- 챗봇: 디스코드 질문방 답변 (구글 시트 → 10분마다 DB 갱신) ---------- */
-  sb.rpc("public_discord_qa").then(({ data, error }) => {
-    if (!error && data && window.setDiscordQA) window.setDiscordQA(data);
-  });
+  // 2026-11-09: 챗봇은 index.html의 다듬은 질문방 Q&A(QA_CURATED)만 씀. 원문 공개 함수 호출 중단(비로그인 권한도 회수)
+  // sb.rpc("public_discord_qa").then(({ data, error }) => { if (!error && data && window.setDiscordQA) window.setDiscordQA(data); });
 
   /* ---------- 방문자 수 (하루 1회) ----------
      - 로그인한 선생님: 계정 기준 하루 1번 (여러 기기로 들어와도 1번)
