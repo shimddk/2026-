@@ -1027,6 +1027,8 @@
     teacherTabState=tabSetting;
     // 챗봇 사용 현황은 심승보 계정만(서버 chat_stats_allowed가 판단, 2026-10-24 사용자 요청)
     const { data: chatStatsOk } = await sb.rpc("chat_stats_allowed");
+    // 결선 본인확인은 관리자 + 변민균 교사(서버 final_checkin_allowed가 판단, 2026-11-08 사용자 요청)
+    const { data: finalOk } = await sb.rpc("final_checkin_allowed");
     if(ME.id !== buildingUser || ME.status !== "approved") return;
     const views = [
       // 지원단 명단은 심판 권한(젠지 코치)에 안 보임 (2026-10-18 사용자 요청)
@@ -1048,7 +1050,7 @@
     if (isEditor()) views.push(["t-inbox", "신청 접수", "구글폼으로 들어온 신청입니다. 새 학교는 자동으로 추가되고, 같은 팀장의 재신청은 최근 내용으로 덮어씁니다. '확인 필요'는 직접 적용하거나 무시하세요.", loadInbox]);
     // 2026-10-21: 예상 조 편성은 관리자 포함 모두에게 숨김. 미리보기 함수와 기존 데이터는 보존.
     // 2026-11-05 결선 본인확인: 사진·휴대폰 번호는 관리자(owner)만(서버도 같은 검사)
-    if (isOwner() && window.FinalCheckin) views.push(["t-final", "결선 본인확인", "결선 진출 8개 학교 선수의 본인확인 사진·비상 연락처입니다. 관리자만 볼 수 있으며 11/9에 모두 삭제합니다.", b => window.FinalCheckin.teacher(sb, b, toast)]);
+    if ((isOwner() || finalOk === true) && window.FinalCheckin) views.push(["t-final", "결선 본인확인", "결선 진출 8개 학교 선수의 본인확인 사진·비상 연락처입니다. 관리자와 지정된 선생님만 볼 수 있으며 11/9에 모두 삭제합니다.", b => window.FinalCheckin.teacher(sb, b, toast)]);
     if (isOwner()) views.push(["t-admin", "로그인 승인", "구글로 로그인한 계정을 지원단 이름과 짝지어 승인합니다.", loadAdmin]);
     if (canPreviewPayment()) views.push(["t-payment", "수당 지급", "심판가능 체크 교사의 수당 서류를 비공개로 제출합니다.", loadPaymentPreview]);
     if(teacherTabState.can_manage) views.push(["t-tab-settings","탭 표시 관리","다른 교사에게 보이는 교사용 탭을 설정합니다.",loadTeacherTabSettings]);
